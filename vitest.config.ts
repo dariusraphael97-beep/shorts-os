@@ -14,6 +14,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,
+      // server-only throws when imported outside a React Server Components
+      // build. In vitest (plain Node), alias it to the package's own empty
+      // stub so SERVER-ONLY modules remain importable in tests.
+      "server-only": new URL("./node_modules/server-only/empty.js", import.meta.url).pathname,
     },
   },
 });
