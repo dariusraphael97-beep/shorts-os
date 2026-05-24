@@ -6,7 +6,7 @@ import {
 import { searchShortsByQuery } from "@/lib/clients/youtube";
 import { getServiceClient } from "@/lib/supabase/server";
 import { loadEnv } from "@/lib/env";
-import { assertCronAuth, scraperLog } from "@/lib/scrapers/shared";
+import { assertCronAuth, scraperLog, serializeError } from "@/lib/scrapers/shared";
 
 export const maxDuration = 300; // 5 min
 
@@ -33,7 +33,8 @@ export async function GET(req: Request) {
         .from("niches")
         .select("id, slug, youtube_search_terms")
         .eq("is_active", true);
-      if (error) throw error;
+      if (error)
+        throw new Error(`niches select failed: ${serializeError(error)}`);
       return (data ?? []) as Array<{
         id: string;
         slug: string;
@@ -45,7 +46,10 @@ export async function GET(req: Request) {
         .from("viral_observations")
         .upsert(rows, { onConflict: "source,external_id,observed_at" })
         .select("id");
-      if (error) throw error;
+      if (error)
+        throw new Error(
+          `viral_observations upsert failed: ${serializeError(error)}`,
+        );
       return { inserted: data?.length ?? 0 };
     },
   };
@@ -63,7 +67,7 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error("youtube-trending scrape failed", e);
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: serializeError(e) },
       { status: 500 },
     );
   }

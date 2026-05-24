@@ -67,7 +67,9 @@ export async function searchShortsByQuery(
 
   const videosRes = await fetch(videosUrl.toString());
   if (!videosRes.ok) {
-    throw new Error(`YouTube videos failed: ${videosRes.status}`);
+    throw new Error(
+      `YouTube videos failed: ${videosRes.status} ${await videosRes.text()}`,
+    );
   }
   const videosJson = (await videosRes.json()) as {
     items: Array<{

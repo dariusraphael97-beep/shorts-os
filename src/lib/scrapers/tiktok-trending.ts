@@ -51,7 +51,17 @@ export async function runTikTokTrendingScrape(deps: TikTokTrendingDeps) {
     }
     if (all.length === 0) continue;
 
-    const rows: TikTokViralObservationRow[] = all.map((it) => ({
+    // Dedupe by externalId (see youtube-trending.ts for rationale —
+    // viral_observations unique key (source, external_id, observed_at)
+    // collides on duplicates within a single batch).
+    const seen = new Set<string>();
+    const unique = all.filter((it) => {
+      if (!it.externalId || seen.has(it.externalId)) return false;
+      seen.add(it.externalId);
+      return true;
+    });
+
+    const rows: TikTokViralObservationRow[] = unique.map((it: TikTokVideo) => ({
       niche_id: niche.id,
       source: "tiktok",
       external_id: it.externalId,

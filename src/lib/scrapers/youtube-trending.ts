@@ -52,7 +52,21 @@ export async function runYouTubeTrendingScrape(deps: YouTubeTrendingDeps) {
 
     if (all.length === 0) continue;
 
-    const rows: YouTubeViralObservationRow[] = all.map((it) => ({
+    // Dedupe by externalId. Different search terms often surface the same
+    // video, and the viral_observations unique constraint is
+    // (source, external_id, observed_at). Postgres assigns the same
+    // observed_at to every row in a single INSERT (default now() is a
+    // single transaction snapshot), so duplicate external_ids in one batch
+    // trigger 21000 "ON CONFLICT DO UPDATE command cannot affect row a
+    // second time". Keep the first occurrence per video id.
+    const seen = new Set<string>();
+    const unique = all.filter((it) => {
+      if (!it.externalId || seen.has(it.externalId)) return false;
+      seen.add(it.externalId);
+      return true;
+    });
+
+    const rows: YouTubeViralObservationRow[] = unique.map((it) => ({
       niche_id: niche.id,
       source: "youtube",
       external_id: it.externalId,
