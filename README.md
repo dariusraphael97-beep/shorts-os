@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shorts OS
 
-## Getting Started
+Personal media operations system for running faceless YouTube Shorts channels.
 
-First, run the development server:
+**Status:** Phase 0 + 1 (Foundation) complete. Memory Layer + Intel scrapers live.
+Next: Plan #2 (Studio cockpit UI).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What's running
+
+- **Supabase** holds 11 tables (Memory Layer)
+- **Vercel Cron** runs 5 background scrapers:
+  - YouTube Shorts trending (every 6h)
+  - TikTok trending via TikAPI (every 6h)
+  - Reddit harvest (daily 08:00 UTC)
+  - Wikipedia harvest (daily 08:30 UTC)
+  - Performance sync (daily 09:00 UTC — stub until Plan #4)
+- **Claude (Haiku 4.5)** scores topic candidates for hookability
+- Health endpoint: `/api/health`
+
+## Setup (when cloning fresh)
+
+1. `npm install`
+2. Copy `.env.example` → `.env.local`, fill in all keys
+3. `npx supabase link --project-ref <ref>`
+4. `npx supabase db push`
+5. `npm run dev` → http://localhost:3000
+
+To create your first niche:
+```sql
+insert into niches (slug, display_name, is_active, youtube_search_terms, tiktok_hashtags, subreddits)
+values (
+  'wikipedia-til',
+  'Wikipedia / TIL',
+  true,
+  array['weird history fact','wild story unknown'],
+  array['historyfacts','til'],
+  array['todayilearned','interestingasfuck','Damnthatsinteresting','nextfuckinglevel']
+);
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project layout
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+See `docs/superpowers/specs/2026-05-24-shorts-os-design.md` for the full design.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Plans (sequential)
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Plan #1 (this) — Foundation + Memory Layer + Intel scrapers ✅
+- Plan #2 — Studio cockpit UI + visualization (next)
+- Plan #3 — Agent framework + generation pipeline
+- Plan #4 — PC render agent + first videos live
