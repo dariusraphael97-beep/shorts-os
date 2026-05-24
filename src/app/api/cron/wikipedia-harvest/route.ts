@@ -47,9 +47,42 @@ export async function GET(req: Request) {
       repo,
       perNicheCount: 10,
     });
+
+    // Score newly-queued topics (cap at 20 per run to control cost).
+    const { data: unscored } = await supabase
+      .from("topic_queue")
+      .select("id, title, summary")
+      .is("hookability_score", null)
+      .limit(20);
+
+    const { scoreTopic } = await import("@/lib/ai/topic-scorer");
+    let scored = 0;
+    for (const t of (unscored ?? []) as Array<{
+      id: string;
+      title: string;
+      summary: string | null;
+    }>) {
+      try {
+        const s = await scoreTopic({
+          title: t.title,
+          summary: t.summary ?? "",
+        });
+        await supabase
+          .from("topic_queue")
+          .update({
+            hookability_score: s.hookability,
+            scored_at: new Date().toISOString(),
+          })
+          .eq("id", t.id);
+        scored += 1;
+      } catch (e) {
+        console.warn("score failed for", t.id, e);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
-      ...scraperLog("wikipedia-harvest", result),
+      ...scraperLog("wikipedia-harvest", { ...result, scored }),
     });
   } catch (e) {
     console.error("wikipedia-harvest failed", e);
