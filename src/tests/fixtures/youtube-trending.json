@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "abc123",
+      "snippet": {
+        "title": "Wild fact about volcanoes",
+        "channelId": "UCxxx",
+        "channelTitle": "FactBlast",
+        "publishedAt": "2026-05-23T12:00:00Z"
+      },
+      "statistics": {
+        "viewCount": "1820000",
+        "likeCount": "98000",
+        "commentCount": "1200"
+      },
+      "contentDetails": {
+        "duration": "PT47S"
+      }
+    }
+  ],
+  "nextPageToken": null
+}
