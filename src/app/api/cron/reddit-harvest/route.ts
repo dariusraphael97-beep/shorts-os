@@ -6,7 +6,7 @@ import {
 } from "@/lib/scrapers/reddit-harvest";
 import { getTopPosts } from "@/lib/clients/reddit";
 import { getServiceClient } from "@/lib/supabase/server";
-import { assertCronAuth, scraperLog } from "@/lib/scrapers/shared";
+import { assertCronAuth, scraperLog, serializeError } from "@/lib/scrapers/shared";
 
 export const maxDuration = 300;
 
@@ -45,13 +45,18 @@ export async function GET(req: Request) {
       repo,
     });
 
-    // Score newly-queued reddit-source topics (cap at 20 per run to control cost).
+    // Score newly-queued reddit-source topics. Cap at 8/run so we fit
+    // inside Vercel Hobby's 300s function timeout: 8 topics * ~10s each
+    // (Claude call) + ~30s reddit fetch + ~5s DB writes ≈ 115s, leaving
+    // headroom for retries and slow runs. Triggering all 4 crons in
+    // parallel previously exceeded 300s at limit=20. Remaining unscored
+    // topics get picked up on the next cron tick.
     const { data: unscored } = await supabase
       .from("topic_queue")
       .select("id, title, summary")
       .eq("source", "reddit")
       .is("hookability_score", null)
-      .limit(20);
+      .limit(8);
 
     const { scoreTopic } = await import("@/lib/ai/topic-scorer");
     let scored = 0;
@@ -85,7 +90,7 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error("reddit-harvest failed", e);
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: serializeError(e) },
       { status: 500 },
     );
   }

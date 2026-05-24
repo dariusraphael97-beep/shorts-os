@@ -8,7 +8,7 @@ import {
   fetchArticleExtract,
 } from "@/lib/clients/wikipedia";
 import { getServiceClient } from "@/lib/supabase/server";
-import { assertCronAuth, scraperLog } from "@/lib/scrapers/shared";
+import { assertCronAuth, scraperLog, serializeError } from "@/lib/scrapers/shared";
 
 export const maxDuration = 300;
 
@@ -48,12 +48,16 @@ export async function GET(req: Request) {
       perNicheCount: 10,
     });
 
-    // Score newly-queued topics (cap at 20 per run to control cost).
+    // Score newly-queued topics. Cap at 8/run so we fit inside Vercel
+    // Hobby's 300s function timeout: 8 topics * ~10s each (Claude call)
+    // + ~30s wikipedia fetch + ~5s DB writes ≈ 115s, leaving headroom.
+    // Triggering all 4 crons in parallel previously exceeded 300s at
+    // limit=20. Remaining unscored topics get picked up on the next tick.
     const { data: unscored } = await supabase
       .from("topic_queue")
       .select("id, title, summary")
       .is("hookability_score", null)
-      .limit(20);
+      .limit(8);
 
     const { scoreTopic } = await import("@/lib/ai/topic-scorer");
     let scored = 0;
@@ -87,7 +91,7 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error("wikipedia-harvest failed", e);
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: serializeError(e) },
       { status: 500 },
     );
   }
