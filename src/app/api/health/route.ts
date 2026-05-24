@@ -26,10 +26,61 @@ export async function GET() {
     dbError = e instanceof Error ? e.message : String(e);
   }
 
+  // Per-table liveness counts. Each wrapped so a single failure (e.g. table
+  // not yet created) doesn't fail the whole probe.
+  const checks: Record<string, unknown> = {};
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { count } = await supabase
+      .from("niches")
+      .select("*", { count: "exact", head: true })
+      .eq("is_active", true);
+    checks.activeNiches = count ?? 0;
+  } catch (e) {
+    checks.activeNiches = { error: e instanceof Error ? e.message : String(e) };
+  }
+
+  try {
+    const { count } = await supabase
+      .from("viral_observations")
+      .select("*", { count: "exact", head: true })
+      .gte("observed_at", since24h);
+    checks.viralObservations_last24h = count ?? 0;
+  } catch (e) {
+    checks.viralObservations_last24h = {
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  try {
+    const { count } = await supabase
+      .from("topic_queue")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", since24h);
+    checks.topicQueue_last24h = count ?? 0;
+  } catch (e) {
+    checks.topicQueue_last24h = {
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  try {
+    const { count } = await supabase
+      .from("agents")
+      .select("*", { count: "exact", head: true });
+    checks.agentsSeeded = count ?? 0;
+  } catch (e) {
+    checks.agentsSeeded = {
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
   return NextResponse.json({
     status: dbStatus === "ok" ? "healthy" : "degraded",
     db: { status: dbStatus, error: dbError },
     version: "0.1.0",
     timestamp: new Date().toISOString(),
+    checks,
   });
 }
