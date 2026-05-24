@@ -65,10 +65,12 @@ A single-page **Studio Cockpit** the operator opens every morning. Co-equal Topi
 - **Single bold accent color:** electric green (`#00ff88` or similar) used sparingly for: agent "working" state pulse, active CTA buttons, ticker highlights, hookability-score numbers ≥80.
 - **Secondary accent:** warm amber for "thinking" states, neutral gray for "idle" / "deferred."
 - **Typography:** sans for UI (Inter or system-ui), mono for numerical/code-ish bits (scores, timestamps, raw IDs).
-- **Motion principles:**
-  - Agent state badges pulse slowly when not idle (1.5s ease-in-out loop).
-  - Ticker scrolls smoothly bottom-up as new rows arrive (CSS transform, no jank).
-  - Hookability scores tick up with a 300ms count-up animation when freshly scored.
+- **Motion principles (specific library mapping):**
+  - Agent state badges pulse slowly when not idle (1.5s ease-in-out loop). Active agents get an Aceternity `moving-border` effect around their card. Hover any agent → Aceternity `spotlight` follows the cursor.
+  - Ticker uses Magic UI `marquee` (auto-pause on hover for readability) over an Aceternity `background-beams` subtle ambient motion.
+  - Hookability scores use Magic UI `number-ticker` — count up 300ms when freshly scored.
+  - Topic queue uses Magic UI `animated-list` — newly arrived items slide in from the top.
+  - Active panel (the one you last interacted with) gets an Aceternity `border-beam` highlight.
   - No gratuitous animation; every motion conveys actual state change.
 - **Density:** information-rich, not spaced out. The point is "command bridge," not "Notion document."
 - **Empty states are first-class.** Topic Queue empty: *"Scrapers haven't queued anything yet — they fire daily at 7 AM ET. Or trigger now: `curl -H 'Authorization: Bearer $CRON_SECRET' /api/cron/reddit-harvest`"* — useful, not just decorative.
@@ -310,16 +312,30 @@ For shadcn theming consistency. These become Tailwind CSS variables.
 - `server-only` guard on secret-holding modules
 
 ### New in Plan #2
+
+**Styling foundation**
 - `tailwindcss` + `postcss` + `autoprefixer`
-- `shadcn/ui` initialized via `npx shadcn@latest init` with the dark theme above
-- shadcn components likely needed: `button`, `card`, `badge`, `dropdown-menu`, `tabs`, `tooltip`, `dialog` (drawer pattern), `scroll-area`, `toast`
-- Browser Supabase client (`@supabase/supabase-js` already installed) — initialize with anon key (not service role) for Realtime subscriptions from the client side
+- `shadcn/ui` initialized via `npx shadcn@latest init` with the dark theme tokens from §7
 - `lucide-react` for icons (shadcn's default; tree-shakable)
-- A small Realtime wrapper module `src/lib/supabase/browser-client.ts` and `src/lib/supabase/realtime-subscribe.ts`
+- `framer-motion` (runtime dep, ~50kb gzipped) — required by Aceternity components
+
+**Component stack — three copy-paste ecosystems, composed:**
+
+| Layer | Source | Role | Specific components we copy in |
+|---|---|---|---|
+| Base | **shadcn/ui** (https://ui.shadcn.com/) | Structural primitives | `button`, `card`, `badge`, `dropdown-menu`, `tabs`, `tooltip`, `dialog`, `scroll-area`, `toast`, `sheet` |
+| Presence | **Aceternity UI** (https://ui.aceternity.com/) | Make agents and active states feel alive | `spotlight` or `card-hover-effect` (agent cards), `background-beams` (subtle motion behind ticker), `border-beam` (active panel highlight), `moving-border` (working-state agent border) |
+| Motion | **Magic UI** (https://magicui.design/) | Specific motion primitives | `marquee` (scraper ticker), `number-ticker` (hookability scores counting up), `animated-list` (topic queue prepend animations), `shimmer-button` (primary CTAs) |
+
+All three are MIT-licensed, copy-paste (not runtime npm deps except for framer-motion). Bundle stays lean because tree-shaking ships only what's imported.
+
+**Other additions**
+- Browser Supabase client (already installed; initialize with **anon key** — not service role — for Realtime subscriptions from client side)
+- A small Realtime wrapper at `src/lib/supabase/browser-client.ts` and `src/lib/supabase/realtime-subscribe.ts`
 
 ### Not added
-- React Flow (deferred to Plan #3)
-- Framer Motion (CSS transitions are sufficient for MVP motion)
+- React Flow (deferred to Plan #3 — nothing to graph yet)
+- Tremor (deferred to Plan #2b when Niche Health charts arrive)
 - Any analytics / telemetry library
 
 ---
@@ -341,7 +357,8 @@ Total expected new tests: ~10–15.
 | Risk | Mitigation |
 |---|---|
 | Realtime subscriptions add to Supabase free-tier connection pool | Free tier allows 200 concurrent Realtime connections; we'll use 2 (agents + ticker). 1% utilization. |
-| Browser bundle bloat from shadcn + Tailwind | Tailwind v4 generates ~10kb gzipped CSS. shadcn components are copy-paste, only what you use ships. Expect total cockpit bundle under 200kb gzipped. |
+| Browser bundle bloat from shadcn + Aceternity + Magic UI + framer-motion | Tailwind v4 generates ~10kb gzipped CSS. shadcn / Aceternity / Magic UI components are all copy-paste — only what you import ships. Framer-motion is the one runtime dep at ~50kb gzipped. Expected total cockpit bundle: under 250kb gzipped. If we cross 300kb we revisit. |
+| Framer-motion bloat if every component animates | Only Aceternity components touch framer-motion. We use ~3-5 of them total (agent cards, ticker background, panel borders). Magic UI motion primitives use CSS transforms, not framer-motion. shadcn is animation-free. |
 | `COCKPIT_PASSWORD` leak via deployed code | Read only on the server (login action). Never sent to client. Cookie carries HMAC, not the password itself. |
 | Operator forgets `COCKPIT_PASSWORD` | Document in `SETUP_CHECKLIST.md` how to rotate via Vercel dashboard. Cookie invalidation requires rotating `COCKPIT_SESSION_SECRET`. |
 | Lazy Claude explain endpoint becomes a cost vector if abused | Auth-gated (only the logged-in operator can call it). Each call ~$0.001 with Haiku 4.5. Cache per browser session client-side. Worst case: $0.10/day if operator clicks Explain 100 times. |
