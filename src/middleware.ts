@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse, type NextRequest } from "next/server";
 import { COCKPIT_COOKIE_NAME, verifySession } from "@/lib/auth/session";
 
