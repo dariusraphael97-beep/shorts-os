@@ -19,7 +19,10 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
   throw lastError;
 }
 
-export function scraperLog(scraper: string, extra: Record<string, unknown> = {}) {
+export function scraperLog<T extends Record<string, unknown>>(
+  scraper: string,
+  extra: T = {} as T,
+): { scraper: string; at: string } & T {
   return {
     scraper,
     at: new Date().toISOString(),
