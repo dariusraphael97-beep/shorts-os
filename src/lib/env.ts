@@ -18,6 +18,10 @@ const envSchema = z.object({
   // Cockpit auth (Plan #2)
   COCKPIT_PASSWORD: z.string().min(20),
   COCKPIT_SESSION_SECRET: z.string().min(32),
+
+  // Cockpit browser client (Plan #2) — mirrors SUPABASE_URL / SUPABASE_ANON_KEY for browser bundle
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;
