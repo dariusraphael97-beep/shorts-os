@@ -108,11 +108,111 @@ Darius already attempted a faceless YouTube Shorts channel (`@dyfrx_9754`, 695 s
 |---|---|---|
 | `niches` | Niche definitions, health metrics over time | Niche Loop, Niche Health Panel |
 | `viral_observations` | Every viral short analyzed, with extracted patterns | Pattern Loop, Trending Panel |
-| `patterns` | Aggregated patterns by niche (winning hooks, lengths, b-roll cadence) | Script Generator |
+| `patterns` | Aggregated patterns by niche (winning hooks, lengths, b-roll cadence) | Script Generator, all agents |
 | `your_videos` | Every video posted by operator + daily YouTube Analytics snapshots | Personal Loop |
 | `pattern_performance` | Which patterns correlated with success in `your_videos` | Script Generator (personalized weighting) |
 | `topic_queue` | Surfaced topic candidates with state (queued / used / rejected) | Topic Queue, Source Harvester |
 | `channels` | Per-channel config + auth tokens for YouTube Data API | Channel Manager, Performance Sync |
+| `agents` | Per-agent config: prompt template (versioned), skill metrics, performance history | All agents, Team Status panel |
+| `agent_messages` | Every inter-agent message: from / to / intent / payload / timestamp | Agents (subscribe), Team Chat feed |
+| `decisions` | Every AI decision: inputs, output chosen, alternatives considered, scores, reasoning | Decision Explainer panels |
+| `jobs` | Pipeline progress per video: status / current step / progress % / agent currently active | Pipeline Graph panel |
+
+---
+
+## 3.5 Show the Work — AI Visualization Principles
+
+**Principle:** Functional, not pretty — but every AI decision, scraper pull, and pipeline step is visible to the operator in real time. This is a deliberate design choice, not polish.
+
+**Why this matters:**
+- **Understanding:** operator learns *why* the AI picks what it picks, gets better at directing it
+- **Trust:** glass box beats black box — you can verify what's happening
+- **Debugging:** when output is wrong, the visualization shows exactly where it went off
+- **Differentiation:** competitors (Opus Clip, Submagic) hide their internals; we show them. When productized, "watch your AI work in real time" becomes a strong selling point
+- **It's genuinely cool to watch**
+
+### What gets visualized
+
+1. **Live AI streams** — every Claude call streams its output token-by-token in the cockpit. You watch scripts get written.
+2. **Pipeline graph** — animated node-edge diagram per video showing current stage (topic → script → voice → b-roll → render → ready). Lights up green as stages complete. Click any node to see what happened there.
+3. **Decision explainers** — wherever an agent picks something (topic, voice, b-roll clip, hook variation), a side panel shows WHY: which patterns matched, which alternatives were considered, what scores each option got.
+4. **Pattern Bank Explorer** — visual dashboard of what the Patterns Bank currently believes is winning in each niche. Top hooks, average lengths, b-roll cadence trends. Updates live as scrapers find new viral content.
+5. **Scraper Ticker** — bottom-of-screen live feed of what Intel Layer is pulling right now. Example: `[12:33] Trending Radar — "How a typo caused a $2B disaster" — 8.4M views in 18h — hook: "How a [trigger] caused a [scale]"`
+6. **Performance correlations** — once 30+ videos posted, charts showing your channel's empirical winners: "Your 47s + male voice + question-hook combo performs 2.3x baseline."
+7. **AI thinking states** — when a process runs, the cockpit shows current step in plain language: `Analyzing top-50 viral hooks…` / `Selecting b-roll for segment 3 of 8…`
+8. **Cost meter** — running tally per video and per day: `$0.034 this video / $1.21 today`.
+
+### Technical approach
+
+- **Vercel AI SDK v6** streamText / generative UI for live token-by-token rendering
+- **Supabase Realtime** subscriptions for live database event feeds (scraper ticker, pipeline updates, agent messages)
+- **React Flow** library for animated pipeline graphs and agent topology diagrams
+- **`decisions` table** in Memory Layer — every AI decision is logged with inputs, alternatives, scores, reasoning. Decision Explainer reads from it.
+- **`jobs` table** in Memory Layer — pipeline progress per video. Pipeline Graph reads from it.
+
+### Build cost
+
+Adds ~30% to total build time. Worth it for operator experience and SaaS differentiation.
+
+---
+
+## 3.6 The Agent System
+
+The Studio Layer is operated by **7 specialized AI agents**, each with a clear role, evolving prompt template, and visible status in the cockpit. Agents are persistent and reactive (available 24/7 but only burn tokens when actually working on a triggered task). They coordinate through the Memory Layer and Supabase Realtime.
+
+### Agent roster
+
+| Agent | Role | Always thinking about... | Activates when... |
+|---|---|---|---|
+| 🧭 **The Strategist** | Conductor. Receives goals from operator, dispatches tasks to specialists, decides what to make and when, requests reports from other agents | Daily plan, channel-level strategy, when to pivot | Operator goal received OR scheduled daily planning run |
+| 🔭 **The Scout** | Niche / trend intelligence | Which niches are growing, which patterns emerging, which competitors gaining traction | New Trending Radar data arrives (every 6h) |
+| 📚 **The Archivist** | Source content discovery | Cataloging hook-able topics from Reddit / Wikipedia / news, scoring topic candidates | New source data arrives (daily) |
+| ✍️ **The Writer** | Hook-first script writing | Story structure, hook patterns, pacing, retention | A topic is dispatched for production |
+| 🎬 **The Director** | B-roll + visual composition | Matching visuals to script, cinematic patterns, music selection | A script is ready for visual assembly |
+| 🎙️ **The Voice Coach** | Voice selection + ElevenLabs settings tuning | Which voice / speed / stability settings work for which script types | A script needs voice generation |
+| 📊 **The Analyst** | Performance analysis + personalization | Channel performance, correlations, what's working vs dying | Daily Performance Sync arrives, or operator requests report |
+
+### Each agent has
+
+- **A prompt template** stored in `agents` table — versioned, evolves over time
+- **A memory of past work** — every decision the agent made, with outcomes
+- **Performance metrics** visible in the cockpit (e.g., "The Writer's last 20 scripts: avg 41% retention, +0.8% above baseline")
+- **A current state** indicator: `idle` / `thinking` / `working` / `awaiting input`
+- **A skill level** that ticks up as it accumulates wins (purely a visualization layer, not a real ML metric)
+
+### Inter-agent communication
+
+Three coordination patterns:
+
+1. **Shared state via Memory Layer** — agents read each other's outputs from the database (persistent). Example: The Writer reads the current top hook patterns from `patterns` (written by The Scout).
+2. **Event bus via Supabase Realtime** — agents emit events; others subscribe. Example: when The Writer finishes a script, it emits `script.ready`; The Director and Voice Coach both wake up.
+3. **Direct dispatch by The Strategist** — for multi-step workflows, Strategist explicitly hands off: `@Writer write a script for topic X with hook pattern Y` → `@Director assemble b-roll for script Z`.
+
+**All inter-agent messages logged** to `agent_messages` table — fully visible in the cockpit as a live "team chat" feed. The operator can read every conversation the agents have with each other.
+
+### Agent improvement over time
+
+In v1, "improvement" = **prompt context evolution**, not literal fine-tuning:
+
+- Each agent's prompt template gets enriched as the Patterns Bank grows (more examples, more recent winners, more niche-specific context)
+- Each agent's prompt also incorporates feedback from The Analyst ("The Writer's question-hook scripts outperform statement-hook scripts 1.8x — bias toward question hooks")
+- Prompt versions tracked in `agents.prompt_version`; the cockpit shows which version is live and a diff to prior versions
+
+Fine-tuning small models per agent is v3 territory, once we have enough data.
+
+### Cost discipline (critical)
+
+Agents are **always available, only active when needed**. They subscribe to triggers via Supabase Realtime; they don't poll. A sleeping agent costs $0. This is non-negotiable — multi-agent systems that "always think" become expensive fast.
+
+Estimated token impact: agents add ~20–30% to per-video Claude cost (because Strategist + Scout + Analyst do meta-level reasoning on top of Writer/Director/Voice Coach doing the production work). Still well within budget.
+
+### Visualization of the agent system
+
+The cockpit has a dedicated **Team Status panel**:
+- Avatar grid of all 7 agents with current state badges
+- Click an agent → opens that agent's profile (current prompt version, recent decisions, performance metrics, what it's working on)
+- Live **Team Chat feed** showing inter-agent messages in real time
+- Pipeline Graph (per video) shows which agent is at each stage
 
 ---
 
@@ -152,11 +252,14 @@ Other niches can be activated later — the pipeline is niche-agnostic; only the
 | Backend / API | Next.js API routes (no separate backend) | Single codebase |
 | Background jobs | Vercel Cron | Built-in, free tier covers our needs |
 | Database | Supabase Postgres | Operator already knows it from DealSense |
+| Realtime updates | Supabase Realtime | Live scraper ticker, pipeline graph, agent team chat, decision streams |
 | File storage | Vercel Blob (private tier) | MP4s, audio, b-roll cache |
-| LLM | Claude via Vercel AI Gateway (AI SDK v6) | Gateway provides fallback + observability; Claude best for script quality |
+| LLM | Claude via Vercel AI Gateway (AI SDK v6) | Gateway provides fallback + observability; AI SDK v6 streaming for live token-by-token visualization |
 | Voice generation | ElevenLabs API | Best voice quality; experiment with local XTTS-v2 in v1.5 |
 | Video rendering | Remotion (React-based, programmable) | Code-as-video; runs on operator's 4090 |
 | Caption timing | Whisper.cpp w/ CUDA on operator's PC | Free, fast, word-level timing |
+| Pipeline / agent graphs (UI) | React Flow | Animated node-edge diagrams for video pipeline and agent topology |
+| Agent framework | Custom-built on AI SDK v6 + Supabase Realtime (no heavyweight framework) | LangGraph / AutoGen / CrewAI are overkill for 7 agents; we build a thin coordinator and let AI SDK handle the LLM streaming |
 | Trend sources | YouTube Data API v3, Reddit API, TikAPI, Wikipedia API | See Section 4 |
 | Asset libraries | Pexels API, Pixabay, Wikimedia Commons, Mixkit (music) | All free |
 
@@ -191,13 +294,13 @@ Other niches can be activated later — the pipeline is niche-agnostic; only the
 |---|---|
 | Vercel (Hobby) | $0–20 |
 | Supabase (free tier) | $0 |
-| Claude API (via Gateway) | $20–50 |
+| Claude API (via Gateway) — 7-agent system adds ~25% vs single-pipeline | $30–70 |
 | ElevenLabs Creator | $22–99 |
 | TikAPI | $30 |
 | Vercel Blob storage | $5–10 |
 | Asset APIs (Pexels, Pixabay, etc.) | $0 |
 | Local AI compute (4090) | $0 |
-| **Total** | **~$80–210/mo** |
+| **Total** | **~$90–230/mo** |
 
 v1.5 drops ~$50/mo more when ElevenLabs is replaced by local XTTS-v2.
 
@@ -237,6 +340,17 @@ Every script the Script Generator writes is *conditioned* on the current top pat
 
 **Personalization output:** topic suggestions, voice picks, and script styles get reweighted toward what empirically works for the operator's channels — not what works in general.
 
+### Loop 4: The Agent Loop (per agent, continuous)
+
+Each of the 7 agents has its own private feedback loop:
+
+- Every decision an agent makes is logged in `decisions` with the eventual outcome (when known — e.g., a Writer script eventually has retention data attached)
+- Per-agent metrics computed daily: average outcome score, decisions made, alternatives considered, drift over time
+- Each agent's prompt template gets enriched: more Pattern Bank examples, more "what worked for us" context from The Analyst
+- Prompt versions tracked in `agents.prompt_version` — operator can see diffs and roll back if a version regresses
+
+**Per-agent improvement output:** as each agent accumulates experience, its prompts get richer and more niche-specific. The Writer at month 6 has seen thousands of viral hooks and dozens of your top-performing scripts baked into its context. New SaaS buyers' Writers start blank.
+
 ### Why This Is The Moat
 
 - Month 1: tool is generic, uses public best practices
@@ -255,6 +369,8 @@ When the SaaS version ships, new buyers start from generic. The operator stays m
 
 ## 7. Rollout Plan (Phased Build → Monetization)
 
+**Total build time: ~6–8 weeks** (extended from 4 weeks due to visualization layer + multi-agent architecture additions). Operational rollout to monetization continues for several months after.
+
 ### Phase 0 — Setup (Days 1–3)
 - Project skeleton at `~/Downloads/shorts-os` ✅ done
 - Install Node.js 24 LTS + Git on MacBook
@@ -265,45 +381,60 @@ When the SaaS version ships, new buyers start from generic. The operator stays m
 **Done when:** `npm run dev` works locally and `vercel deploy` works to production.
 
 ### Phase 1 — Memory Layer + Intel Scrapers (Week 1)
-- Supabase schema (7 tables)
-- Vercel Cron jobs for all 4 scrapers
+- Supabase schema (11 tables — includes agent tables: `agents`, `agent_messages`, `decisions`, `jobs`)
+- Supabase Realtime enabled on the four "live" tables (`agent_messages`, `decisions`, `jobs`, `viral_observations`)
+- Vercel Cron jobs for all 4 scrapers (Trending Radar, Source Harvester, TikAPI, Performance Sync)
+- Seed `agents` table with initial prompt templates for all 7 agents
 - v1 niche selected (default: Wikipedia/TIL educational)
 
-**Done when:** after 48h, Supabase contains hundreds of viral shorts with extracted metadata.
+**Done when:** after 48h, Supabase contains hundreds of viral shorts with extracted metadata, and the 7 agents exist with their v1 prompt templates.
 
-### Phase 2 — Studio Cockpit (Week 2)
+### Phase 2 — Studio Cockpit + Visualization Scaffolding (Weeks 2–3)
 - Next.js multi-panel dashboard
 - Topic Queue, Trending Panel, Niche Health, Channel Manager, Manual Upload Logger
+- **Team Status panel** (7 agents shown, current state badges)
+- **Scraper Ticker** (live feed via Supabase Realtime)
+- **Pattern Bank Explorer** (read-only at first)
+- React Flow integrated for future Pipeline Graph
+- Cost meter
 
-**Done when:** opening the cockpit every morning surfaces 10 fresh candidates + 5 trending breakdowns and feels useful even without generation.
+**Done when:** opening the cockpit every morning surfaces 10 fresh candidates + 5 trending breakdowns + you can see all 7 agents and the scraper ticker streaming live, even before generation works.
 
-### Phase 3 — Generation Pipeline (Week 3)
-- Script Generator (Claude + Patterns Bank)
-- Voice Studio (ElevenLabs)
-- Asset Pipeline (Pexels + Pixabay + Wikimedia)
+### Phase 3 — Agent Framework + Generation Pipeline (Weeks 4–5)
+- Agent coordinator: subscription wiring (Supabase Realtime), inter-agent message passing, decision logging
+- The Strategist agent (operator-facing, coordinator)
+- The Scout, Archivist, Writer, Director, Voice Coach, Analyst agents wired to the pipeline
+- Live AI streaming for The Writer (token-by-token script display)
+- Decision Explainer side panels for every agent decision
+- Pipeline Graph fully animated per video
+- Team Chat feed live
 - Video Renderer (Remotion, running on MacBook initially)
-- Caption burning (Whisper)
+- Caption burning (Whisper, runs in cloud for v1, moves to PC in Phase 4)
 
-**Done when:** clicking "make this video" produces a downloadable MP4 in 3–5 min that's worth posting.
+**Done when:** operator clicks a topic, watches Strategist dispatch the work, sees Writer stream a script live, sees Director pick b-roll with reasoning, sees Voice Coach generate audio, gets an MP4 in 3–5 min that's worth posting.
 
-### Phase 4 — PC Render Agent + First Videos (Week 4)
+### Phase 4 — PC Render Agent + First Videos (Week 6)
 - PC setup guide (Node, Python, CUDA, Whisper.cpp, render agent)
 - Render agent polls Supabase queue, executes on 4090, uploads to Vercel Blob
+- Local Whisper moves from cloud to PC
 - Renders drop to 30–60s
 - First 10 videos generated + manually uploaded
 - Performance Sync activated
+- The Analyst starts producing daily reports
 
-**Done when:** new channel has 10 pipeline-generated videos posted; analytics flowing back daily.
+**Done when:** new channel has 10 pipeline-generated videos posted; analytics flowing back daily; The Analyst's first weekly report is visible in cockpit.
 
-### Phase 5 — Iterate + Learning Loop Activates (Weeks 5–8)
+### Phase 5 — Iterate + Learning Loops Activate (Weeks 7–10)
 - Post 2–4 videos/day on first channel
-- Patterns Bank fills with niche-specific viral data
-- Personal Loop starts correlating performance
+- Patterns Bank fills with niche-specific viral data (Loops 1, 2)
+- Personal Loop starts correlating performance (Loop 3)
+- Agent Loop activates — first prompt template enrichments roll out (Loop 4)
 - After ~30 videos, suggestions noticeably better
 - Weekly review of what's working
 - A/B experiments within tool (same topic, different hooks)
+- The Analyst surfaces first cross-agent insights ("The Writer + male voice combo outperforms by X")
 
-**Done when:** channel approaches 1000 subs and tool's suggestions visibly outperform week 4.
+**Done when:** channel approaches 1000 subs and tool's suggestions visibly outperform Phase 4.
 
 ### Phase 6 — Hit Monetization Threshold (Months 2–4)
 - Target: 10M Shorts views in 90 days (YouTube Partner Program eligibility)
