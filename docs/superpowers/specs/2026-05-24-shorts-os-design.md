@@ -35,6 +35,8 @@ Darius already attempted a faceless YouTube Shorts channel (`@dyfrx_9754`, 695 s
 1. **All source content must be legally clean.** No torrents, no pirated movie clips, no copyright-aggressive niches. Reddit text / Wikipedia / public domain / AI-generated / royalty-free stock only.
 2. **The operator stays in the approval loop.** Tool *suggests*; human *decides*. No fully-autonomous posting in v1.
 3. **The personalization data is sauce.** When the SaaS version ships, the Patterns Bank + Performance Memory stay private to the operator's own instance.
+4. **Format variation is mandatory.** YouTube's July 2026 "inauthentic content" policy demonetizes channels that ship templated outputs (same intro / caption style / pacing across uploads). The Strategist enforces format diversity across uploads; the Writer produces transformative POV commentary (not summary); the Director picks from multiple visual treatments per script. Per-channel upload cadence is capped (max 2/day) even when the system could produce more. **This is a survival rule, not a preference.**
+5. **No private-feed scraping or pattern overlap.** Stock sources alone (Pexels) produce visually-identical-to-competitors output — exactly what YouTube's pattern detection flags. Director must rotate across Storyblocks (primary), AI-generated visuals (Flux/Kling on demand), and free libraries (Pexels/Pixabay as fallback only).
 
 ### Competitive Positioning
 
@@ -183,13 +185,13 @@ The Studio Layer is operated by **7 specialized AI agents**, each with a clear r
 
 | Agent | Role | Always thinking about... | Activates when... |
 |---|---|---|---|
-| 🧭 **The Strategist** | Conductor. Receives goals from operator, dispatches tasks to specialists, decides what to make and when, requests reports from other agents | Daily plan, channel-level strategy, when to pivot | Operator goal received OR scheduled daily planning run |
+| 🧭 **The Strategist** | Conductor. Receives goals from operator, dispatches tasks to specialists, decides what to make and when. **Enforces format variation across uploads (Hard Rule #4) and caps per-channel upload cadence at 2/day.** | Daily plan, channel-level strategy, format diversity across recent uploads, when to pivot | Operator goal received OR scheduled daily planning run |
 | 🔭 **The Scout** | Niche / trend intelligence | Which niches are growing, which patterns emerging, which competitors gaining traction | New Trending Radar data arrives (every 6h) |
 | 📚 **The Archivist** | Source content discovery | Cataloging hook-able topics from Reddit / Wikipedia / news, scoring topic candidates | New source data arrives (daily) |
-| ✍️ **The Writer** | Hook-first script writing | Story structure, hook patterns, pacing, retention | A topic is dispatched for production |
-| 🎬 **The Director** | B-roll + visual composition | Matching visuals to script, cinematic patterns, music selection | A script is ready for visual assembly |
-| 🎙️ **The Voice Coach** | Voice selection + ElevenLabs settings tuning | Which voice / speed / stability settings work for which script types | A script needs voice generation |
-| 📊 **The Analyst** | Performance analysis + personalization | Channel performance, correlations, what's working vs dying | Daily Performance Sync arrives, or operator requests report |
+| ✍️ **The Writer** | Hook-first script writing. **Accepts a `persona` / POV parameter from Channel Manager and produces transformative commentary (not Wikipedia summary).** | Story structure, hook patterns, pacing, retention, persona consistency | A topic is dispatched for production |
+| 🎬 **The Director** | B-roll + visual composition. **Picks from N visual treatments per script (rotates intro structure, caption style, pacing) to satisfy Strategist's format-variation directive.** | Matching visuals to script, cinematic patterns, music selection, visual variation across recent uploads | A script is ready for visual assembly |
+| 🎙️ **The Voice Coach** | Voice selection + TTS settings tuning (Cartesia primary, ElevenLabs fallback) | Which voice / speed / stability settings work for which script types, when to use which provider | A script needs voice generation |
+| 📊 **The Analyst** | Performance analysis + personalization | Channel performance, correlations, what's working vs dying, **whether format variation is sufficient** | Daily Performance Sync arrives, or operator requests report |
 
 ### Each agent has
 
@@ -274,13 +276,20 @@ Other niches can be activated later — the pipeline is niche-agnostic; only the
 | Realtime updates | Supabase Realtime | Live scraper ticker, pipeline graph, agent team chat, decision streams |
 | File storage | Vercel Blob (private tier) | MP4s, audio, b-roll cache |
 | LLM | Claude via Vercel AI Gateway (AI SDK v6) | Gateway provides fallback + observability; AI SDK v6 streaming for live token-by-token visualization |
-| Voice generation | ElevenLabs API | Best voice quality; experiment with local XTTS-v2 in v1.5 |
-| Video rendering | Remotion (React-based, programmable) | Code-as-video; runs on operator's 4090 |
-| Caption timing | Whisper.cpp w/ CUDA on operator's PC | Free, fast, word-level timing |
+| Voice generation (primary) | **Cartesia Sonic-3** API | 5x cheaper than ElevenLabs (~$46/M chars vs $200+), beat ElevenLabs in blinded tests, 90ms latency |
+| Voice generation (fallback) | ElevenLabs API | Keep wired in for the 1-in-10 voice where Cartesia's emotional range falls short |
+| Video rendering | Remotion (React-based, programmable) | Only option giving React-level frame control needed for Director agent's variation strategy; cloud video APIs can't express per-shot logic |
+| Caption timing | **WhisperX** (faster-whisper + wav2vec2 alignment) on operator's PC | Free, ±50ms word timing (vanilla Whisper is ±500ms); enables frame-accurate karaoke captions |
+| AI image gen (visuals) | Flux.1 Dev locally on 4090 | Free; stylized b-roll stills when stock doesn't fit |
+| AI image gen (thumbnails) | Ideogram 3 Turbo (API) | Still dominates text-in-image (legible thumbnail text); ~$0.03/image |
+| AI video clips (rare use) | Kling 3.0 via fal.ai | Best price/quality in 2026 ($0.09–0.14/sec); hard-cap 2–3 clips per Short |
+| AI media gateway | fal.ai (unified provider for Flux, Kling, etc.) | Same abstraction as Vercel AI Gateway but for media; lets us swap providers without touching agent code (Sora 2 was killed mid-2026, lesson learned) |
+| Multi-channel publishing | Publer Pro | $12/mo; one API to schedule YouTube + TikTok + Reels |
 | Pipeline / agent graphs (UI) | React Flow | Animated node-edge diagrams for video pipeline and agent topology |
 | Agent framework | Custom-built on AI SDK v6 + Supabase Realtime (no heavyweight framework) | LangGraph / AutoGen / CrewAI are overkill for 7 agents; we build a thin coordinator and let AI SDK handle the LLM streaming |
-| Trend sources | YouTube Data API v3, Reddit API, TikAPI, Wikipedia API | See Section 4 |
-| Asset libraries | Pexels API, Pixabay, Wikimedia Commons, Mixkit (music) | All free |
+| Trend sources | YouTube Data API v3, Reddit API, TikAPI, Wikipedia API | See Section 4. **vidIQ/TubeBuddy APIs explicitly skipped** — they're $40–80/mo wrappers around YouTube Data API + proprietary scores we can rebuild in ~20 lines |
+| Stock libraries (premium) | **Storyblocks** subscription (~$14/mo) | Mandatory for format variation; YouTube content-ID indemnified; library wide enough to avoid the "everyone uses the same Pexels clip" pattern |
+| Stock libraries (free) | Pexels API, Pixabay, Wikimedia Commons, Mixkit (music) | Fallback only — never primary (see Hard Rule #5) |
 
 ### Hosting / Compute Split
 
@@ -314,14 +323,20 @@ Other niches can be activated later — the pipeline is niche-agnostic; only the
 | Vercel (Hobby) | $0–20 |
 | Supabase (free tier) | $0 |
 | Claude API (via Gateway) — 7-agent system adds ~25% vs single-pipeline | $30–70 |
-| ElevenLabs Creator | $22–99 |
+| Cartesia Sonic-3 (primary TTS) | ~$10 |
+| ElevenLabs (fallback TTS, low volume) | ~$5–22 |
 | TikAPI | $30 |
+| Storyblocks subscription | $14 |
+| Kling 3.0 via fal.ai (capped 2–3 AI clips per Short) | ~$30 |
+| Ideogram 3 Turbo (thumbnails) | <$2 |
+| fal.ai (other AI media, pay-per-use) | ~$20 |
+| Publer Pro (multi-channel publishing) | $12 |
 | Vercel Blob storage | $5–10 |
-| Asset APIs (Pexels, Pixabay, etc.) | $0 |
-| Local AI compute (4090) | $0 |
-| **Total** | **~$90–230/mo** |
+| Free asset APIs (Pexels, Pixabay, Wikimedia, Mixkit) | $0 |
+| Local AI compute (4090: Flux, WhisperX, future local TTS) | $0 |
+| **Total** | **~$160–250/mo** |
 
-v1.5 drops ~$50/mo more when ElevenLabs is replaced by local XTTS-v2.
+v1.5 drops ~$10–22/mo more when Cartesia is supplemented by local F5-TTS / XTTS-v2 on the 4090 for high-volume channels.
 
 ---
 
@@ -500,7 +515,19 @@ Optimistic if a video pops in month 2. Pessimistic if 6 months pass with no mone
 - **Naming:** `shorts-os` is the working name. Both the operator's private brand (channel namespace) and the eventual SaaS brand can be decided later.
 - **v1 niche commitment:** Wikipedia/TIL educational is the default v1 niche. Operator may pivot once Intel Layer data reveals what's actually growing.
 - **YouTube channel reuse vs fresh start:** Existing `@dyfrx_9754` channel (bikes/cars/ASMR) has 695 subs but the wrong niche. Recommendation: start fresh channels for new niches; treat old channel's 15 videos as learning artifacts.
-- **Friend's funding:** Operator has a friend who may partially fund. Recommendation: don't take money for v1 — costs are ~$80–210/mo, well within operator's own means. Revisit only if friend brings a specific skill (design, marketing, sales) as co-founder, not as passive capital.
+- **Friend's funding:** Operator has a friend who may partially fund. Recommendation: don't take money for v1 — costs are ~$160–250/mo, well within operator's own means. Revisit only if friend brings a specific skill (design, marketing, sales) as co-founder, not as passive capital.
+
+### Tools evaluated and explicitly skipped (so future-us doesn't re-evaluate)
+
+- **Higgsfield** — reseller/aggregator that marks up underlying Kling/Veo APIs. Go direct via fal.ai.
+- **Sora 2** — OpenAI shut it down April 2026. Do not design around it.
+- **Veo 3.1** — best AI video quality but $0.75/sec destroys budget. Revisit only if Google releases a "Fast" tier under $0.20/sec.
+- **vidIQ / TubeBuddy APIs** — thin wrappers around YouTube Data API + proprietary scores; rebuild in ~20 lines, save $40–80/mo.
+- **ViewStats / Tubular Labs / Spotter Insights** — great manual research UIs, no usable APIs at our budget.
+- **OpenAI TTS** — cheap but only 6 voices, no cloning; dealbreaker for multi-channel persona system.
+- **AssemblyAI / Deepgram** — excellent but WhisperX runs free on the 4090. Reconsider only if Shorts OS goes multi-tenant SaaS and users don't have local GPUs.
+- **JSON2Video / Shotstack / Creatomate** — right answer for non-React teams; Remotion gives us more frame control.
+- **Artgrid** — higher quality than Storyblocks but narrower library at $200/yr. Storyblocks wins on breadth-per-dollar.
 
 ---
 
