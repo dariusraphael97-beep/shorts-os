@@ -1,0 +1,114 @@
+{
+  "kind": "Listing",
+  "data": {
+    "after": "t3_xyz",
+    "before": null,
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "id": "r1",
+          "subreddit": "todayilearned",
+          "title": "TIL the Eiffel Tower can grow 6 inches in summer",
+          "selftext": "Heat expands the metal, causing the tower to grow taller.",
+          "permalink": "/r/todayilearned/comments/r1/til_the_eiffel_tower_can_grow_6_inches_in_summer/",
+          "url": "https://en.wikipedia.org/wiki/Eiffel_Tower",
+          "author": "curious_user",
+          "score": 12500,
+          "num_comments": 320,
+          "created_utc": 1716508800,
+          "upvote_ratio": 0.97,
+          "over_18": false,
+          "stickied": false,
+          "is_self": true,
+          "is_video": false,
+          "link_flair_text": null
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "r2",
+          "subreddit": "todayilearned",
+          "title": "Megathread: rules update",
+          "selftext": "",
+          "permalink": "/r/todayilearned/comments/r2/megathread_rules_update/",
+          "url": "https://reddit.com/r/todayilearned/comments/r2/",
+          "author": "AutoModerator",
+          "score": 42,
+          "num_comments": 5,
+          "created_utc": 1716508900,
+          "upvote_ratio": 0.85,
+          "over_18": false,
+          "stickied": true,
+          "is_self": true,
+          "is_video": false,
+          "link_flair_text": "Mod Post"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "r3",
+          "subreddit": "todayilearned",
+          "title": "An adult-only post that should be skipped",
+          "selftext": "",
+          "permalink": "/r/todayilearned/comments/r3/adult/",
+          "url": "https://example.com/nsfw",
+          "author": "someone",
+          "score": 100,
+          "num_comments": 2,
+          "created_utc": 1716509000,
+          "upvote_ratio": 0.6,
+          "over_18": true,
+          "stickied": false,
+          "is_self": false,
+          "is_video": false,
+          "link_flair_text": "NSFW"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "r4",
+          "subreddit": "todayilearned",
+          "title": "Deleted post",
+          "selftext": "[removed]",
+          "permalink": "/r/todayilearned/comments/r4/deleted/",
+          "url": "https://reddit.com/r/todayilearned/comments/r4/",
+          "author": "[deleted]",
+          "score": 1,
+          "num_comments": 0,
+          "created_utc": 1716509100,
+          "upvote_ratio": 0.5,
+          "over_18": false,
+          "stickied": false,
+          "is_self": true,
+          "is_video": false,
+          "link_flair_text": null
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "r5",
+          "subreddit": "todayilearned",
+          "title": "TIL octopuses have three hearts",
+          "selftext": "Two pump blood to the gills, one to the body.",
+          "permalink": "/r/todayilearned/comments/r5/til_octopuses/",
+          "url": "https://en.wikipedia.org/wiki/Octopus",
+          "author": "marine_fan",
+          "score": 8400,
+          "num_comments": 211,
+          "created_utc": 1716509200,
+          "upvote_ratio": 0.94,
+          "over_18": false,
+          "stickied": false,
+          "is_self": true,
+          "is_video": false,
+          "link_flair_text": null
+        }
+      }
+    ]
+  }
+}
