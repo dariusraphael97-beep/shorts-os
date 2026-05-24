@@ -1,0 +1,8 @@
+{
+  "query": {
+    "random": [
+      { "id": 1, "title": "Eiffel Tower" },
+      { "id": 2, "title": "Mount Vesuvius" }
+    ]
+  }
+}
