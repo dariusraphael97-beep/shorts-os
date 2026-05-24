@@ -1,0 +1,36 @@
+import { z } from "zod";
+
+const envSchema = z.object({
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: z.string().min(1),
+  AI_GATEWAY_API_KEY: z.string().min(1).optional(),
+  CRON_SECRET: z.string().min(1),
+
+  // External API keys — optional at load time; scrapers fail loudly if missing
+  YOUTUBE_API_KEY: z.string().min(1).optional(),
+  REDDIT_CLIENT_ID: z.string().min(1).optional(),
+  REDDIT_CLIENT_SECRET: z.string().min(1).optional(),
+  REDDIT_USER_AGENT: z.string().min(1).optional(),
+  TIKAPI_KEY: z.string().min(1).optional(),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+let cached: Env | null = null;
+
+export function loadEnv(): Env {
+  if (cached) return cached;
+  const result = envSchema.safeParse(process.env);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("\n");
+    throw new Error(`Invalid environment configuration:\n${issues}`);
+  }
+  cached = result.data;
+  return cached;
+}
+
+export function resetEnvCacheForTests() {
+  cached = null;
+}
