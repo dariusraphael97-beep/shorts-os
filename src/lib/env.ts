@@ -14,6 +14,10 @@ const envSchema = z.object({
   REDDIT_CLIENT_SECRET: z.string().min(1).optional(),
   REDDIT_USER_AGENT: z.string().min(1).optional(),
   TIKAPI_KEY: z.string().min(1).optional(),
+
+  // Cockpit auth (Plan #2)
+  COCKPIT_PASSWORD: z.string().min(20),
+  COCKPIT_SESSION_SECRET: z.string().min(32),
 });
 
 export type Env = z.infer<typeof envSchema>;
