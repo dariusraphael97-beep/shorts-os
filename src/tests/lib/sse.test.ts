@@ -13,9 +13,11 @@ describe("encodeSseEvent", () => {
   it("escapes newlines inside data so the SSE framing isn't broken", () => {
     const out = encodeSseEvent({ type: "writer_chunk", data: { text: "line1\nline2" } });
     const decoded = new TextDecoder().decode(out);
-    // JSON.stringify naturally escapes newlines as \n — verify no raw newline in data.
-    const dataLine = decoded.split("\n").find((l) => l.startsWith("data:"));
-    expect(dataLine).not.toMatch(/\nline2/);
+    // The literal JSON-escaped newline must appear in the data line.
+    expect(decoded).toContain('"text":"line1\\nline2"');
+    // And the payload must NOT contain a raw newline between line1 and line2 —
+    // that would break SSE framing by splitting the data line.
+    expect(decoded).not.toContain("line1\nline2");
   });
 
   it("returns a Uint8Array for stream controller.enqueue()", () => {
