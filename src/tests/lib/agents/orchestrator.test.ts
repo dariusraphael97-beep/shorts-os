@@ -208,6 +208,68 @@ describe("runPipeline — concurrency", () => {
   });
 });
 
+describe("runPipeline — voice coach fallback", () => {
+  const fallbackVoiceCoachOut = {
+    voice_id: "sonic-narrator-male-deadpan",
+    provider: "cartesia" as const,
+    speed: 1.0,
+    stability: 0.75,
+    rationale: "Fallback: Voice Coach generateObject failed twice; using channel default voice.",
+    fallback: true,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue(null);
+    vi.mocked(getTopicById).mockResolvedValue(fakeTopic);
+    vi.mocked(getDefaultChannel).mockResolvedValue(fakeChannel);
+    vi.mocked(createProduceVideoJob).mockResolvedValue(fakeJob);
+    vi.mocked(runStrategist).mockResolvedValue(fakeStrategistOut);
+    vi.mocked(runWriter).mockImplementation(async function* () {
+      yield { type: "done" as const, output: fakeWriterOut };
+    });
+    vi.mocked(runVoiceCoach).mockResolvedValue(fallbackVoiceCoachOut as any);
+    vi.mocked(runDirector).mockResolvedValue(fakeDirectorOut);
+    vi.mocked(createVideoDraft).mockResolvedValue({ id: "video-uuid" } as any);
+  });
+
+  it("emits agent_output + agent_done for voice_coach on fallback", async () => {
+    const events: any[] = [];
+    for await (const ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      events.push(ev);
+    }
+
+    const vcOutputs = events.filter((e) => e.type === "agent_output" && e.data.agent === "voice_coach");
+    expect(vcOutputs).toHaveLength(1);
+    expect(vcOutputs[0].data.output.fallback).toBe(true);
+    expect(events.filter((e) => e.type === "agent_done" && e.data.agent === "voice_coach")).toHaveLength(1);
+    expect(events[events.length - 1].type).toBe("job_completed");
+  });
+
+  it("records the voice_coach decision row with fallback indicator", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+
+    const vcCall = vi.mocked(recordDecision).mock.calls.find((c) => c[1].agentId === "voice_coach");
+    expect(vcCall).toBeDefined();
+    const decision = vcCall![1];
+    expect((decision.chosen as any).fallback).toBe(true);
+    expect(decision.reasoning).toMatch(/fallback/i);
+  });
+
+  it("still creates a your_videos draft using the fallback voice", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+
+    expect(createVideoDraft).toHaveBeenCalledOnce();
+    const args = vi.mocked(createVideoDraft).mock.calls[0][1];
+    expect(args.voiceId).toBe("sonic-narrator-male-deadpan");
+    expect(args.voiceProvider).toBe("cartesia");
+  });
+});
+
 describe("runPipeline — failure path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
