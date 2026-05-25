@@ -134,6 +134,34 @@ export async function GET(req: Request) {
       stderr: tsxProbeOut.stderr.slice(0, 800),
     });
 
+    // Step 6: actually RUN the worker entrypoint synchronously, capture output
+    // Pass a fake job id + token (the worker will fail at fetch-job, but we'll
+    // see whether the script even starts and how Cartesia/ffmpeg react).
+    const url = new URL(req.url);
+    const realJobId = url.searchParams.get('job_id');
+    if (realJobId) {
+      const workerRun = await sandbox.runCommand({
+        cmd: 'node',
+        args: ['--import', 'tsx', 'scripts/render-worker/run.ts', realJobId, 'invalid-token-for-debug'],
+        env: {
+          SUPABASE_URL: process.env.SUPABASE_URL ?? '',
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+          CARTESIA_API_KEY: process.env.CARTESIA_API_KEY ?? '',
+          BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN ?? '',
+          RENDER_CALLBACK_BASE_URL: process.env.RENDER_CALLBACK_BASE_URL ?? '',
+          VERCEL_SANDBOX_NAME: sandbox.name,
+        },
+      });
+      const workerOut = await readCommandLogs(workerRun);
+      transcript.push({
+        step: `node run.ts ${realJobId} <invalid-token>`,
+        elapsed: t(),
+        exitCode: 'exitCode' in workerRun ? workerRun.exitCode : null,
+        stdout: workerOut.stdout.slice(0, 4000),
+        stderr: workerOut.stderr.slice(0, 4000),
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       totalElapsedSec: t(),
