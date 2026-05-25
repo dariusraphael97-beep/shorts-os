@@ -68,9 +68,11 @@ export async function* runPipeline(args: {
   let writerOut: WriterOutput;
   let voiceCoachOut: VoiceCoachOutput;
   let directorOut: DirectorOutput;
+  let currentAgent: AgentId = "strategist";
 
   try {
     // ────── Strategist ──────
+    currentAgent = "strategist";
     yield* lifecycleBefore(supabase, "strategist", `Dispatching: ${topic.title}`);
     const stratStart = Date.now();
     strategistOut = await runStrategist({
@@ -98,6 +100,7 @@ export async function* runPipeline(args: {
     yield* lifecycleAfter(supabase, job.id, "strategist", progressByAgent.strategist, Date.now() - stratStart);
 
     // ────── Writer ──────
+    currentAgent = "writer";
     yield* lifecycleBefore(supabase, "writer", `Scripting: ${topic.title}`);
     const writerStart = Date.now();
     let writerOutLocal: WriterOutput | null = null;
@@ -134,6 +137,7 @@ export async function* runPipeline(args: {
     yield* lifecycleAfter(supabase, job.id, "writer", progressByAgent.writer, Date.now() - writerStart);
 
     // ────── Voice Coach ──────
+    currentAgent = "voice_coach";
     yield* lifecycleBefore(supabase, "voice_coach", `Picking voice for: ${topic.title}`);
     const vcStart = Date.now();
     voiceCoachOut = await runVoiceCoach({
@@ -162,6 +166,7 @@ export async function* runPipeline(args: {
     yield* lifecycleAfter(supabase, job.id, "voice_coach", progressByAgent.voice_coach, Date.now() - vcStart);
 
     // ────── Director ──────
+    currentAgent = "director";
     yield* lifecycleBefore(supabase, "director", `Directing: ${topic.title}`);
     const dirStart = Date.now();
     directorOut = await runDirector({
@@ -204,20 +209,14 @@ export async function* runPipeline(args: {
     yield { type: "job_completed", data: { videoId: draft.id } };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const failingAgent: AgentId = inferFailingAgent(message);
     try {
-      await updateAgentState(supabase, failingAgent, "idle", null);
-    } catch { /* ignore */ }
+      await updateAgentState(supabase, currentAgent, "idle", null);
+    } catch { /* ignore secondary failures */ }
     try {
       await finishJobFailure(supabase, job.id, message);
     } catch { /* ignore */ }
-    yield { type: "job_failed", data: { agent: failingAgent, error: message } };
+    yield { type: "job_failed", data: { agent: currentAgent, error: message } };
   }
-}
-
-function inferFailingAgent(_message: string): AgentId {
-  // Best-effort fallback; Task 2.3 swaps this for explicit currentAgent tracking.
-  return "writer";
 }
 
 async function* lifecycleBefore(

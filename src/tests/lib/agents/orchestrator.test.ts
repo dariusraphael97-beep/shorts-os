@@ -29,6 +29,7 @@ import {
   createProduceVideoJob,
   getActiveProduceVideoJob,
   finishJobSuccess,
+  finishJobFailure,
 } from "@/lib/supabase/repositories/jobs";
 import { updateAgentState } from "@/lib/supabase/repositories/agents";
 import { recordAgentMessage } from "@/lib/supabase/repositories/agent-messages";
@@ -204,5 +205,55 @@ describe("runPipeline — concurrency", () => {
     } catch { /* expected */ }
 
     expect(createProduceVideoJob).not.toHaveBeenCalled();
+  });
+});
+
+describe("runPipeline — failure path", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue(null);
+    vi.mocked(getTopicById).mockResolvedValue(fakeTopic);
+    vi.mocked(getDefaultChannel).mockResolvedValue(fakeChannel);
+    vi.mocked(createProduceVideoJob).mockResolvedValue(fakeJob);
+    vi.mocked(runStrategist).mockResolvedValue(fakeStrategistOut);
+    vi.mocked(runWriter).mockImplementation(async function* () {
+      yield { type: "chunk" as const, text: "In 1903" };
+      throw new Error("rate limit");
+    });
+  });
+
+  it("emits job_failed with correct agent when Writer throws", async () => {
+    const events: any[] = [];
+    for await (const ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      events.push(ev);
+    }
+
+    const failed = events.find((e) => e.type === "job_failed");
+    expect(failed).toBeDefined();
+    expect(failed.data.agent).toBe("writer");
+    expect(failed.data.error).toMatch(/rate limit/);
+  });
+
+  it("calls finishJobFailure with the error message", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    expect(finishJobFailure).toHaveBeenCalledWith(expect.anything(), "job-uuid", expect.stringMatching(/rate limit/));
+  });
+
+  it("does NOT call createVideoDraft on failure", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    expect(createVideoDraft).not.toHaveBeenCalled();
+  });
+
+  it("resets the failing agent to idle", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    const writerCalls = vi.mocked(updateAgentState).mock.calls.filter((c) => c[1] === "writer");
+    const last = writerCalls[writerCalls.length - 1];
+    expect(last[2]).toBe("idle");
   });
 });
