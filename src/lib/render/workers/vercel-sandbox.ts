@@ -12,27 +12,40 @@
 // @vercel/sandbox >=0.x GA 2026-01).
 //
 // Repo ref: VERCEL_GIT_COMMIT_SHA auto-populated on every Vercel deployment.
-// For local dev, set SANDBOX_GIT_URL + SANDBOX_GIT_REF env vars explicitly.
+// Repo URL: constructed from VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG (Vercel
+// doesn't expose VERCEL_GIT_REPO_URL directly). Override with SANDBOX_GIT_URL for
+// local dev or non-GitHub providers. For private repos, set SANDBOX_GIT_USERNAME +
+// SANDBOX_GIT_PASSWORD (the Sandbox SDK supports username/password git auth).
 import 'server-only';
 import { Sandbox } from '@vercel/sandbox';
 import type { RenderWorker } from './types';
 import type { RenderJobRow } from '@/lib/supabase/repositories/render-jobs';
 
-function getGitSource(): { url: string; ref: string } {
-  const url = process.env.SANDBOX_GIT_URL ?? process.env.VERCEL_GIT_REPO_URL;
+function getGitSource(): { url: string; ref: string; username?: string; password?: string } {
+  const url =
+    process.env.SANDBOX_GIT_URL ??
+    (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG
+      ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}.git`
+      : undefined);
   const ref = process.env.SANDBOX_GIT_REF ?? process.env.VERCEL_GIT_COMMIT_SHA;
   if (!url || !ref) {
     throw new Error(
       'Cannot determine Sandbox git source. Set SANDBOX_GIT_URL + SANDBOX_GIT_REF for local dev, ' +
-      'or deploy to Vercel where VERCEL_GIT_REPO_URL + VERCEL_GIT_COMMIT_SHA are auto-populated.',
+      'or deploy to Vercel where VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG + VERCEL_GIT_COMMIT_SHA ' +
+      'are auto-populated.',
     );
   }
-  return { url, ref };
+  return {
+    url,
+    ref,
+    username: process.env.SANDBOX_GIT_USERNAME,
+    password: process.env.SANDBOX_GIT_PASSWORD,
+  };
 }
 
 export class VercelSandboxRenderWorker implements RenderWorker {
   async dispatch(job: RenderJobRow, jobToken: string): Promise<{ invocationId: string }> {
-    const { url: repoUrl, ref: gitRef } = getGitSource();
+    const { url: repoUrl, ref: gitRef, username, password } = getGitSource();
     const sandboxEnv: Record<string, string> = {
       SUPABASE_URL: process.env.SUPABASE_URL ?? '',
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
@@ -52,11 +65,9 @@ export class VercelSandboxRenderWorker implements RenderWorker {
       name: job.id,                          // for later Sandbox.get({ name }) lookups
       runtime: 'node24',                     // node24 is current Vercel default (2026)
       timeout: 15 * 60 * 1000,               // milliseconds (15 minutes)
-      source: {
-        type: 'git',
-        url: repoUrl,
-        revision: gitRef,
-      },
+      source: username && password
+        ? { type: 'git', url: repoUrl, revision: gitRef, username, password }
+        : { type: 'git', url: repoUrl, revision: gitRef },
     });
 
     // Bootstrap (blocking): install worker package deps.
