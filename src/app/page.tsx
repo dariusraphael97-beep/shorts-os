@@ -1,5 +1,6 @@
 import { CockpitShell } from "@/components/cockpit/cockpit-shell";
 import { TopicQueuePanel } from "@/components/cockpit/topic-queue-panel";
+import { TrendingPanel } from "@/components/cockpit/trending-panel";
 
 export default function HomePage() {
   return (
@@ -9,8 +10,7 @@ export default function HomePage() {
           <TopicQueuePanel />
         </div>
         <div className="flex-1 min-w-0 lg:basis-2/5">
-          {/* TrendingPanel mounts in Task 6.2 */}
-          <div className="p-8 text-text-muted text-sm">Trending Panel — coming next task</div>
+          <TrendingPanel />
         </div>
       </div>
     </CockpitShell>
