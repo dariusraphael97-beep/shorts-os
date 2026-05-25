@@ -63,11 +63,12 @@ describe("runWriter", () => {
   it("yields a chunk per text delta, then yields done with assembled output", async () => {
     vi.mocked(streamText).mockReturnValue(
       fakeTextStream([
-        "In 1903, the citizens of Vienna voted to refuse electric streetlights. ",
-        "Here's why this matters today, more than a century later. ",
-        "It turns out that civic mistrust of new technology follows a pattern. ",
-        "And we're living through it again, right now. ",
-        "Watch closely.",
+        "In 1903, the citizens of Vienna voted to refuse electric streetlights, declaring them unnatural and dangerous. ",
+        "The decision was so controversial it spilled into newspaper editorials, family arguments, and even a few public protests in the streets. ",
+        "Here's why this 120-year-old fight matters today, more than a century later, when we think we are past it. ",
+        "It turns out that civic mistrust of any new technology follows a startlingly familiar pattern: confusion, then resistance, then begrudging acceptance over many years. ",
+        "And we're living through it again, right now, with the artificial intelligence wave, only this time the resistance comes wrapped in policy white papers. ",
+        "Watch closely, because the citizens of 1903 Vienna eventually got their streetlights — and we will get our AI tools too.",
       ]) as any
     );
 
@@ -91,7 +92,7 @@ describe("runWriter", () => {
     const chunkEvents = events.filter((e) => e.type === "chunk");
     const doneEvents = events.filter((e) => e.type === "done");
 
-    expect(chunkEvents).toHaveLength(5);
+    expect(chunkEvents).toHaveLength(6);
     expect(doneEvents).toHaveLength(1);
     expect(doneEvents[0].output.script).toContain("1903");
     expect(doneEvents[0].output.word_count).toBeGreaterThan(20);

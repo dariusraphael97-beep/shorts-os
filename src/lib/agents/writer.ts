@@ -15,10 +15,10 @@ import type { Job } from "@/lib/supabase/repositories/jobs";
 import type { StrategistOutput } from "./strategist";
 
 export const WriterOutputSchema = z.object({
-  script: z.string().min(50).max(2500),
+  script: z.string().min(200).max(2500),
   hook_first_3_seconds: z.string().min(10).max(200),
-  word_count: z.number().int().min(10).max(400),
-  estimated_duration_seconds: z.number().min(5).max(120),
+  word_count: z.number().int().min(50).max(400),
+  estimated_duration_seconds: z.number().min(20).max(120),
 });
 export type WriterOutput = z.infer<typeof WriterOutputSchema>;
 
