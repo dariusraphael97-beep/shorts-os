@@ -4,8 +4,6 @@
 // must pick from. Plan #4's render pipeline maps each treatment to a concrete
 // b-roll search strategy and each voice_id to a real provider API call.
 
-import "server-only";
-
 export const VISUAL_TREATMENTS = [
   "kinetic-typography", // text flying / animated, words highlighted as spoken
   "stock-montage",      // sequence of stock video clips matching script beats
