@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { TopBar } from "./top-bar";
+import { TeamStatusSidebar } from "./team-status-sidebar";
 
 /**
  * Layout wrapper used by both / and /lab.
@@ -10,8 +11,8 @@ export function CockpitShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <TopBar />
       <div className="flex-1 flex">
-        <aside id="cockpit-sidebar-slot" className="w-60 border-r border-subtle hidden lg:block">
-          {/* TeamStatusSidebar mounts here in Task 4.1 */}
+        <aside className="w-60 border-r border-subtle hidden lg:block overflow-y-auto">
+          <TeamStatusSidebar />
         </aside>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
