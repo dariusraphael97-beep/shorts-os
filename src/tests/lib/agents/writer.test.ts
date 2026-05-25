@@ -123,6 +123,46 @@ describe("runWriter", () => {
     }).rejects.toThrow();
   });
 
+  it("clamps an overlong opening sentence to <=200 chars at a word boundary (regression: 207-char Maskelyne hook)", async () => {
+    // Regression: prod smoke #2 produced a 207-char opening sentence that
+    // failed Zod's <=200 max. The extractor now clamps at a word boundary.
+    const longOpener =
+      "In 1903, Nevil Maskelyne sat in a London auditorium and hijacked the world's first public wireless telegraph demonstration by tapping out insulting Morse code messages that only the receiver could detect. ";
+    vi.mocked(streamText).mockReturnValue(
+      fakeTextStream([
+        longOpener,
+        "The audience saw nothing wrong. ",
+        "John Ambrose Fleming, running the demo, was baffled. ",
+        "Fast forward to 2017. Researchers showed the same trick still works with ultrasound. ",
+        "We keep building intermediaries we trust to interpret reality for us, then forgetting they experience a different reality than we do.",
+      ]) as any
+    );
+
+    const events: any[] = [];
+    for await (const ev of runWriter({
+      job: { id: "j1" } as any,
+      topic: fakeTopic as any,
+      channel: fakeChannel as any,
+      previousOutputs: {
+        strategist: {
+          dispatch_directive: "Lean into Maskelyne.",
+          format_hints: ["open with a year"],
+          selected_channel_id: "ch-uuid",
+          rationale: "x x x x x x x x x x x x x x x x x x x x",
+        },
+      },
+    })) {
+      events.push(ev);
+    }
+
+    const doneEvent = events.find((e) => e.type === "done");
+    expect(doneEvent).toBeDefined();
+    expect(doneEvent.output.hook_first_3_seconds.length).toBeLessThanOrEqual(200);
+    expect(doneEvent.output.hook_first_3_seconds).toMatch(/^In 1903, Nevil Maskelyne/);
+    // Should clamp at a word boundary, not mid-word
+    expect(doneEvent.output.hook_first_3_seconds).not.toMatch(/\s$/);
+  });
+
   it("skips a short numeric lead-in when extracting the hook (regression: '1943.' → next sentence)", async () => {
     // Regression: prod smoke produced "1943. British intelligence discovered…"
     // and the old hook extractor returned "1943." (5 chars), failing Zod's >=10 min.

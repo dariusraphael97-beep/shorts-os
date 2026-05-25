@@ -85,16 +85,26 @@ function countWords(text: string): number {
 }
 
 function extractFirstSentence(text: string): string {
-  // Walk sentence boundaries; keep extending until the candidate has enough
-  // letters to be a real hook. Skips lead-ins like "1943." or "Dr." that
-  // otherwise leave the hook below WriterOutputSchema's 10-char minimum.
+  // Walk sentence boundaries; pick the first candidate with enough letters to
+  // be a real hook, then clamp to the schema's 200-char max at a word boundary.
+  // Skips lead-ins like "1943." (too short) and clips overlong opening sentences
+  // (e.g. a 207-char sentence about Nevil Maskelyne in 1903).
   const MIN_LETTERS = 10;
+  const MAX_LEN = 200;
+
+  const clamp = (s: string): string => {
+    if (s.length <= MAX_LEN) return s;
+    const cut = s.slice(0, MAX_LEN);
+    const lastSpace = cut.lastIndexOf(" ");
+    return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
+  };
+
   const re = /[.!?](?:\s|$)/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(text)) !== null) {
     const candidate = text.slice(0, match.index + 1).trim();
     const letterCount = (candidate.match(/[A-Za-z]/g) ?? []).length;
-    if (letterCount >= MIN_LETTERS) return candidate;
+    if (letterCount >= MIN_LETTERS) return clamp(candidate);
   }
-  return text.slice(0, 200).trim();
+  return clamp(text.trim());
 }
