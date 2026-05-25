@@ -79,9 +79,13 @@ export class VercelSandboxRenderWorker implements RenderWorker {
 
     // Detached: returns immediately; the sandbox continues executing and posts
     // back to /api/render/complete when run.ts finishes.
+    //
+    // cwd: must be scripts/render-worker so node resolves `tsx` from the
+    // worker package's node_modules (it's not in the repo root's deps).
     await sandbox.runCommand({
       cmd: 'node',
-      args: ['--import', 'tsx', 'scripts/render-worker/run.ts', job.id, jobToken],
+      args: ['--import', 'tsx', 'run.ts', job.id, jobToken],
+      cwd: '/vercel/sandbox/scripts/render-worker',
       detached: true,
       env: { ...sandboxEnv, VERCEL_SANDBOX_NAME: sandbox.name },
     });
