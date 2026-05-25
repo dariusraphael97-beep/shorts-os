@@ -5,6 +5,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/api/health",
   "/api/cron",
   "/api/auth",
+  "/api/render",  // /api/render/complete (JWT auth) + /api/render/debug (CRON_SECRET)
   "/login",
   "/_next",
   "/favicon",
