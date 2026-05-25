@@ -1,8 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-// TEMP until Task 1.2 ships src/lib/agents/types.ts
-type AgentId = "strategist" | "writer" | "voice_coach" | "director";
+import type { AgentId } from "@/lib/agents/types";
 
 export type AgentMessageIntent =
   | "dispatch"
