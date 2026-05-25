@@ -2,7 +2,7 @@
 
 Personal media operations system for running faceless YouTube Shorts channels.
 
-**Status:** Plans #1 and #2 complete. Memory Layer + Intel scrapers live. Studio Cockpit shipped.
+**Status:** Plans #1, #2, and #3 complete. Memory Layer + Intel scrapers live. Studio Cockpit shipped. Live agent pipeline at `/lab`.
 
 ## What's running
 
@@ -15,7 +15,8 @@ Personal media operations system for running faceless YouTube Shorts channels.
   - Performance sync (daily 09:00 UTC — stub until Plan #4)
 - **Claude (Haiku 4.5)** scores topic candidates for hookability
 - Health endpoint: `/api/health`
-- ✅ **Plan #2 — Studio Cockpit MVP.** Password-gated dashboard at `/`. Topic Queue (review + accept/reject scored topics), Trending Panel (with lazy Claude breakdowns), Team Status sidebar (7 agents, live state via Realtime), Scraper Ticker footer (live events). `/lab` placeholder for Plan #3.
+- ✅ **Plan #2 — Studio Cockpit MVP.** Password-gated dashboard at `/`. Topic Queue (review + accept/reject scored topics), Trending Panel (with lazy Claude breakdowns), Team Status sidebar (7 agents, live state via Realtime), Scraper Ticker footer (live events).
+- ✅ **Plan #3 (The Lab) — shipped 2026-05-25.** Live agent pipeline at `/lab`: dispatch a reviewed topic and watch Strategist → Writer (streaming) → Voice Coach → Director assemble a draft in ~30-90 seconds. Drafts are saved as `your_videos.status='draft'` rows; render is Plan #4.
 
 ## Cockpit access
 
@@ -58,5 +59,5 @@ See `docs/superpowers/specs/2026-05-24-shorts-os-design.md` for the full design.
 
 - Plan #1 (this) — Foundation + Memory Layer + Intel scrapers ✅
 - Plan #2 — Studio cockpit UI + visualization ✅
-- Plan #3 — Agent framework + generation pipeline
+- Plan #3 — Agent framework + generation pipeline ✅
 - Plan #4 — PC render agent + first videos live
