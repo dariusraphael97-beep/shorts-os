@@ -31,6 +31,8 @@ describe("decisions repository", () => {
       chosen: { directive: "x" },
       scores: null,
       reasoning: "because",
+      prompt_version: null,
+      guidance_ids_used: [],
     });
   });
 
@@ -66,5 +68,42 @@ describe("decisions repository", () => {
         reasoning: null,
       })
     ).rejects.toThrow(/boom/);
+  });
+
+  it("writes prompt_version and guidance_ids_used when provided", async () => {
+    const supa = mockSupabaseChain({ data: null, error: null });
+    await recordDecision(supa as any, {
+      jobId: "job-1",
+      agentId: "strategist",
+      decisionType: "topic_dispatch",
+      inputs: { topic_id: "t1" },
+      chosen: { format: "explainer" },
+      reasoning: "because",
+      promptVersion: "sha256-abc12345",
+      guidanceIdsUsed: ["guid-1", "guid-2"],
+    });
+    expect(supa.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt_version: "sha256-abc12345",
+        guidance_ids_used: ["guid-1", "guid-2"],
+      })
+    );
+  });
+
+  it("defaults guidance_ids_used to empty array when omitted", async () => {
+    const supa = mockSupabaseChain({ data: null, error: null });
+    await recordDecision(supa as any, {
+      jobId: "job-1",
+      agentId: "strategist",
+      decisionType: "topic_dispatch",
+      inputs: {},
+      chosen: {},
+      reasoning: null,
+    });
+    expect(supa.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guidance_ids_used: [],
+      })
+    );
   });
 });

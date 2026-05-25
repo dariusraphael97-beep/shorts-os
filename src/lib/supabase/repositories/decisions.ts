@@ -19,6 +19,8 @@ export async function recordDecision(
     chosen: Record<string, unknown>;
     reasoning: string | null;
     scores?: Record<string, number>;
+    promptVersion?: string;
+    guidanceIdsUsed?: string[];
   },
 ): Promise<void> {
   const { error } = await supabase.from("decisions").insert({
@@ -30,6 +32,8 @@ export async function recordDecision(
     chosen: args.chosen,
     scores: args.scores ?? null,
     reasoning: args.reasoning,
+    prompt_version: args.promptVersion ?? null,
+    guidance_ids_used: args.guidanceIdsUsed ?? [],
   });
   if (error) throw new Error(`recordDecision: ${error.message}`);
 }
