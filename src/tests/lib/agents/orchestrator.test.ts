@@ -34,7 +34,7 @@ import { updateAgentState } from "@/lib/supabase/repositories/agents";
 import { recordAgentMessage } from "@/lib/supabase/repositories/agent-messages";
 import { recordDecision } from "@/lib/supabase/repositories/decisions";
 import { createVideoDraft } from "@/lib/supabase/repositories/your-videos";
-import { runPipeline } from "@/lib/agents/orchestrator";
+import { runPipeline, ConcurrentRunError } from "@/lib/agents/orchestrator";
 import { VOICE_POOL_IDS, VISUAL_TREATMENTS } from "@/lib/agents/constants";
 
 const fakeChannel = {
@@ -173,5 +173,36 @@ describe("runPipeline — success path", () => {
       /* drain */
     }
     expect(finishJobSuccess).toHaveBeenCalledWith(expect.anything(), "job-uuid");
+  });
+});
+
+describe("runPipeline — concurrency", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws ConcurrentRunError if an active produce_video job exists", async () => {
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue({ id: "existing-job-1" } as any);
+
+    const gen = runPipeline({ topicId: "topic-uuid", supabase: {} as any });
+
+    await expect(async () => {
+      for await (const _ev of gen) {
+        /* drain */
+      }
+    }).rejects.toThrow(ConcurrentRunError);
+  });
+
+  it("does NOT call createProduceVideoJob when blocked by concurrency", async () => {
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue({ id: "existing-job-1" } as any);
+
+    const gen = runPipeline({ topicId: "topic-uuid", supabase: {} as any });
+    try {
+      for await (const _ev of gen) {
+        /* drain */
+      }
+    } catch { /* expected */ }
+
+    expect(createProduceVideoJob).not.toHaveBeenCalled();
   });
 });
