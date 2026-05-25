@@ -73,7 +73,7 @@ const fakeWriterOut = {
 
 const fakeVoiceCoachOut = {
   voice_id: VOICE_POOL_IDS[0],
-  provider: "cartesia",
+  provider: "cartesia" as const,
   speed: 1.0,
   stability: 0.6,
   rationale: "x".repeat(40),
