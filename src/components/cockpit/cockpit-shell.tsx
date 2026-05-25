@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { TopBar } from "./top-bar";
 import { TeamStatusSidebar } from "./team-status-sidebar";
+import { ScraperTickerFooter } from "./scraper-ticker-footer";
 
 /**
  * Layout wrapper used by both / and /lab.
@@ -16,8 +17,8 @@ export function CockpitShell({ children }: { children: ReactNode }) {
         </aside>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
-      <footer id="cockpit-ticker-slot" className="h-15 border-t border-subtle">
-        {/* ScraperTickerFooter mounts here in Task 7.1 */}
+      <footer className="border-t border-subtle">
+        <ScraperTickerFooter />
       </footer>
     </div>
   );
