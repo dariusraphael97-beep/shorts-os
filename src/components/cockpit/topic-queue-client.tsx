@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { QueuedTopic } from "@/lib/supabase/repositories/topic-queue";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TopicRow } from "./topic-row";
 
 export function TopicQueueClient({ initial }: { initial: QueuedTopic[] }) {
@@ -29,15 +30,22 @@ export function TopicQueueClient({ initial }: { initial: QueuedTopic[] }) {
           <h2 className="text-sm font-semibold text-text-primary">Topic Queue</h2>
           <span className="text-[10px] font-mono text-text-muted">{topics.length} queued</span>
         </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={isRefreshing}
-          className="p-1.5 rounded hover:bg-elevated text-text-muted"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded hover:bg-elevated text-text-muted"
+                aria-label="Refresh"
+              />
+            }
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          </TooltipTrigger>
+          <TooltipContent side="top">Refresh</TooltipContent>
+        </Tooltip>
       </header>
 
       {topics.length === 0 ? (

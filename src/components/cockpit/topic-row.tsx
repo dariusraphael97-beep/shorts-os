@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { QueuedTopic } from "@/lib/supabase/repositories/topic-queue";
 import { NumberTicker } from "@/components/ui/number-ticker";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
 
 export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved: (id: string) => void }) {
@@ -56,34 +57,53 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
           {error && <p className="text-xs text-accent-red mt-1">{error}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => submitState("reviewed")}
-            disabled={isPending}
-            className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
-            aria-label="Queue for production"
-            title="Queue for production"
-          >
-            <Check className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setReasonOpen((v) => !v)}
-            disabled={isPending}
-            className="p-2 rounded hover:bg-elevated text-accent-red disabled:opacity-50"
-            aria-label="Reject"
-            title="Reject"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="p-2 rounded hover:bg-elevated text-text-muted"
-            aria-label="Expand"
-          >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={() => submitState("reviewed")}
+                  disabled={isPending}
+                  className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
+                  aria-label="Queue for production"
+                />
+              }
+            >
+              <Check className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top">Queue for production</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={() => setReasonOpen((v) => !v)}
+                  disabled={isPending}
+                  className="p-2 rounded hover:bg-elevated text-accent-red disabled:opacity-50"
+                  aria-label="Reject"
+                />
+              }
+            >
+              <X className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top">Reject</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="p-2 rounded hover:bg-elevated text-text-muted"
+                  aria-label="Expand"
+                />
+              }
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </TooltipTrigger>
+            <TooltipContent side="top">Expand</TooltipContent>
+          </Tooltip>
         </div>
       </div>
       {reasonOpen && (

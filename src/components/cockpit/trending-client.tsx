@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { ViralObservation, ObservationSource } from "@/lib/supabase/repositories/viral-observations";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TrendingRow } from "./trending-row";
 
 const SOURCES: ObservationSource[] = ["youtube", "tiktok", "reddit", "instagram"];
@@ -18,14 +19,21 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
           <h2 className="text-sm font-semibold text-text-primary">Trending Shorts</h2>
           <span className="text-[10px] font-mono text-text-muted">{filtered.length} shown</span>
         </div>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="p-1.5 rounded hover:bg-elevated text-text-muted"
-          aria-label="Refresh"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="p-1.5 rounded hover:bg-elevated text-text-muted"
+                aria-label="Refresh"
+              />
+            }
+          >
+            <RefreshCw className="w-4 h-4" />
+          </TooltipTrigger>
+          <TooltipContent side="top">Refresh</TooltipContent>
+        </Tooltip>
       </header>
 
       <div className="flex gap-1 px-4 py-2 border-b border-subtle">

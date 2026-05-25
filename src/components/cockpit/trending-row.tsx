@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { ViralObservation } from "@/lib/supabase/repositories/viral-observations";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ExternalLink, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -68,35 +69,54 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
           {error && <p className="text-xs text-accent-red mt-1">{error}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <a
-            href={obs.url}
-            target="_blank"
-            rel="noreferrer"
-            className="p-2 rounded hover:bg-elevated text-text-muted"
-            aria-label="Open source"
-            title="Open source"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
-          <button
-            type="button"
-            onClick={explain}
-            disabled={isPending}
-            className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
-            aria-label="Ask Claude why this works"
-            title="Explain"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
-          {breakdown && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="p-2 rounded hover:bg-elevated text-text-muted"
-              aria-label="Toggle breakdown"
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <a
+                  href={obs.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 rounded hover:bg-elevated text-text-muted"
+                  aria-label="Open source"
+                />
+              }
             >
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
+              <ExternalLink className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top">Open source</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={explain}
+                  disabled={isPending}
+                  className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
+                  aria-label="Ask Claude why this works"
+                />
+              }
+            >
+              <Sparkles className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top">Ask Claude</TooltipContent>
+          </Tooltip>
+          {breakdown && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    className="p-2 rounded hover:bg-elevated text-text-muted"
+                    aria-label="Toggle breakdown"
+                  />
+                }
+              >
+                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </TooltipTrigger>
+              <TooltipContent side="top">Toggle breakdown</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
