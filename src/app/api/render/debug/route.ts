@@ -28,15 +28,13 @@ function getGitSource(): { url: string; ref: string } {
   return { url: `https://github.com/${owner}/${slug}.git`, ref };
 }
 
-async function readCommandLogs(cmd: { logs(): AsyncIterable<{ stream: string; data: Uint8Array }> }): Promise<{ stdout: string; stderr: string }> {
+async function readCommandLogs(cmd: { logs(): AsyncIterable<{ stream: 'stdout' | 'stderr'; data: string }> }): Promise<{ stdout: string; stderr: string }> {
   let stdout = '';
   let stderr = '';
-  const decoder = new TextDecoder();
   try {
     for await (const log of cmd.logs()) {
-      const text = decoder.decode(log.data);
-      if (log.stream === 'stdout') stdout += text;
-      else if (log.stream === 'stderr') stderr += text;
+      if (log.stream === 'stdout') stdout += log.data;
+      else if (log.stream === 'stderr') stderr += log.data;
     }
   } catch (err) {
     stderr += `\n[logs() iteration error: ${err instanceof Error ? err.message : String(err)}]`;
