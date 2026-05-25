@@ -1,6 +1,7 @@
 "use client";
 
 import type { Agent, AgentState } from "@/lib/supabase/repositories/agents";
+import { BorderBeam } from "@/components/ui/border-beam";
 
 const STATE_STYLES: Record<AgentState, { bg: string; text: string; pulse: boolean; glow: boolean }> = {
   idle:           { bg: "bg-elevated",      text: "text-text-muted",      pulse: false, glow: false },
@@ -15,10 +16,11 @@ export function AgentCard({ agent, onClick }: { agent: Agent; onClick?: () => vo
     <button
       type="button"
       onClick={onClick}
-      className={`group w-full text-left p-3 rounded-md border border-subtle bg-surface hover:bg-hover transition ${
-        style.glow ? "shadow-[0_0_12px_rgba(0,255,136,0.25)]" : ""
-      }`}
+      className="group relative w-full text-left p-3 rounded-md border border-subtle bg-surface hover:bg-hover transition"
     >
+      {agent.current_state === "working" && (
+        <BorderBeam colorFrom="#00ff88" colorTo="#ffa500" duration={6} />
+      )}
       <div className="flex items-center gap-3">
         <span className="text-2xl shrink-0" aria-hidden>
           {agent.emoji ?? "🤖"}

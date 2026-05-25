@@ -1,4 +1,5 @@
 import { loginAction } from "./actions";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
 
 type SearchParams = { next?: string; error?: string };
 
@@ -22,12 +23,15 @@ export default async function LoginPage(props: { searchParams: Promise<SearchPar
             className="w-full h-10 px-3 rounded bg-elevated border border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-electric"
           />
           {error && <p className="text-sm text-accent-red">{error}</p>}
-          <button
+          <ShimmerButton
             type="submit"
-            className="w-full h-10 rounded bg-accent-electric text-app font-medium hover:opacity-90 transition"
+            background="rgba(20, 20, 20, 1)"
+            shimmerColor="#00ff88"
+            borderRadius="6px"
+            className="w-full h-10"
           >
             Enter cockpit
-          </button>
+          </ShimmerButton>
         </form>
       </div>
     </main>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { TopBar } from "./top-bar";
 import { TeamStatusSidebar } from "./team-status-sidebar";
 import { ScraperTickerFooter } from "./scraper-ticker-footer";
+import { Spotlight } from "@/components/ui/spotlight";
 
 /**
  * Layout wrapper used by both / and /lab.
@@ -15,7 +16,10 @@ export function CockpitShell({ children }: { children: ReactNode }) {
         <aside className="w-60 border-r border-subtle hidden lg:block overflow-y-auto">
           <TeamStatusSidebar />
         </aside>
-        <main className="flex-1 min-w-0">{children}</main>
+        {/* Spotlight wraps main: gradient tracks mouse, inner content renders on top */}
+        <Spotlight className="flex-1 min-w-0" fill="#00ff88">
+          <main className="h-full">{children}</main>
+        </Spotlight>
       </div>
       <footer className="border-t border-subtle">
         <ScraperTickerFooter />

@@ -202,6 +202,16 @@ html, body {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes border-beam-spin {
+  to { --angle: 360deg; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 type SpotlightProps = {
   className?: string;
   fill?: string;
+  children?: React.ReactNode;
 };
 
-export function Spotlight({ className, fill = "white" }: SpotlightProps) {
+export function Spotlight({ className, fill = "white", children }: SpotlightProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -51,6 +52,7 @@ export function Spotlight({ className, fill = "white" }: SpotlightProps) {
           background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${fill}22, transparent 40%)`,
         }}
       />
+      {children}
     </div>
   );
 }
