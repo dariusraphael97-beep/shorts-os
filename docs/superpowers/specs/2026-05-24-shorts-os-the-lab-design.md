@@ -6,18 +6,7 @@
 
 ---
 
-> **In plain English (whole doc):**
-> Plan #2 built the *Cockpit* — the dashboard where you see trending topics and approve them. The agents (Strategist, Writer, etc.) are listed in the sidebar but they're just sitting there, doing nothing.
->
-> Plan #3 builds *The Lab* — the page where the agents actually wake up and write a video script for one of your approved topics. You click "Dispatch," and over the next ~30–90 seconds you watch the Writer's script appear word-by-word in front of you, the Voice Coach pick a voice, and the Director pick a visual style. At the end you have a saved "draft" — script + voice choice + shot list — that's ready for the render pipeline (which is Plan #4, not this plan).
->
-> Nothing in Plan #3 actually produces audio, video, or uploads to YouTube. We're producing the *plan* for one video, ready to be turned into pixels later.
-
----
-
 ## 1. Goal & Done-When
-
-> **In plain English:** What does "Plan #3 is done" look like in concrete terms?
 
 A live agent pipeline at `/lab` that turns a reviewed topic into a saved `your_videos` draft. Operator clicks "Dispatch to Strategist" on a reviewed topic → watches the four agents (Strategist, Writer, Voice Coach, Director) assemble the draft in front of them in 30–90 seconds → reviews the draft → optionally re-dispatches.
 
@@ -38,8 +27,6 @@ In parallel, the existing Cockpit (at `/`) shows the same four agents going from
 
 ### 2.1 In scope
 
-> **In plain English:** What ships in Plan #3.
-
 1. **Strategist agent** — receives a topic + channel, decides the angle/dispatch directive, logs it. Real Claude call.
 2. **Writer agent** — receives the dispatch + persona, streams a 45–60 second faceless YouTube Shorts script word-by-word via Claude Sonnet 4.6. Real Claude call.
 3. **Voice Coach agent** — picks a voice ID from a **curated pool of 6 voices** (3 Cartesia + 3 ElevenLabs) based on the script + persona. Real Claude call, but does NOT actually call the TTS provider — that's Plan #4.
@@ -51,8 +38,6 @@ In parallel, the existing Cockpit (at `/`) shows the same four agents going from
 9. **Tests** for repositories and agent runners (mocked Claude). No UI snapshot tests.
 
 ### 2.2 Explicitly out of scope (deferred)
-
-> **In plain English:** What's NOT in Plan #3. Listed so we don't accidentally do it.
 
 - **Cartesia / ElevenLabs API calls** — Voice Coach picks the voice; Plan #4 actually generates the audio file.
 - **Pexels / Storyblocks fetching** — Director writes search queries; Plan #4 actually fetches the clips.
@@ -72,8 +57,6 @@ In parallel, the existing Cockpit (at `/`) shows the same four agents going from
 
 ### 3.1 The Lab daily flow
 
-> **In plain English:** How a typical Lab session goes for Darius.
-
 1. Darius finishes morning Cockpit triage (approves 2–3 topics from the Topic Queue — those become `topic_queue.state='reviewed'`).
 2. Clicks **Lab** in the top bar.
 3. `/lab` loads. Top pane shows the 2–3 reviewed topics, each with a `Dispatch` button. Bottom pane shows the last 10 drafts from prior days.
@@ -89,8 +72,6 @@ In parallel, the existing Cockpit (at `/`) shows the same four agents going from
 
 ### 3.2 Visual aesthetic
 
-> **In plain English:** Same look as the Cockpit — dark, alive, motion that means something.
-
 Reuses Plan #2's design tokens (dark surfaces, electric green for active, amber for thinking, mono font for numbers/timestamps). Reuses the same UI primitives (shadcn for base components, Aceternity for `moving-border` / `spotlight`, Magic UI for `number-ticker` / `border-beam`).
 
 Specific Lab applications:
@@ -103,8 +84,6 @@ Specific Lab applications:
 
 ### 3.3 The Cockpit's free upgrade
 
-> **In plain English:** Plan #3 makes the Cockpit's Team Status sidebar come alive, without touching the Cockpit code.
-
 The Cockpit's `TeamStatusSidebar` (built in Plan #2) already subscribes to the `agents` table via Supabase Realtime. Plan #3's orchestrator updates `agents.current_state` (`idle` → `thinking` → `working` → `idle`) as it runs each agent. The sidebar automatically reflects this without any Plan #3 code touching Cockpit components.
 
 ---
@@ -113,8 +92,6 @@ The Cockpit's `TeamStatusSidebar` (built in Plan #2) already subscribes to the `
 
 ### 4.1 The orchestration model
 
-> **In plain English:** When you click Dispatch, your browser opens a single live connection to the server. The server runs the 4 agents one after another and pushes events down that connection (`Strategist started`, `Writer says: "In 1903..."`, `Voice Coach picked voice X`, etc.). When the run finishes the connection closes. If the connection breaks mid-run (laptop lid, refresh), the run dies — that's by design; you just dispatch again.
-
 **Technology:** Server-Sent Events (SSE — a one-way live stream from the server to the browser, HTTP-native, no WebSockets). The browser uses `EventSource` to read events from `/api/lab/dispatch`. The server route streams a `text/event-stream` response.
 
 **Compute target:** Vercel Functions on Fluid Compute (default Node.js runtime, 300-second default timeout). Pipeline target is ≤90 seconds total, so timeout is not a concern.
@@ -122,8 +99,6 @@ The Cockpit's `TeamStatusSidebar` (built in Plan #2) already subscribes to the `
 **Concurrency:** **Exactly one** Lab run at a time across the whole system. Before opening the stream, the dispatch route checks for any `jobs` row with `kind='produce_video'` AND `status IN ('queued','running')`. If one exists, the route returns 409 Conflict and the Dispatch button stays disabled. (The button also polls `/api/lab/jobs/active` every 5 seconds to keep its disabled state accurate across multiple open tabs.)
 
 ### 4.2 SSE event protocol
-
-> **In plain English:** A list of every type of message the server can send to the browser during a Lab run. The browser switches on the event name and updates the right card.
 
 ```
 event: job_started
@@ -156,8 +131,6 @@ Event ordering for a failed run: same up to the failing agent → `job_failed` �
 
 ### 4.3 Data flow
 
-> **In plain English:** Two parallel channels — SSE for the live Lab view, and the database for the canonical record + Cockpit sidebar.
-
 **Database writeback during a run:**
 - At start: `INSERT INTO jobs (kind='produce_video', status='running', topic_queue_id, channel_id, current_step='strategist', current_agent='strategist', started_at=now())`. Returns `jobId`.
 - Before each agent runs: `UPDATE agents SET current_state='thinking', current_task='Dispatching topic X' WHERE id='<agent>'`, then `UPDATE jobs SET current_agent='<agent>', current_step='<agent>', progress_pct=...`.
@@ -174,8 +147,6 @@ Event ordering for a failed run: same up to the failing agent → `job_failed` �
 
 ### 4.4 Failure & retries
 
-> **In plain English:** If anything goes wrong (Claude is down, returns garbage, etc.), the whole run fails. Operator sees the failed agent's card in red and clicks Re-dispatch to try again. No automatic retries.
-
 - Each agent runner wraps its Claude call in try/catch.
 - Any thrown error → orchestrator catches, updates DB (jobs.status='failed', error column), emits `job_failed` event, closes stream.
 - Failed runs leave NO `your_videos` row. The `jobs` row is preserved as a record (status='failed') so you can audit failures via Supabase.
@@ -187,8 +158,6 @@ Event ordering for a failed run: same up to the failing agent → `job_failed` �
 ## 5. Components
 
 ### 5.1 File structure
-
-> **In plain English:** Where the new code lives in the repo.
 
 ```
 src/app/
@@ -252,8 +221,6 @@ src/tests/
 
 ### 5.3 Key component behaviors
 
-> **In plain English:** What each new piece actually does. A coder reading this should be able to predict the file's contents.
-
 **`ReadyToDispatchPane` (server):**
 - Fetches `listReviewedTopics(supabase, limit=20)` at request time.
 - Renders one `<DispatchRow>` per topic.
@@ -297,8 +264,6 @@ src/tests/
 
 ## 6. The Agents
 
-> **In plain English:** Each agent is a small function on the server that takes some input, calls Claude, and returns structured data. The orchestrator runs the four in order. This section is the contract for each one.
-
 All agents use the existing `getClaudeModel(modelId)` helper from Plan #1 and use the AI SDK v6 (`generateObject` for structured output, `streamText` for the Writer's live tokens).
 
 ### 6.1 Shared types
@@ -330,8 +295,6 @@ export type StreamEvent =
 
 ### 6.2 Strategist — Claude Haiku 4.5
 
-> **In plain English:** Reads the topic and the channel's personality, decides "here's the angle for this video," writes a 1–2 sentence directive that tells the Writer how to approach it.
-
 **Model:** `claude-haiku-4-5` (cheap, fast, synthesis task).
 **Method:** `generateObject` with Zod schema.
 
@@ -361,8 +324,6 @@ export type StrategistOutput = z.infer<typeof StrategistOutputSchema>;
 **Expected latency:** ~1–2 seconds.
 
 ### 6.3 Writer — Claude Sonnet 4.6 (streaming)
-
-> **In plain English:** Writes the actual 45–60 second video script. Streams the words as it generates them so you watch it being written live. Uses Claude's best model because the script is the heart of the product.
 
 **Model:** `claude-sonnet-4-5` (note: gateway helper currently lists this — bump to `claude-sonnet-4-6` at impl time if the gateway is updated).
 **Method:** `streamText` (raw text streaming, not structured object) + post-processing to extract fields.
@@ -402,8 +363,6 @@ export type WriterOutput = z.infer<typeof WriterOutputSchema>;
 **Expected latency:** ~10–25 seconds for the full stream.
 
 ### 6.4 Voice Coach — Claude Haiku 4.5
-
-> **In plain English:** Picks one voice from a hand-curated list of 6 voices, plus speed/stability settings. Doesn't actually call the TTS provider — just picks. Plan #4 actually generates the audio.
 
 **Model:** `claude-haiku-4-5`.
 **Method:** `generateObject` with Zod schema that enforces the voice pool.
@@ -453,8 +412,6 @@ export const VOICE_POOL_IDS = VOICE_POOL.map(v => v.id) as [string, ...string[]]
 
 ### 6.5 Director — Claude Haiku 4.5
 
-> **In plain English:** Picks the visual "look" from a curated list of 6 styles, decides music mood, and writes a shot list — one entry per script segment, with a search query for stock footage (which Plan #4 will use to actually fetch clips).
-
 **Model:** `claude-haiku-4-5`.
 **Method:** `generateObject`.
 
@@ -502,8 +459,6 @@ export const VISUAL_TREATMENTS = [
 **Expected latency:** ~2–3 seconds.
 
 ### 6.6 Orchestrator
-
-> **In plain English:** The traffic cop. Owns the SSE stream, calls the 4 agents in order, writes the database rows at every boundary, handles failure cleanly.
 
 ```ts
 // Pseudocode for src/lib/agents/orchestrator.ts
@@ -569,8 +524,6 @@ export async function POST(req: Request) {
 
 ### 7.1 No schema changes
 
-> **In plain English:** Plan #1 already created all the tables Plan #3 needs (`jobs`, `agent_messages`, `decisions`, `your_videos`, `channels`, `agents`). Realtime is also already enabled on the right tables. So no `CREATE TABLE` migrations.
-
 ### 7.2 One seed migration
 
 **File:** `supabase/migrations/20260525000001_seed_default_channel.sql`
@@ -599,23 +552,17 @@ on conflict (slug) do nothing;
 
 ### 7.3 Realtime usage
 
-> **In plain English:** Plan #3 writes `agents.current_state` updates as agents start/stop. The Cockpit's existing sidebar (from Plan #2) automatically reflects this — zero Cockpit changes needed.
-
 `supabase_realtime` publication already includes `agents`, `jobs`, `agent_messages`, `decisions`, `topic_queue`, `viral_observations` (per Plan #1's `20260524000012_enable_realtime.sql`). Plan #3 doesn't add anything to the publication.
 
 ---
 
 ## 8. Authentication
 
-> **In plain English:** Plan #2 already gates everything behind the cockpit password. The Lab page and the new `/api/lab/*` routes inherit that automatically because they're not in the public-path list in `src/middleware.ts`. Nothing new to do.
-
 The middleware allowlist (from Plan #2) is `/api/health`, `/api/cron`, `/api/auth`, `/login`, plus static assets. Anything else — including `/lab`, `/api/lab/dispatch`, `/api/lab/drafts`, `/api/lab/jobs/active` — requires a valid `cockpit_session` cookie. No changes to `src/middleware.ts`.
 
 ---
 
 ## 9. Testing
-
-> **In plain English:** Unit tests for the code that handles money (Claude calls) and the code that writes to the database. We don't snapshot-test UI components because the look will keep evolving.
 
 ### 9.1 What we test
 
@@ -635,8 +582,6 @@ The middleware allowlist (from Plan #2) is `/api/health`, `/api/cron`, `/api/aut
 
 ### 9.3 Manual smoke test after deploy
 
-> **In plain English:** A checklist Darius (or the implementer) runs against the live site after each deploy to confirm Plan #3 works end-to-end.
-
 1. Visit `/lab` → password gate → enter cockpit.
 2. If no reviewed topics exist: visit `/`, approve one, return to `/lab`.
 3. Ready pane shows the reviewed topic. Click **Dispatch**.
@@ -655,8 +600,6 @@ If steps 1-10 + 11 pass, Plan #3 is shipped. Step 12 is a stretch verification.
 ---
 
 ## 10. Cost & Performance
-
-> **In plain English:** What does each Lab run cost in Claude API spend, and how long does it take?
 
 **Per-run estimated cost (Claude API only, no TTS in Plan #3):**
 
@@ -678,8 +621,6 @@ No cost guardrails in Plan #3 (single-operator, low volume). If Plan #5 onwards 
 
 ## 11. Open Questions / Future Work
 
-> **In plain English:** Stuff we're deliberately not solving in Plan #3, captured here so it doesn't get lost.
-
 - **Format variation enforcement (deferred to Plan #5):** Strategist's prompt mentions it as critical for YouTube monetization. Director's `visual_treatment` choice IS stored on every `your_videos` row, so Plan #5 can implement the check by looking at the last N posted videos.
 - **Per-step retries with backoff:** A failed Claude call (rate limit, transient 500) currently kills the whole run. A future improvement is per-agent retry with exponential backoff before propagating to job failure. Probably 1-2 tasks of work.
 - **Durable runs:** SSE is fragile. If the operator's connection drops, the run is lost. Plan #4 or #5 could swap orchestration to Vercel Workflow DevKit for crash-safe runs. Decision can wait until we see whether dropped runs are actually a problem in practice.
@@ -691,8 +632,6 @@ No cost guardrails in Plan #3 (single-operator, low volume). If Plan #5 onwards 
 ---
 
 ## 12. Summary
-
-> **In plain English:** Plan #3 turns the Lab page from a "Coming soon" placeholder into the page where Darius watches Claude write a video script in real time, the Voice Coach picks a voice, and the Director picks a visual style — ending with a saved draft. No audio, no video, no upload yet. Roughly 25-35 small subagent-sized tasks across roughly 5 phases: seed migration → repositories → agent runners → orchestrator + SSE route → Lab UI.
 
 **Phase outline for the implementation plan (writing-plans will detail each):**
 1. **Phase 0 — DB seed + new repositories** (channels, jobs, agent_messages, decisions, your_videos, plus reviewed-topics list on topic-queue).
