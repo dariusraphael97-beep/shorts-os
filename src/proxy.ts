@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import { NextResponse, type NextRequest } from "next/server";
 import { COCKPIT_COOKIE_NAME, verifySession } from "@/lib/auth/session";
 
@@ -14,7 +12,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/sitemap.xml",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Static assets and public paths bypass auth
