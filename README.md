@@ -2,8 +2,7 @@
 
 Personal media operations system for running faceless YouTube Shorts channels.
 
-**Status:** Phase 0 + 1 (Foundation) complete. Memory Layer + Intel scrapers live.
-Next: Plan #2 (Studio cockpit UI).
+**Status:** Plans #1 and #2 complete. Memory Layer + Intel scrapers live. Studio Cockpit shipped.
 
 ## What's running
 
@@ -16,6 +15,19 @@ Next: Plan #2 (Studio cockpit UI).
   - Performance sync (daily 09:00 UTC — stub until Plan #4)
 - **Claude (Haiku 4.5)** scores topic candidates for hookability
 - Health endpoint: `/api/health`
+- ✅ **Plan #2 — Studio Cockpit MVP.** Password-gated dashboard at `/`. Topic Queue (review + accept/reject scored topics), Trending Panel (with lazy Claude breakdowns), Team Status sidebar (7 agents, live state via Realtime), Scraper Ticker footer (live events). `/lab` placeholder for Plan #3.
+
+## Cockpit access
+
+Production URL: https://shorts-os-roan.vercel.app/
+
+The cockpit is password-gated. The password is in `.env.local` as `COCKPIT_PASSWORD` and mirrored to Vercel's env vars.
+
+Forgot the password? Rotate it:
+1. Vercel dashboard → shorts-os → Settings → Environment Variables → edit `COCKPIT_PASSWORD`
+2. Generate new: `openssl rand -base64 32 | tr -d '/+=' | head -c 32`
+3. Redeploy: `vercel --prod`
+4. Update your local `.env.local` to match.
 
 ## Setup (when cloning fresh)
 
@@ -45,6 +57,6 @@ See `docs/superpowers/specs/2026-05-24-shorts-os-design.md` for the full design.
 ## Plans (sequential)
 
 - Plan #1 (this) — Foundation + Memory Layer + Intel scrapers ✅
-- Plan #2 — Studio cockpit UI + visualization (next)
+- Plan #2 — Studio cockpit UI + visualization ✅
 - Plan #3 — Agent framework + generation pipeline
 - Plan #4 — PC render agent + first videos live
