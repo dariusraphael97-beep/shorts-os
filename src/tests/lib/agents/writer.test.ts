@@ -122,4 +122,40 @@ describe("runWriter", () => {
       }
     }).rejects.toThrow();
   });
+
+  it("skips a short numeric lead-in when extracting the hook (regression: '1943.' → next sentence)", async () => {
+    // Regression: prod smoke produced "1943. British intelligence discovered…"
+    // and the old hook extractor returned "1943." (5 chars), failing Zod's >=10 min.
+    vi.mocked(streamText).mockReturnValue(
+      fakeTextStream([
+        "1943. British intelligence discovered German operatives were hiding morse code inside radio jingles. ",
+        "The rhythm of a popular song's drumbeat spelled out U-boat positions. ",
+        "Each generation builds a new communication system. ",
+        "Each generation assumes if they can't perceive the attack, it isn't happening. ",
+        "Each generation eventually discovers their guard dogs have been sitting on command the whole time.",
+      ]) as any
+    );
+
+    const events: any[] = [];
+    for await (const ev of runWriter({
+      job: { id: "j1" } as any,
+      topic: fakeTopic as any,
+      channel: fakeChannel as any,
+      previousOutputs: {
+        strategist: {
+          dispatch_directive: "Lean into 1943.",
+          format_hints: ["open with a year"],
+          selected_channel_id: "ch-uuid",
+          rationale: "x x x x x x x x x x x x x x x x x x x x",
+        },
+      },
+    })) {
+      events.push(ev);
+    }
+
+    const doneEvent = events.find((e) => e.type === "done");
+    expect(doneEvent).toBeDefined();
+    expect(doneEvent.output.hook_first_3_seconds).toMatch(/British intelligence/);
+    expect(doneEvent.output.hook_first_3_seconds.length).toBeGreaterThanOrEqual(10);
+  });
 });

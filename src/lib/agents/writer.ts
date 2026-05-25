@@ -85,7 +85,16 @@ function countWords(text: string): number {
 }
 
 function extractFirstSentence(text: string): string {
-  const match = text.match(/^[\s\S]*?[.!?](?:\s|$)/);
-  if (match) return match[0].trim();
+  // Walk sentence boundaries; keep extending until the candidate has enough
+  // letters to be a real hook. Skips lead-ins like "1943." or "Dr." that
+  // otherwise leave the hook below WriterOutputSchema's 10-char minimum.
+  const MIN_LETTERS = 10;
+  const re = /[.!?](?:\s|$)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const candidate = text.slice(0, match.index + 1).trim();
+    const letterCount = (candidate.match(/[A-Za-z]/g) ?? []).length;
+    if (letterCount >= MIN_LETTERS) return candidate;
+  }
   return text.slice(0, 200).trim();
 }
