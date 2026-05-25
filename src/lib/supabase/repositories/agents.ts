@@ -27,3 +27,20 @@ export async function listAgents(supabase: SupabaseClient): Promise<Agent[]> {
   if (error) throw new Error(`listAgents: ${error.message}`);
   return (data ?? []) as Agent[];
 }
+
+export async function updateAgentState(
+  supabase: SupabaseClient,
+  id: string,
+  state: AgentState,
+  currentTask: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("agents")
+    .update({
+      current_state: state,
+      current_task: currentTask,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw new Error(`updateAgentState: ${error.message}`);
+}
