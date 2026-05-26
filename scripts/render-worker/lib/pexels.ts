@@ -45,7 +45,10 @@ export async function searchAndDownloadVertical(args: {
   url.searchParams.set('per_page', '5');
   url.searchParams.set('orientation', 'portrait');
 
-  const searchRes = await fetch(url.toString(), { headers: { Authorization: apiKey } });
+  const searchRes = await fetch(url.toString(), {
+    headers: { Authorization: apiKey },
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!searchRes.ok) return null;
 
   const parsed = SearchResponse.parse(await searchRes.json());
@@ -62,7 +65,7 @@ export async function searchAndDownloadVertical(args: {
   const file = verticals[0] ?? fallback[0];
   if (!file) return null;
 
-  const dlRes = await fetch(file.link);
+  const dlRes = await fetch(file.link, { signal: AbortSignal.timeout(30_000) });
   if (!dlRes.ok) throw new Error(`pexels download failed ${dlRes.status}`);
   const buffer = Buffer.from(await dlRes.arrayBuffer());
   await writeFile(args.outputPath, buffer);

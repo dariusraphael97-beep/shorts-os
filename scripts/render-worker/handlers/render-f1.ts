@@ -31,6 +31,13 @@ type ShotListEntry = { segment_text: string; broll_search_query: string; duratio
 
 const FALLBACK_BG_COLORS = ['0x101418', '0x1a1d24', '0x0f1419', '0x14181c'];
 
+export class RenderF1Error extends Error {
+  constructor(message: string, public trace: string) {
+    super(message);
+    this.name = 'RenderF1Error';
+  }
+}
+
 export async function runRenderF1(
   job: { id: string; payload: unknown },
   supabase: SupabaseClient,
@@ -42,6 +49,16 @@ export async function runRenderF1(
     console.log(line);
     trace.push(line);
   };
+
+  try {
+    return await renderInternal();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`FAILED: ${msg}`);
+    throw new RenderF1Error(msg, trace.join('\n'));
+  }
+
+  async function renderInternal(): Promise<Record<string, unknown>> {
 
   const payload = job.payload as { your_video_id: string };
 
@@ -164,6 +181,7 @@ export async function runRenderF1(
     duration_seconds_actual: actualDuration,
     debug_trace: trace.join('\n'),
   };
+  }
 }
 
 async function fetchShotList(supabase: SupabaseClient, yourVideoId: string): Promise<ShotListEntry[]> {

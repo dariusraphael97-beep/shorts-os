@@ -6,7 +6,7 @@
 import { getSupabase } from './lib/supabase.ts';
 import { postCallback } from './lib/callback.ts';
 import { runClipIngest } from './handlers/clip-ingest.ts';
-import { runRenderF1 } from './handlers/render-f1.ts';
+import { runRenderF1, RenderF1Error } from './handlers/render-f1.ts';
 import { runRenderF2 } from './handlers/render-f2.ts';
 import { runUpload } from './handlers/upload.ts';
 
@@ -43,7 +43,11 @@ async function main() {
     await postCallback({ jobId, jobToken, sandboxInvocationId, result: { status: 'succeeded', output } });
   } catch (err) {
     const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
-    await postCallback({ jobId, jobToken, sandboxInvocationId, result: { status: 'failed', error: msg } });
+    const trace = err instanceof RenderF1Error ? err.trace : undefined;
+    await postCallback({
+      jobId, jobToken, sandboxInvocationId,
+      result: { status: 'failed', error: msg, output: trace ? { debug_trace: trace } : undefined },
+    });
   }
 }
 
