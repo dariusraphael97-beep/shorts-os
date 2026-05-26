@@ -41,3 +41,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 scripts/probe-coldstart.sh
+scripts/gen-font-fingerprint.mjs
