@@ -11,6 +11,7 @@ export const VISUAL_TREATMENTS = [
   "archive-collage",    // old photos, newspaper clippings, grainy footage
   "satellite-zoom",     // Google-Earth-style zooms into locations
   "split-screen",       // two clips side by side, comparison-style
+  "held-shot-with-text-animation", // single sustained b-roll with animated text overlays
 ] as const;
 
 export type VisualTreatment = (typeof VISUAL_TREATMENTS)[number];
@@ -22,6 +23,8 @@ export const VISUAL_TREATMENT_DESCRIPTIONS: Record<VisualTreatment, string> = {
   "archive-collage": "old photos, newspaper clippings, grainy footage",
   "satellite-zoom": "Google-Earth-style zooms into locations",
   "split-screen": "two clips side by side, comparison-style",
+  "held-shot-with-text-animation":
+    "single sustained b-roll shot with animated text overlays that pulse with the captions",
 };
 
 // Real Cartesia voice UUIDs (Plan #4 Phase 2). Slot 1 is the cars-channel
