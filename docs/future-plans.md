@@ -4,6 +4,20 @@ Captures plans that are too far out to design in detail today but worth recordin
 
 ---
 
+## Remotion full motion-graphics buildout — DISTRIBUTED, NOT A STANDALONE PLAN
+
+**Status:** Distributed across Plan #4 Phases 3, 4, and 5. **Do NOT create a "Plan #6 Remotion buildout" plan** — the features are baked into existing phases per the integration map in [`2026-05-25-shorts-os-plan-4-render-pipeline-design.md`](./superpowers/specs/2026-05-25-shorts-os-plan-4-render-pipeline-design.md#-remotion-feature-integration-map-read-this-before-planning-phases-35) §4.
+
+**Distribution:**
+- Phase 2.5 → animated word-by-word captions (shipping now) + Lottie infrastructure
+- Phase 3 → smooth b-roll transitions + lower-thirds (source credits)
+- Phase 4 → title cards (Format 2 compilations) + animated callouts/stickers
+- Phase 5 → branded intros/outros (per-channel)
+
+Each phase's implementation plan MUST include the Remotion features assigned to it as required tasks, not optional polish. The §4 integration map is authoritative.
+
+---
+
 ## Plan #8: Long-form AI character content vertical
 
 **Target:** 15–30 minute horizontal video, AI characters, senior-targeted high-CPM niches (financial education, retirement, IRS/Medicare, etc.)
