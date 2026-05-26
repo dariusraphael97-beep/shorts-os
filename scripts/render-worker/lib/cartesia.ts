@@ -1,8 +1,12 @@
 // scripts/render-worker/lib/cartesia.ts
 //
-// Minimal Cartesia TTS client. Phase 1 uses a single fixed voice; Phase 2 wires
-// the Voice Coach's pick.
+// Minimal Cartesia TTS client. Phase 1 used a single fixed voice; Phase 2 wires
+// the Voice Coach's pick (after Voice Coach defaults to channel.default_voice_id
+// in 95% of cases). Duration comes from ffprobe rather than guessing from
+// WAV bytes, so any future encoding switch (stereo, different sample rate)
+// stays correct.
 import { writeFile } from 'node:fs/promises';
+import { probeDurationSeconds } from './probe.ts';
 
 export async function synthesizeToWav(args: {
   script: string;
@@ -12,7 +16,6 @@ export async function synthesizeToWav(args: {
   const apiKey = process.env.CARTESIA_API_KEY;
   if (!apiKey) throw new Error('CARTESIA_API_KEY must be set');
 
-  // Cartesia REST: POST /tts/bytes with body { transcript, voice: { mode: 'id', id }, output_format: { container: 'wav', sample_rate, encoding } }
   const res = await fetch('https://api.cartesia.ai/tts/bytes', {
     method: 'POST',
     headers: {
@@ -31,8 +34,6 @@ export async function synthesizeToWav(args: {
   const buffer = Buffer.from(await res.arrayBuffer());
   await writeFile(args.outputPath, buffer);
 
-  // Crude duration estimate: WAV PCM s16le @ 44100 Hz mono = 88200 bytes/sec.
-  // Header is 44 bytes. Phase 2 will replace with ffprobe.
-  const durationSeconds = Math.max(1, (buffer.length - 44) / 88200);
+  const durationSeconds = await probeDurationSeconds(args.outputPath);
   return { durationSeconds };
 }
