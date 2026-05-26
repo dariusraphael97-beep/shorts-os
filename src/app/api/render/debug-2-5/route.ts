@@ -106,6 +106,7 @@ async function runFontProbe(): Promise<Response> {
   const aptUpdate = await sandbox.runCommand({
     cmd: 'apt-get',
     args: ['update', '-qq'],
+    sudo: true,
     env: { DEBIAN_FRONTEND: 'noninteractive' },
   });
   if (aptUpdate.exitCode !== 0) {
@@ -124,6 +125,7 @@ async function runFontProbe(): Promise<Response> {
       'libxdamage1', 'libxfixes3', 'libxrandr2', 'libgbm1',
       'libasound2', 'libpango-1.0-0', 'libpangocairo-1.0-0',
     ],
+    sudo: true,
     env: { DEBIAN_FRONTEND: 'noninteractive' },
   });
   if (aptInstall.exitCode !== 0) {
