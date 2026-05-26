@@ -711,6 +711,25 @@ Rotation playbook: (1) add `KEY_V2`, deploy. (2) flip `CURRENT_VERSION=2`, deplo
 
 ## §4 — Clip ingest pipeline + Composer + /clips UI
 
+### 🎬 REMOTION FEATURE INTEGRATION MAP (READ THIS BEFORE PLANNING PHASES 3–5)
+
+Phase 2.5 ships **only animated word-by-word captions** as a Remotion composition. The remaining 5 Remotion feature categories live as empty scaffold directories in `src/remotion/compositions/` and **MUST be built progressively as part of Phases 3, 4, and 5 below** — NOT deferred to a separate future plan. Every phase's implementation plan must include the Remotion features assigned to it.
+
+| Remotion feature | Owning phase | Why this phase |
+|---|---|---|
+| **Smooth transitions between b-roll clips** (zoom, slide, whip-pan, glitch swipe) | **Phase 3** (clip ingest) | Transitions matter most when multiple clip sources compose a video. Phase 3 is when `clip_library` populates and multi-clip composition becomes routine. Director agent gains `transition_props` field per shot. |
+| **Lower-thirds** (source credits like "Source: r/IdiotsInCars" with motion) | **Phase 3** (clip ingest) | Reddit-sourced clips require attribution per the clip-formats spec. Lower-thirds satisfy attribution AND format-variation Hard Rule #4. Director picks when to overlay. |
+| **Title cards for Format 2 compilations** (animated "#5 → #4 → #3" intros) | **Phase 4** (Composer agent) | Title cards are CORE to the Top-5 format — not optional. Composer's output schema gains `title_card_props` (variant, accent_color, animation_speed). Built as `src/remotion/compositions/title-cards/numbered-countdown.tsx`. |
+| **Animated callouts/stickers** ("WAIT FOR IT", arrows, emoji bounces) | **Phase 4** (Composer / Format 2) | Compilation videos use climax markers and emphasis stickers. Director identifies climax moments; Composer schedules callouts. Built as `src/remotion/compositions/callouts/*`. |
+| **Branded intros/outros** (3-sec opener with channel branding + outro CTA) | **Phase 5** (Channel-level config + /settings/channel page) | Intros/outros are per-channel brand assets. The /settings/channel page (added in Phase 5 for OAuth) gains an "Intro/Outro Config" section where operator picks variant + accent. Built as `src/remotion/compositions/intros/*` and `outros/*`. |
+| **Lottie animation integration** (loading spinners, callout flourishes from LottieFiles) | **Phase 2.5 infrastructure expansion** | Lottie pipeline scaffolded in 2.5 (asset folder + Blob upload + indexer). Phase 3+ agents pull Lottie assets from the indexed library when relevant. No dedicated phase work beyond the indexer. |
+
+**Acceptance gate for each phase:** the Remotion features assigned above ship as functional compositions with Zod props, Director/Composer agent picks per-video variants, and the format-variation Hard Rule #4 is satisfied across recent videos using the new feature.
+
+**For the implementation-plan author:** when you write Plan #4 Phase 3, you MUST include tasks for the transitions + lower-thirds Remotion compositions. When you write Phase 4, you MUST include tasks for title cards + callouts. When you write Phase 5, you MUST include tasks for intros/outros. Don't ask the operator whether to build them — they're required by this spec.
+
+---
+
 ### Reddit clip discovery cron
 
 [src/app/api/cron/reddit-clip-discovery/route.ts](src/app/api/cron/reddit-clip-discovery/route.ts), runs every `REDDIT_INGEST_CADENCE_MINUTES` minutes (env default 30):
@@ -1207,6 +1226,8 @@ Plan #5 reads from these; Plan #4 must produce them:
 ---
 
 ## §10 — Explicit non-goals (deferred to later plans)
+
+**Note on Remotion features:** the 5 remaining Remotion feature categories (transitions, callouts, lower-thirds, title cards, intros/outros) are **NOT deferred** — they are integrated into Phases 3–5 per the §4 Remotion Feature Integration Map. Do not list them here.
 
 - **Format 3 (streamer phonk edit).** Spec exists; not implemented. Deferred for IP/licensing reasons and operator priority.
 - **Multi-channel support.** Schema already supports it; orchestrator + crons assume one active channel. Multi-channel routing (the "tool decides what to do with a new channel" goal in the operator's brief) is a later plan.

@@ -21,8 +21,9 @@ export const config: VercelConfig = {
     // --- Plan #4 Phase 1 (Plan #4 render pipeline) ---
     { path: '/api/cron/render-dispatcher', schedule: '* * * * *' },  // every minute (60s spec target)
     { path: '/api/cron/render-watchdog',   schedule: '*/5 * * * *' }, // every 5 minutes
-    // Phase 3 will add: { path: '/api/cron/reddit-clip-discovery', schedule: '*/30 * * * *' },
-    // Phase 5 will add: { path: '/api/cron/scheduled-uploader',    schedule: '*/15 * * * *' },
+    // --- Plan #4 Phase 3 (Reddit clip ingest) ---
+    { path: '/api/cron/reddit-clip-discovery', schedule: '*/30 * * * *' },
+    // Phase 5 will add: { path: '/api/cron/scheduled-uploader', schedule: '*/15 * * * *' },
     // --- Pre-existing trending + performance scrapers (Plan #1-3) ---
     // performance-sync is currently a stub — Plan #4 Phase 5 will replace the
     // route with a real YouTube Analytics sync (per spec §5). Schedule stays.

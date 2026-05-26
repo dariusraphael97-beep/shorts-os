@@ -22,6 +22,10 @@ const envSchema = z.object({
   // Cockpit browser client (Plan #2) — mirrors SUPABASE_URL / SUPABASE_ANON_KEY for browser bundle
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+
+  // Phase 3 — Reddit clip ingest knobs (defaults applied below; never required to set)
+  STAGE_1_SCORE_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
+  REDDIT_INGEST_CADENCE_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;
