@@ -26,12 +26,17 @@ export type Channel = {
 };
 
 export async function getDefaultChannel(supabase: SupabaseClient): Promise<Channel> {
+  // Single-channel mode: return the only active channel.
+  // Phase 1's reseed migration renamed the 'default'-slug seed to per-channel slugs (e.g. 'dyfrx_9754').
+  // Plan #4+ stays single-channel until multi-channel selection lands in Plan #5.
   const { data, error } = await supabase
     .from("channels")
     .select("*")
-    .eq("slug", "default")
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .single();
   if (error) throw new Error(`getDefaultChannel: ${error.message}`);
-  if (!data) throw new Error("getDefaultChannel: default channel not found — did the seed migration run?");
+  if (!data) throw new Error("getDefaultChannel: no active channel — did the seed migration run?");
   return data as Channel;
 }
