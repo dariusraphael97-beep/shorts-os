@@ -1,21 +1,13 @@
 // scripts/render-worker/lib/probe.ts
 //
-// Thin wrapper around the ffprobe binary that ships with ffmpeg-static.
-// Returns the media duration in seconds as a float.
-import { existsSync } from 'node:fs';
-import ffmpegPath from 'ffmpeg-static';
+// Thin wrapper around the ffprobe binary. ffmpeg-static ships only ffmpeg,
+// not ffprobe — they're separate npm packages. Uses @ffprobe-installer/ffprobe
+// for the binary.
 import { spawn } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import ffprobePkg from '@ffprobe-installer/ffprobe';
 
-const ffprobePath = (() => {
-  if (!ffmpegPath) throw new Error('ffmpeg-static did not provide a binary path');
-  // ffmpeg-static colocates ffprobe in the same directory on Linux x64.
-  return join(dirname(ffmpegPath), 'ffprobe');
-})();
-
-if (!existsSync(ffprobePath)) {
-  throw new Error(`ffprobe not found at ${ffprobePath}; ffmpeg-static may need an alternate package on this platform`);
-}
+const ffprobePath = ffprobePkg.path;
+if (!ffprobePath) throw new Error('@ffprobe-installer/ffprobe did not provide a binary path');
 
 export function probeDurationSeconds(filePath: string): Promise<number> {
   return new Promise((resolve, reject) => {
