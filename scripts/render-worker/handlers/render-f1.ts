@@ -36,7 +36,12 @@ export async function runRenderF1(
   supabase: SupabaseClient,
 ): Promise<Record<string, unknown>> {
   const t0 = Date.now();
-  const log = (msg: string) => console.log(`[render_f1] +${Date.now() - t0}ms ${msg}`);
+  const trace: string[] = [];
+  const log = (msg: string) => {
+    const line = `[render_f1] +${Date.now() - t0}ms ${msg}`;
+    console.log(line);
+    trace.push(line);
+  };
 
   const payload = job.payload as { your_video_id: string };
 
@@ -74,12 +79,15 @@ export async function runRenderF1(
         outputPath: rawPath,
       });
       if (dl) {
+        log(`shot ${i}: pexels ok (${dl.width}x${dl.height}, vid ${dl.pexelsVideoId})`);
         await normalizeShot({
           inputPath: rawPath,
           durationSeconds: shot.duration_seconds,
           outputPath: normPath,
         });
+        log(`shot ${i}: normalize ok → ${normPath}`);
       } else {
+        log(`shot ${i}: pexels miss for "${shot.broll_search_query}" → colored bg`);
         await renderColoredBackground({
           hexColor: FALLBACK_BG_COLORS[i % FALLBACK_BG_COLORS.length],
           durationSeconds: shot.duration_seconds,
@@ -87,7 +95,7 @@ export async function runRenderF1(
         });
       }
     } catch (err) {
-      console.warn(`shot ${i} pexels/normalize failed; using fallback bg: ${(err as Error).message}`);
+      log(`shot ${i}: ERROR ${(err as Error).message}`);
       await renderColoredBackground({
         hexColor: FALLBACK_BG_COLORS[i % FALLBACK_BG_COLORS.length],
         durationSeconds: shot.duration_seconds,
@@ -154,6 +162,7 @@ export async function runRenderF1(
   return {
     render_artifact_url: blobUrl,
     duration_seconds_actual: actualDuration,
+    debug_trace: trace.join('\n'),
   };
 }
 
