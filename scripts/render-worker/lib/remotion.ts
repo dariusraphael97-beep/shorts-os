@@ -35,7 +35,11 @@ export function renderRemotionOverlay(args: RemotionRenderArgs): Promise<RenderR
   const argv = buildRemotionRenderArgs(args);
   return new Promise((resolve, reject) => {
     const proc = spawn('npx', argv, {
-      cwd: '/vercel/sandbox',
+      // cwd MUST be the worker package dir so npx finds node_modules/.bin/remotion.
+      // Same class of bug as Phase 1 lesson #6 (`node --import tsx run.ts` needed
+      // this cwd to resolve tsx). The first smoke render fell back to base.mp4
+      // because `cwd: '/vercel/sandbox'` had no node_modules with remotion in it.
+      cwd: '/vercel/sandbox/scripts/render-worker',
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 180_000,                 // 180s ceiling on the Remotion step
     });
