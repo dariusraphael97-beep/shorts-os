@@ -1,28 +1,32 @@
 // scripts/render-worker/handlers/render-f1.ts
 //
-// Phase 2: full Format-1 pipeline.
+// Phase 2.5: full Format-1 pipeline.
 //   1. Cartesia TTS → voice.wav
 //   2. For each shot in director's shot_list: Pexels download (or colored-bg
 //      fallback) → normalize to 1080x1920
-//   3. Groq Whisper word-level alignment → captions.srt (skip on miss)
+//   3. Groq Whisper word-level alignment (skip on miss → no captions)
 //   4. Music pick (best-effort, null when music_tracks empty)
-//   5. ffmpeg final compose: concat normalized shots, mux voice + music@25%,
-//      burn captions
-//   6. Blob upload
+//   5. ffmpeg base compose: concat normalized shots, mux voice + music@25%,
+//      NO captions (base.mp4)
+//   6. Remotion captions overlay → transparent ProRes 4444 (captions.mov)
+//      Falls back gracefully: Whisper miss or Remotion fail → base.mp4 is final
+//   7. ffmpeg composite: overlay captions.mov onto base.mp4 → out.mp4
+//   8. Blob upload
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp } from 'node:fs/promises';
 import { synthesizeToWav } from '../lib/cartesia.ts';
 import {
   normalizeShot,
   renderColoredBackground,
   writeConcatList,
-  finalCompose,
+  composeBase,
+  compositeBaseAndOverlay,
 } from '../lib/ffmpeg-commands.ts';
+import { renderRemotionOverlay } from '../lib/remotion.ts';
 import { uploadMp4ToBlob } from '../lib/blob.ts';
 import { searchAndDownloadVertical } from '../lib/pexels.ts';
 import { transcribeWavWithWordTimestamps } from '../lib/whisper.ts';
-import { wordsToSrt } from '../lib/captions.ts';
 import { pickAndDownloadMusic } from '../lib/music.ts';
 import { probeDurationSeconds } from '../lib/probe.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -65,7 +69,7 @@ export async function runRenderF1(
   // ─── Load your_videos row + shot_list ───
   const { data: yv, error: yvErr } = await supabase
     .from('your_videos')
-    .select('id, script, voice_id, channel_id, topic_queue_id')
+    .select('id, script, voice_id, channel_id, topic_queue_id, caption_props')
     .eq('id', payload.your_video_id)
     .single();
   if (yvErr || !yv) throw new Error(`your_videos row not found: ${yvErr?.message ?? 'no row'}`);
@@ -124,20 +128,13 @@ export async function runRenderF1(
   log(`normalized ${normalizedPaths.length} shots`);
 
   // ─── Whisper forced-alignment ───
-  let captionsPath: string | null = join(workDir, 'captions.srt');
+  let words: { word: string; start: number; end: number }[] = [];
   try {
-    const { words } = await transcribeWavWithWordTimestamps(voicePath);
-    const srt = wordsToSrt(words);
-    if (srt.trim().length > 0) {
-      await writeFile(captionsPath, srt);
-      log(`captions wrote (${words.length} words)`);
-    } else {
-      captionsPath = null;
-      log('captions skipped: empty word list');
-    }
+    const transcription = await transcribeWavWithWordTimestamps(voicePath);
+    words = transcription.words;
+    log(`whisper got ${words.length} words`);
   } catch (err) {
-    console.warn(`whisper failed; rendering without captions: ${(err as Error).message}`);
-    captionsPath = null;
+    log(`whisper failed: ${(err as Error).message} (rendering without captions)`);
   }
 
   // ─── Music bed (best-effort) ───
@@ -154,21 +151,65 @@ export async function runRenderF1(
       log('music skipped: no eligible tracks');
     }
   } catch (err) {
-    console.warn(`music pick failed; rendering without bed: ${(err as Error).message}`);
+    log(`music pick failed: ${(err as Error).message}`);
   }
 
-  // ─── Final compose ───
+  // ─── Base compose (b-roll + voice + music, NO captions) ───
   const concatListPath = join(workDir, 'concat.txt');
   await writeConcatList(normalizedPaths, concatListPath);
-  const outPath = join(workDir, 'out.mp4');
-  await finalCompose({
+  const basePath = join(workDir, 'base.mp4');
+  await composeBase({
     concatListPath,
     voicePath,
     musicPath,
-    subtitlesPath: captionsPath,
-    outputPath: outPath,
+    outputPath: basePath,
   });
-  log('final compose done');
+  log('base compose done');
+
+  // ─── Remotion captions overlay ───
+  const captionsPath = join(workDir, 'captions.mov');
+  let captionsRendered = false;
+  if (words.length > 0) {
+    const captionProps = (yv.caption_props as Record<string, unknown> | null) ?? {
+      variant: 'word-by-word',
+      accent_color: '#FFD23F',
+      accent_word_policy: 'first-noun',
+      highlighted_words: [],
+      animation_speed: 1.0,
+      font_scale: 1.0,
+    };
+    const durationInFrames = Math.ceil(durationSeconds * 30);
+    const result = await renderRemotionOverlay({
+      compositionId: 'captions-word-by-word',
+      props: { ...captionProps, words, durationSeconds },
+      outputPath: captionsPath,
+      durationInFrames,
+    });
+    if (result.exitCode === 0) {
+      captionsRendered = true;
+      log('captions overlay rendered');
+    } else {
+      log(`remotion render failed exit=${result.exitCode}: ${result.stderr.slice(-500)} (continuing without overlay)`);
+    }
+  } else {
+    log('no whisper words — skipping captions overlay');
+  }
+
+  // ─── Final composite ───
+  const outPath = join(workDir, 'out.mp4');
+  if (captionsRendered) {
+    await compositeBaseAndOverlay({
+      basePath,
+      overlayPath: captionsPath,
+      outputPath: outPath,
+    });
+    log('composite done');
+  } else {
+    // No overlay — copy base to out
+    const { copyFile } = await import('node:fs/promises');
+    await copyFile(basePath, outPath);
+    log('no overlay; using base as final output');
+  }
 
   const actualDuration = await probeDurationSeconds(outPath);
 
