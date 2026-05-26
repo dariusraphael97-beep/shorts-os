@@ -73,3 +73,19 @@ export async function discardDraft(supabase: SupabaseClient, id: string): Promis
   const { error } = await supabase.from("your_videos").update({ status: "failed" }).eq("id", id);
   if (error) throw new Error(`discardDraft: ${error.message}`);
 }
+
+export async function listVideosByStatus(
+  supabase: SupabaseClient,
+  status: VideoStatus | VideoStatus[],
+  limit = 20,
+): Promise<YourVideo[]> {
+  const statuses = Array.isArray(status) ? status : [status];
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("*")
+    .in("status", statuses)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listVideosByStatus: ${error.message}`);
+  return (data ?? []) as YourVideo[];
+}

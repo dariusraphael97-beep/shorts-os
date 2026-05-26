@@ -65,6 +65,10 @@ export async function POST(req: Request) {
     // Phase 1: only render_f1 side-effect wired.
     if (rows > 0 && 'render_artifact_url' in body.result.output) {
       const url = body.result.output.render_artifact_url as string;
+      // Phase 2 diagnostic: stash debug_trace string on last_error column so we can
+      // query it without adding a new schema field. Cleared on a clean re-render.
+      const trace = body.result.output.debug_trace;
+      const traceText = typeof trace === 'string' ? trace : null;
       // Look up the render_jobs row to get the your_video_id
       const { data: jobRow } = await supabase
         .from('render_jobs')
@@ -76,6 +80,12 @@ export async function POST(req: Request) {
           .from('your_videos')
           .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
           .eq('id', jobRow.your_video_id);
+      }
+      if (traceText) {
+        await supabase
+          .from('render_jobs')
+          .update({ last_error: traceText })
+          .eq('id', body.job_id);
       }
     }
   } else {

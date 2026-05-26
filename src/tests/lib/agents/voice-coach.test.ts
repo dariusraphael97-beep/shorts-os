@@ -37,7 +37,7 @@ const fakeContext = (overrides: { channel?: Partial<{ default_voice_id: string |
   channel: {
     id: "ch1",
     persona: { voice: "dry deadpan" },
-    default_voice_id: "sonic-narrator-male-deadpan",
+    default_voice_id: "630ed21c-2c5c-41cf-9d82-10a7fd668370",
     default_tts_provider: "cartesia",
     ...overrides.channel,
   } as any,
@@ -132,7 +132,7 @@ describe("runVoiceCoach", () => {
       .mockRejectedValueOnce(makeNoObjectErr());
 
     const out = await runVoiceCoach(fakeContext() as any);
-    expect(out.voice_id).toBe("sonic-narrator-male-deadpan");
+    expect(out.voice_id).toBe("630ed21c-2c5c-41cf-9d82-10a7fd668370");
     expect(out.provider).toBe("cartesia");
     expect(out.speed).toBe(1.0);
     expect(out.stability).toBe(0.75);

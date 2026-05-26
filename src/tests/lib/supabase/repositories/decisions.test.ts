@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { recordDecision } from "@/lib/supabase/repositories/decisions";
+import { recordDecision, getDirectorShotListForVideo } from "@/lib/supabase/repositories/decisions";
 
 function mockSupabaseChain(returnValue: unknown) {
   const obj: any = {
@@ -105,5 +105,44 @@ describe("decisions repository", () => {
         guidance_ids_used: [],
       })
     );
+  });
+});
+
+describe("getDirectorShotListForVideo", () => {
+  it("returns the latest director decision's shot_list", async () => {
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "your_videos") {
+          return { select: () => ({ eq: () => ({ single: async () => ({ data: { topic_queue_id: "topic-1" } }) }) }) };
+        }
+        if (table === "jobs") {
+          return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: "job-1" }] }) }) }) }) }) };
+        }
+        if (table === "decisions") {
+          return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: () => ({ single: async () => ({ data: { chosen: { shot_list: [{ segment_text: "a", broll_search_query: "q", duration_seconds: 5 }] } } }) }) }) }) }) }) };
+        }
+        throw new Error("unexpected table");
+      }),
+    } as never;
+
+    const out = await getDirectorShotListForVideo(supabase, "video-1");
+    expect(out).toEqual([{ segment_text: "a", broll_search_query: "q", duration_seconds: 5 }]);
+  });
+
+  it("returns null when no produce_video job exists", async () => {
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "your_videos") {
+          return { select: () => ({ eq: () => ({ single: async () => ({ data: { topic_queue_id: "topic-1" } }) }) }) };
+        }
+        if (table === "jobs") {
+          return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [] }) }) }) }) }) };
+        }
+        throw new Error("unexpected table");
+      }),
+    } as never;
+
+    const out = await getDirectorShotListForVideo(supabase, "video-1");
+    expect(out).toBeNull();
   });
 });
