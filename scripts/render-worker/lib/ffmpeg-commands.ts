@@ -5,7 +5,9 @@
 // - normalizeShot / buildNormalizeShotArgs: scale+crop+trim a Pexels clip to 1080x1920 30fps
 // - renderColoredBackground: lavfi colored bg when a shot's Pexels search misses
 // - writeConcatList: produces an ffmpeg concat-demuxer text file
-// - finalCompose / buildFinalComposeArgs: concat normalized shots + mux voice + music@25% + burn captions
+// - composeBase / buildBaseComposeArgs: concat normalized shots + mux voice + music@25% (no SRT burn)
+// - compositeBaseAndOverlay / buildCompositeArgs: overlay transparent Remotion caption video onto base
+// - finalCompose: compat shim → composeBase (subtitlesPath silently ignored; removed in Task 9)
 //
 // The build* functions return argv arrays (no side effects) so they're unit-testable.
 // The runner functions wrap them in spawn().
@@ -77,15 +79,10 @@ export async function writeConcatList(paths: string[], outputPath: string): Prom
   await writeFile(outputPath, body);
 }
 
-const SRT_FORCE_STYLE =
-  "FontName=Arial,FontSize=72,PrimaryColour=&HFFFFFFFF,OutlineColour=&H00000000," +
-  "Outline=4,BorderStyle=1,Alignment=2,MarginV=300,Bold=1";
-
-export function buildFinalComposeArgs(args: {
+export function buildBaseComposeArgs(args: {
   concatListPath: string;
   voicePath: string;
   musicPath: string | null;
-  subtitlesPath: string | null;
   outputPath: string;
 }): string[] {
   const inputs: string[] = [
@@ -95,17 +92,6 @@ export function buildFinalComposeArgs(args: {
   ];
   if (args.musicPath) inputs.push('-i', args.musicPath);       // input 2: music (optional)
 
-  // Video filter chain
-  let videoFilter = '';
-  let videoStream: string;
-  if (args.subtitlesPath) {
-    videoFilter = `[0:v]subtitles=${args.subtitlesPath}:force_style='${SRT_FORCE_STYLE}'[v]`;
-    videoStream = '[v]';
-  } else {
-    videoStream = '0:v';
-  }
-
-  // Audio filter chain
   let audioFilter: string;
   let audioStream: string;
   if (args.musicPath) {
@@ -116,12 +102,10 @@ export function buildFinalComposeArgs(args: {
     audioStream = '1:a';
   }
 
-  const filterComplex = [videoFilter, audioFilter].filter(Boolean).join(';');
-
-  const argv = [
+  return [
     ...inputs,
-    ...(filterComplex ? ['-filter_complex', filterComplex] : []),
-    '-map', videoStream,
+    ...(audioFilter ? ['-filter_complex', audioFilter] : []),
+    '-map', '0:v',
     '-map', audioStream,
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast',
     '-c:a', 'aac', '-b:a', '128k',
@@ -129,17 +113,61 @@ export function buildFinalComposeArgs(args: {
     '-movflags', '+faststart',
     args.outputPath,
   ];
-  return argv;
 }
 
+export async function composeBase(args: {
+  concatListPath: string;
+  voicePath: string;
+  musicPath: string | null;
+  outputPath: string;
+}): Promise<void> {
+  await runFfmpeg(buildBaseComposeArgs(args));
+}
+
+export function buildCompositeArgs(args: {
+  basePath: string;
+  overlayPath: string;
+  outputPath: string;
+}): string[] {
+  return [
+    '-y',
+    '-i', args.basePath,
+    '-i', args.overlayPath,
+    '-filter_complex', '[0:v][1:v]overlay=format=auto[v]',
+    '-map', '[v]',
+    '-map', '0:a',                    // base audio passes through unchanged
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast',
+    '-c:a', 'copy',                   // re-mux audio without re-encoding
+    '-movflags', '+faststart',
+    args.outputPath,
+  ];
+}
+
+export async function compositeBaseAndOverlay(args: {
+  basePath: string;
+  overlayPath: string;
+  outputPath: string;
+}): Promise<void> {
+  await runFfmpeg(buildCompositeArgs(args));
+}
+
+// Keep the existing finalCompose export as a compat shim so render-f1.ts
+// keeps building until Task 9 updates the handler. The subtitlesPath arg
+// is silently ignored — Phase 2.5 moves captions to the Remotion overlay.
 export async function finalCompose(args: {
   concatListPath: string;
   voicePath: string;
   musicPath: string | null;
-  subtitlesPath: string | null;
+  subtitlesPath: string | null;       // accepted but ignored
   outputPath: string;
 }): Promise<void> {
-  await runFfmpeg(buildFinalComposeArgs(args));
+  void args.subtitlesPath;             // suppress unused-warning
+  await composeBase({
+    concatListPath: args.concatListPath,
+    voicePath: args.voicePath,
+    musicPath: args.musicPath,
+    outputPath: args.outputPath,
+  });
 }
 
 function runFfmpeg(argv: string[]): Promise<void> {

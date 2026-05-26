@@ -204,6 +204,7 @@ export async function* runPipeline(args: {
       voiceId: voiceCoachOut.voice_id,
       visualTreatment: directorOut.visual_treatment,
       durationSeconds: writerOut.estimated_duration_seconds,
+      captionProps: directorOut.caption_props,
     });
     await finishJobSuccess(supabase, job.id);
     yield { type: "job_completed", data: { videoId: draft.id } };

@@ -33,6 +33,14 @@ describe("your-videos repository", () => {
       voiceId: "sonic-narrator-male-deadpan",
       visualTreatment: "stock-montage",
       durationSeconds: 45,
+      captionProps: {
+        variant: "word-by-word",
+        accent_color: "#FFD23F",
+        accent_word_policy: "first-noun",
+        highlighted_words: [],
+        animation_speed: 1.0,
+        font_scale: 1.0,
+      },
     });
     expect(supa.from).toHaveBeenCalledWith("your_videos");
     expect(supa.insert).toHaveBeenCalledWith({
@@ -44,6 +52,14 @@ describe("your-videos repository", () => {
       voice_id: "sonic-narrator-male-deadpan",
       visual_treatment: "stock-montage",
       duration_seconds: 45,
+      caption_props: {
+        variant: "word-by-word",
+        accent_color: "#FFD23F",
+        accent_word_policy: "first-noun",
+        highlighted_words: [],
+        animation_speed: 1.0,
+        font_scale: 1.0,
+      },
       status: "draft",
     });
     expect(result).toEqual(row);
@@ -84,6 +100,14 @@ describe("your-videos repository", () => {
         voiceId: "v",
         visualTreatment: "stock-montage",
         durationSeconds: 1,
+        captionProps: {
+          variant: "word-by-word",
+          accent_color: "#FFD23F",
+          accent_word_policy: "first-noun",
+          highlighted_words: [],
+          animation_speed: 1.0,
+          font_scale: 1.0,
+        },
       })
     ).rejects.toThrow(/boom/);
   });

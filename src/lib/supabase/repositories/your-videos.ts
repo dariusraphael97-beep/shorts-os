@@ -16,6 +16,7 @@ export type YourVideo = {
   voice_id: string | null;
   duration_seconds: number | null;
   visual_treatment: string | null;
+  caption_props: Record<string, unknown> | null;
   posted_at: string | null;
   status: VideoStatus;
   render_artifact_url: string | null;
@@ -34,6 +35,7 @@ export async function createVideoDraft(
     voiceId: string;
     visualTreatment: string;
     durationSeconds: number;
+    captionProps: Record<string, unknown>;
   },
 ): Promise<YourVideo> {
   const { data, error } = await supabase
@@ -47,6 +49,7 @@ export async function createVideoDraft(
       voice_id: args.voiceId,
       visual_treatment: args.visualTreatment,
       duration_seconds: args.durationSeconds,
+      caption_props: args.captionProps,
       status: "draft",
     })
     .select("*")

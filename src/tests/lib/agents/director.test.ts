@@ -55,6 +55,14 @@ describe("runDirector", () => {
           { segment_text: "Citizens worried…", broll_search_query: "old newspaper headline", duration_seconds: 4 },
           { segment_text: "Today we…", broll_search_query: "modern city night skyline", duration_seconds: 5 },
         ],
+        caption_props: {
+          variant: "word-by-word",
+          accent_color: "#FFD23F",
+          accent_word_policy: "first-noun",
+          highlighted_words: [],
+          animation_speed: 1.0,
+          font_scale: 1.0,
+        },
         rationale: "Treatment matches the archive-collage feel of the script.",
       },
     } as any);
@@ -76,6 +84,14 @@ describe("runDirector", () => {
           { segment_text: "c", broll_search_query: "x", duration_seconds: 4 },
           { segment_text: "d", broll_search_query: "x", duration_seconds: 4 },
         ],
+        caption_props: {
+          variant: "word-by-word",
+          accent_color: "#FFD23F",
+          accent_word_policy: "first-noun",
+          highlighted_words: [],
+          animation_speed: 1.0,
+          font_scale: 1.0,
+        },
         rationale: "x x x x x x x x x x x x x x x x x x x x",
       },
     } as any);
@@ -91,6 +107,14 @@ describe("runDirector", () => {
         shot_list: [
           { segment_text: "a", broll_search_query: "x", duration_seconds: 4 },
         ],
+        caption_props: {
+          variant: "word-by-word",
+          accent_color: "#FFD23F",
+          accent_word_policy: "first-noun",
+          highlighted_words: [],
+          animation_speed: 1.0,
+          font_scale: 1.0,
+        },
         rationale: "x x x x x x x x x x x x x x x x x x x x",
       },
     } as any);

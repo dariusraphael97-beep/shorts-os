@@ -3,6 +3,7 @@
 // Sandbox-side entrypoint. Reads job id + callback token from argv, fetches the
 // render_jobs row, routes to the matching handler, then POSTs the result to
 // the Next.js callback endpoint.
+import { spawn } from 'node:child_process';
 import { getSupabase } from './lib/supabase.ts';
 import { postCallback } from './lib/callback.ts';
 import { runClipIngest, ClipIngestError } from './handlers/clip-ingest.ts';
@@ -22,6 +23,12 @@ const sandboxInvocationId = process.env.VERCEL_SANDBOX_NAME ?? process.env.VERCE
 
 async function main() {
   const supabase = getSupabase();
+
+  // Phase 2.5: install Chromium system libs on cold-start so Remotion can launch.
+  // Vercel Sandbox is Amazon Linux 2023; ~15s overhead per cold Sandbox.
+  // Idempotent — re-running is a fast no-op since rpm tracks installed packages.
+  await installChromiumDeps();
+
   const { data: job, error } = await supabase
     .from('render_jobs').select('*').eq('id', jobId).single();
   if (error || !job) {
@@ -55,3 +62,24 @@ async function main() {
 }
 
 main().catch(err => { console.error('fatal:', err); process.exit(1); });
+
+function installChromiumDeps(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      'sudo',
+      ['yum', 'install', '-y', '-q',
+        'nspr', 'nss', 'atk', 'at-spi2-atk', 'cups-libs', 'libdrm', 'libxkbcommon',
+        'libXcomposite', 'libXdamage', 'libXfixes', 'libXrandr', 'mesa-libgbm',
+        'alsa-lib', 'pango', 'cairo', 'libxshmfence',
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000 }
+    );
+    let err = '';
+    proc.stderr.on('data', (d) => { err += d; });
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code !== 0) reject(new Error(`yum install Chromium deps failed exit=${code}: ${err.slice(-1000)}`));
+      else resolve();
+    });
+  });
+}
