@@ -3,19 +3,33 @@
 // Thin wrapper around `yt-dlp-wrap`. The constructor is invoked lazily inside
 // each function so the binary download (first-use only) cannot crash worker
 // boot. yt-dlp-wrap caches the binary under node_modules/.bin after first use.
-import YTDlpWrap from 'yt-dlp-wrap';
+import YTDlpWrapDefault from 'yt-dlp-wrap';
 import { join } from 'node:path';
-import { readFile, access } from 'node:fs/promises';
+import { mkdir, readFile, access } from 'node:fs/promises';
 
-let cachedWrap: YTDlpWrap | null = null;
+type YTDlpWrapClass = typeof YTDlpWrapDefault;
+type YTDlpWrapInstance = InstanceType<YTDlpWrapClass>;
 
-async function getWrap(): Promise<YTDlpWrap> {
+// tsx/esbuild double-wraps this CJS package: `import x from 'yt-dlp-wrap'` resolves
+// to `{ default: <class> }` instead of the class itself. Unwrap once if needed so
+// both `new YTDlpWrap(...)` and the static `downloadFromGithub` work at runtime.
+const YTDlpWrap: YTDlpWrapClass = (() => {
+  const candidate = YTDlpWrapDefault as unknown as { default?: YTDlpWrapClass };
+  if (typeof YTDlpWrapDefault === 'function') return YTDlpWrapDefault;
+  if (candidate.default && typeof candidate.default === 'function') return candidate.default;
+  throw new Error('yt-dlp-wrap: unrecognized module shape');
+})();
+
+let cachedWrap: YTDlpWrapInstance | null = null;
+
+async function getWrap(): Promise<YTDlpWrapInstance> {
   if (cachedWrap) return cachedWrap;
   const binDir = join(process.cwd(), 'node_modules', 'yt-dlp-wrap', 'bin');
   const binPath = join(binDir, 'yt-dlp');
   try {
     await access(binPath);
   } catch {
+    await mkdir(binDir, { recursive: true });
     await YTDlpWrap.downloadFromGithub(binPath);
   }
   cachedWrap = new YTDlpWrap(binPath);
