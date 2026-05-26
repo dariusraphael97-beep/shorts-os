@@ -3,7 +3,9 @@ import { z } from "zod";
 
 const VideoFile = z.object({
   id: z.number(),
-  quality: z.string(),
+  // Pexels occasionally returns quality: null on some files. Tolerate it —
+  // file selection picks by width*height anyway.
+  quality: z.string().nullable(),
   file_type: z.string(),
   width: z.number(),
   height: z.number(),
