@@ -167,13 +167,14 @@ async function fetchShotList(supabase: SupabaseClient, yourVideoId: string): Pro
     .single();
   if (!yv?.topic_queue_id) throw new Error('your_video has no topic_queue_id; cannot find shot_list');
 
-  const { data: jobs } = await supabase
+  const { data: jobs, error: jobsErr } = await supabase
     .from('jobs')
     .select('id')
-    .eq('job_type', 'produce_video')
-    .filter('payload->>topicId', 'eq', yv.topic_queue_id)
+    .eq('kind', 'produce_video')
+    .eq('topic_queue_id', yv.topic_queue_id)
     .order('created_at', { ascending: false })
     .limit(1);
+  if (jobsErr) throw new Error(`fetchShotList jobs query: ${jobsErr.message}`);
   const jobRow = jobs?.[0];
   if (!jobRow) throw new Error('no produce_video job found for this topic');
 

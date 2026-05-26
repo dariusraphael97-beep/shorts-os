@@ -116,7 +116,7 @@ describe("getDirectorShotListForVideo", () => {
           return { select: () => ({ eq: () => ({ single: async () => ({ data: { topic_queue_id: "topic-1" } }) }) }) };
         }
         if (table === "jobs") {
-          return { select: () => ({ eq: () => ({ filter: () => ({ order: () => ({ limit: async () => ({ data: [{ id: "job-1" }] }) }) }) }) }) };
+          return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: "job-1" }] }) }) }) }) }) };
         }
         if (table === "decisions") {
           return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: () => ({ single: async () => ({ data: { chosen: { shot_list: [{ segment_text: "a", broll_search_query: "q", duration_seconds: 5 }] } } }) }) }) }) }) }) };
@@ -136,7 +136,7 @@ describe("getDirectorShotListForVideo", () => {
           return { select: () => ({ eq: () => ({ single: async () => ({ data: { topic_queue_id: "topic-1" } }) }) }) };
         }
         if (table === "jobs") {
-          return { select: () => ({ eq: () => ({ filter: () => ({ order: () => ({ limit: async () => ({ data: [] }) }) }) }) }) };
+          return { select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [] }) }) }) }) }) };
         }
         throw new Error("unexpected table");
       }),

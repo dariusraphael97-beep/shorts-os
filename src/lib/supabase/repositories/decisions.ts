@@ -60,8 +60,8 @@ export async function getDirectorShotListForVideo(
   const { data: jobs } = await supabase
     .from("jobs")
     .select("id")
-    .eq("job_type", "produce_video")
-    .filter("payload->>topicId", "eq", yv.topic_queue_id)
+    .eq("kind", "produce_video")
+    .eq("topic_queue_id", yv.topic_queue_id)
     .order("created_at", { ascending: false })
     .limit(1);
   const jobRow = jobs?.[0];
