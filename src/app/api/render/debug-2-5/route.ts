@@ -101,38 +101,42 @@ async function runFontProbe(): Promise<Response> {
     }, { status: 500 });
   }
 
-  // Remotion's headless Chromium needs NSS/NSPR and other X11/graphics libs
-  // that are not in the base Sandbox image. Update apt and install them.
-  const aptUpdate = await sandbox.runCommand({
-    cmd: 'apt-get',
-    args: ['update', '-qq'],
-    sudo: true,
-    env: { DEBIAN_FRONTEND: 'noninteractive' },
-  });
-  if (aptUpdate.exitCode !== 0) {
-    return NextResponse.json({
-      stage: 'apt_update', exit: aptUpdate.exitCode,
-      stderr: (await aptUpdate.stderr()).slice(-2000),
-    }, { status: 500 });
-  }
-
-  const aptInstall = await sandbox.runCommand({
-    cmd: 'apt-get',
-    args: [
-      'install', '-y', '--no-install-recommends',
-      'libnspr4', 'libnss3', 'libatk1.0-0', 'libatk-bridge2.0-0',
-      'libcups2', 'libdrm2', 'libxkbcommon0', 'libxcomposite1',
-      'libxdamage1', 'libxfixes3', 'libxrandr2', 'libgbm1',
-      'libasound2', 'libpango-1.0-0', 'libpangocairo-1.0-0',
+  // Probe what system tools are available and install Chromium deps.
+  // The Sandbox node24 runtime does not have apt-get; use the Remotion
+  // browser-ensure + npx @puppeteer/browsers approach via a shell probe.
+  const sysProbe = await sandbox.runCommand({
+    cmd: 'sh',
+    args: ['-c', [
+      'echo "OS:$(cat /etc/os-release 2>/dev/null | head -3)"',
+      'which apt-get 2>/dev/null && echo "HAS_APT=yes" || echo "HAS_APT=no"',
+      'which apk 2>/dev/null && echo "HAS_APK=yes" || echo "HAS_APK=no"',
+      'which yum 2>/dev/null && echo "HAS_YUM=yes" || echo "HAS_YUM=no"',
+      'ls /lib/x86_64-linux-gnu/libnspr4.so 2>/dev/null && echo "HAS_NSPR=yes" || echo "HAS_NSPR=no"',
+      'ls /usr/lib/x86_64-linux-gnu/libnspr4.so 2>/dev/null && echo "HAS_NSPR2=yes" || echo "HAS_NSPR2=no"',
+      'find / -name "libnspr4.so" 2>/dev/null | head -3',
+    ].join('; '),
     ],
-    sudo: true,
-    env: { DEBIAN_FRONTEND: 'noninteractive' },
   });
-  if (aptInstall.exitCode !== 0) {
-    return NextResponse.json({
-      stage: 'apt_install', exit: aptInstall.exitCode,
-      stderr: (await aptInstall.stderr()).slice(-2000),
-    }, { status: 500 });
+  const sysInfo = await sysProbe.stdout();
+  // Return diagnostic info so we can understand the environment
+  if (!sysInfo.includes('HAS_NSPR=yes') && !sysInfo.includes('HAS_NSPR2=yes')) {
+    // Try installing Chromium deps via the available package manager
+    let installOk = false;
+    if (sysInfo.includes('HAS_APT=yes')) {
+      const upd = await sandbox.runCommand({ cmd: 'apt-get', args: ['update', '-qq'], sudo: true, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+      const ins = await sandbox.runCommand({ cmd: 'apt-get', args: ['install', '-y', '--no-install-recommends', 'libnspr4', 'libnss3', 'libatk1.0-0', 'libatk-bridge2.0-0', 'libcups2', 'libdrm2', 'libxkbcommon0', 'libxcomposite1', 'libxdamage1', 'libxfixes3', 'libxrandr2', 'libgbm1', 'libasound2', 'libpango-1.0-0', 'libpangocairo-1.0-0'], sudo: true, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+      installOk = ins.exitCode === 0;
+      if (!installOk) {
+        return NextResponse.json({ stage: 'apt_install', exit: ins.exitCode, sysInfo, stderr: (await ins.stderr()).slice(-2000) }, { status: 500 });
+      }
+    } else {
+      // No apt-get: return diagnostic info to inform next iteration
+      return NextResponse.json({
+        stage: 'sys_probe',
+        sysInfo,
+        error: 'No package manager found for Chromium deps installation',
+      }, { status: 500 });
+    }
   }
 
   // Use `remotion still` for single-frame PNG output (not `render`, which
