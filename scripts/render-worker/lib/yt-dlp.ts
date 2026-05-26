@@ -5,14 +5,14 @@
 // boot. yt-dlp-wrap caches the binary under node_modules/.bin after first use.
 import YTDlpWrapDefault from 'yt-dlp-wrap';
 import { join } from 'node:path';
-import { mkdir, readFile, access } from 'node:fs/promises';
+import { mkdir, readFile, access, writeFile, chmod } from 'node:fs/promises';
 
 type YTDlpWrapClass = typeof YTDlpWrapDefault;
 type YTDlpWrapInstance = InstanceType<YTDlpWrapClass>;
 
 // tsx/esbuild double-wraps this CJS package: `import x from 'yt-dlp-wrap'` resolves
 // to `{ default: <class> }` instead of the class itself. Unwrap once if needed so
-// both `new YTDlpWrap(...)` and the static `downloadFromGithub` work at runtime.
+// `new YTDlpWrap(...)` resolves to the real class at runtime.
 const YTDlpWrap: YTDlpWrapClass = (() => {
   const candidate = YTDlpWrapDefault as unknown as { default?: YTDlpWrapClass };
   if (typeof YTDlpWrapDefault === 'function') return YTDlpWrapDefault;
@@ -20,18 +20,44 @@ const YTDlpWrap: YTDlpWrapClass = (() => {
   throw new Error('yt-dlp-wrap: unrecognized module shape');
 })();
 
+// We download the pyinstaller standalone binary (yt-dlp_linux / yt-dlp_macos)
+// rather than yt-dlp-wrap's default Python-zipapp asset. Vercel Sandbox is
+// Amazon Linux 2023, which ships Python 3.9 — yt-dlp requires 3.10+, so the
+// zipapp errors with "unsupported version of Python" before doing anything.
+// The pyinstaller bundle has no system Python dependency.
+function standaloneAssetUrl(): string {
+  if (process.platform === 'darwin') {
+    return 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
+  }
+  if (process.arch === 'arm64') {
+    return 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64';
+  }
+  return 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux';
+}
+
+async function ensureBinary(binPath: string): Promise<void> {
+  try {
+    await access(binPath);
+    return;
+  } catch {
+    // fall through to download
+  }
+  const url = standaloneAssetUrl();
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) throw new Error(`yt-dlp download failed (${res.status}): ${url}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  await writeFile(binPath, buf);
+  await chmod(binPath, 0o755);
+}
+
 let cachedWrap: YTDlpWrapInstance | null = null;
 
 async function getWrap(): Promise<YTDlpWrapInstance> {
   if (cachedWrap) return cachedWrap;
   const binDir = join(process.cwd(), 'node_modules', 'yt-dlp-wrap', 'bin');
   const binPath = join(binDir, 'yt-dlp');
-  try {
-    await access(binPath);
-  } catch {
-    await mkdir(binDir, { recursive: true });
-    await YTDlpWrap.downloadFromGithub(binPath);
-  }
+  await mkdir(binDir, { recursive: true });
+  await ensureBinary(binPath);
   cachedWrap = new YTDlpWrap(binPath);
   return cachedWrap;
 }
