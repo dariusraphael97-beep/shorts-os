@@ -9,7 +9,7 @@ Add a Remotion-rendered captions layer between Phase 2's b-roll concat and the f
 **Acceptance gates:**
 - **Hard gate (Task 1):** Sandbox cold-start + git clone + npm ci with Remotion deps ≤ 120s. If exceeded → stop, escalate to operator, evaluate Remotion Lambda or pre-baked Sandbox image before continuing.
 - **Render gate:** total wall-clock per render ≤ 240s end-to-end (up from Phase 2's 120s gate to absorb the Remotion render step).
-- **Visual gate:** rendered captions visually match a reference image — confirms Montserrat 900 is the actual font (not a silent fallback).
+- **Visual gate:** two-stage. (a) Glyph-hash check at Task 2 — automated, runs before the full composition is built, definitively catches font fallback by hashing distinctive glyphs in a known test string. (b) Operator runs a 6-item structured checklist on the first full render (font weight, animation, sync timing, emphasis tinting, stroke/shadow, positioning). Phase 3 follow-up: capture this release's render as the reference for SSIM > 0.95 regression coverage.
 
 ---
 
@@ -18,7 +18,7 @@ Add a Remotion-rendered captions layer between Phase 2's b-roll concat and the f
 | Surface | Phase 2 today | Phase 2.5 |
 |---|---|---|
 | Worker handler | ffmpeg `subtitles=` filter burns SRT directly onto b-roll concat in the final compose pass | Two passes: ffmpeg builds base (b-roll concat + voice + music), Remotion renders captions overlay with alpha, ffmpeg composites overlay onto base |
-| Caption appearance | White Arial bold over black outline via SRT `force_style` | Word-by-word reveal in Montserrat 900 with accent-word styling per Director props |
+| Caption appearance | White Arial bold over black outline via SRT `force_style` | Word-by-word reveal in Montserrat ExtraBold (800) with accent-word styling per Director props |
 | Director output | `visual_treatment` + `music_mood` + `shot_list` | + `caption_props` (variant + accent color + accent-word policy + animation speed + font scale) |
 | Worker deps | ffmpeg-static, @ffprobe-installer/ffprobe, @supabase/supabase-js, @vercel/blob, tsx, zod | + `@remotion/renderer`, `@remotion/cli`, `react`, `react-dom`, `@fontsource/montserrat` |
 | New top-level dir | — | `src/remotion/` with compositions + props schemas |
@@ -117,14 +117,14 @@ The five scaffold directories each contain a one-line README that lists which Ph
 
 **Chrome:** `@remotion/renderer` v4+ bundles its own Chromium via `@remotion/chromium-tools`. **DO NOT** use `@sparticuz/chromium` — that's targeted at AWS Lambda's specific runtime constraints and is the wrong call here. Task 1's probe confirms the bundled Chromium works inside Vercel Sandbox before any other worker code lands.
 
-**Font:** Montserrat 900 is the design choice (heavy black sans-serif, the standard "shorts caption" look). Imported in `src/remotion/lib/fonts.ts`:
+**Font:** Montserrat ExtraBold (800) is the design choice (heavy black sans-serif, the standard "shorts caption" look). Imported in `src/remotion/lib/fonts.ts`:
 
 ```ts
 import { continueRender, delayRender } from 'remotion';
-import { loadFont as loadMontserrat } from '@fontsource/montserrat/900.css';
+import { loadFont as loadMontserrat } from '@fontsource/montserrat/800.css';
 
 export async function loadCaptionFont() {
-  const handle = delayRender('loading Montserrat 900');
+  const handle = delayRender('loading Montserrat ExtraBold (800)');
   await loadMontserrat();
   continueRender(handle);
 }
@@ -195,7 +195,7 @@ Always use Remotion best practices for caption motion design.
 
 (That last sentence is requirement #2 from the brief — the literal phrase that improves Remotion-related Claude output per the Remotion docs.)
 
-**Channel-level accent_color seed:** if the Director doesn't pick a color, fall back to `channel.persona.accent_color` (existing field), or `#FFE600` (Shorts-OS-yellow) if the channel hasn't set one.
+**Channel-level accent_color seed:** if the Director doesn't pick a color, fall back to `channel.persona.accent_color` (existing field), or `#FFD23F` (the Phase 2.5 default accent yellow — warm gold tone that reads on dark and light b-roll) if the channel hasn't set one.
 
 ---
 
@@ -345,20 +345,38 @@ Once the worker code lands, run a full smoke render through the same `/lab → /
 
 This is 2× Phase 2's gate, intentionally generous to absorb the Remotion render step (estimated 30-90s for a 60-90s video at 30fps with caption motion).
 
-### Gate 3: Visual correctness (font verification)
+### Gate 3: Visual correctness (font verification — two stages)
 
-The silent-failure mode for Remotion-on-Linux-Sandbox is the font silently falling back to a system default. The rendered captions LOOK fine but aren't actually Montserrat 900.
+The silent-failure mode for Remotion-on-Linux-Sandbox is the font silently falling back to a system default. The rendered captions LOOK fine but aren't actually Montserrat ExtraBold. Gate 3 has two stages — an automated upfront check that catches font-fallback definitively, and a structured operator checklist that validates the full caption design.
 
-**Test:**
-- Render a fixed test video (script: lorem-ipsum, 30s, voice: Corey, 3 shots).
-- Extract a single frame at t=10s where a caption is visible.
-- Visually diff against a reference frame committed to `docs/superpowers/notes/phase-2-5-reference-frame.png`.
-- The frame must show:
-  - Montserrat 900 (heavy weight) — distinguishable from Arial/Helvetica/DejaVu by letter shape (especially the lowercase `g` and capital `R`)
-  - Accent color matching `caption_props.accent_color`
-  - Correct word currently emphasized per the timing data
+#### Stage 3a: Glyph-hash check (automated, runs at Task 2 BEFORE the full composition is built)
 
-**Pass condition:** operator visually approves the frame matches the reference (subjective but binary).
+A minimal Remotion composition renders a single 1080×1920 frame containing the test string `Sphinx of black quartz, judge my vow` in Montserrat ExtraBold 80px white-on-black. The worker hashes specific glyph rectangles (the lowercase `g`, capital `Q`, capital `R`, and lowercase `z` — letters with the most distinctive shapes between Montserrat and the likely Linux fallbacks: DejaVu Sans, Liberation Sans).
+
+The expected hashes are committed to `src/remotion/lib/font-fingerprint.json` after the operator generates them once locally (where the font is known-correct). Task 2's probe runs the same hash in the Sandbox and compares.
+
+**Pass condition:** Stage 3a runs to completion AND all 4 glyph hashes match expected. Mismatch = font fallback occurred = stop and fix font loading before continuing.
+
+**Why upfront:** ~10 min of work catches the fallback issue definitively, separately from any subjective "does it look right" judgment. The full operator checklist (Stage 3b) becomes a backstop validating the rest of the design, not the primary fallback detector.
+
+#### Stage 3b: Operator checklist (manual, on the first full render)
+
+After the full pipeline produces its first end-to-end .mp4, the operator runs through this exact checklist and marks each item:
+
+```
+- [ ] Font is clearly Montserrat ExtraBold (bold, geometric, NOT system default)
+- [ ] Captions animate word-by-word with the bounce (not all at once, not static)
+- [ ] Captions appear within ~50ms of the spoken word (no visible lag)
+- [ ] Emphasis words tint yellow (#FFD23F) and scale up briefly
+- [ ] Drop shadow + black stroke are visible on captions over any b-roll color
+- [ ] Bottom-third positioning (no captions cutting off bottom edge)
+```
+
+**Pass condition:** all 6 boxes checked. The checklist is captured in `docs/superpowers/notes/2026-05-26-plan-4-phase-2-5-end-to-end-benchmark.md` alongside the timing data.
+
+#### Phase 3 follow-up (noted, not in 2.5 scope)
+
+Phase 3 captures THIS Phase 2.5 release's first-pass caption render as the official reference image, commits it to `docs/superpowers/notes/phase-2-5-reference-frame.png`, and adds an SSIM > 0.95 regression test that any future caption-composition change must pass. SSIM is regression protection, not new-feature validation, so it lands after the new-feature gate ships — not before.
 
 ---
 
@@ -370,7 +388,7 @@ The silent-failure mode for Remotion-on-Linux-Sandbox is the font silently falli
 
 3. **Remotion bundling on every render.** `npx remotion render` bundles the composition with esbuild each time. Adds ~5-15s per render. Pre-bundling at deploy time (Remotion's `bundle()` API) would amortize this — explicit Phase 2.5.x follow-up.
 
-4. **Font loading async hazard.** `loadFont()` returns a promise. If the composition starts rendering frames before the font finishes loading, frames 0-N would have the fallback font. Remotion's `delayRender()` + `continueRender()` API handles this — must be used correctly in `fonts.ts`.
+4. **Font loading async hazard** *(de-risked upfront by Gate 3 Stage 3a).* `loadFont()` returns a promise. If the composition starts rendering frames before the font finishes loading, frames 0-N would have the fallback font. Remotion's `delayRender()` + `continueRender()` API handles this — must be used correctly in `fonts.ts`. The glyph-hash check at Task 2 catches this exact failure mode (and any other font-fallback path) automatically and BEFORE the full composition is built. The operator checklist (Stage 3b) is a backstop, not the primary detector.
 
 5. **The `npx remotion render` CLI is the worker's pipe to the outside world.** If it exits non-zero with no useful stderr, debugging is hard. Worker wraps the call with stderr capture and includes in the failure trace.
 
