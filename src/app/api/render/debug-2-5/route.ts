@@ -155,6 +155,9 @@ async function runFontProbe(): Promise<Response> {
 
   const result = await verifyFingerprint(localPath, expectedFingerprint as FontFingerprint);
 
+  // Return both the JSON AND a base64-encoded PNG so I can visually diff
+  // against the local reference. ~70KB PNG → ~95KB base64; fits comfortably
+  // in a JSON response.
   return NextResponse.json({
     pass: result.ok,
     duration_ms: Date.now() - t0,
@@ -162,7 +165,8 @@ async function runFontProbe(): Promise<Response> {
     mismatches: result.mismatches,
     actual: result.actual,
     expected: (expectedFingerprint as FontFingerprint).hashes,
-    png_at: localPath,
+    png_base64: pngBuf.toString('base64'),
+    png_size_bytes: pngBuf.length,
     sandbox_name: sandbox.name,
   });
 }
