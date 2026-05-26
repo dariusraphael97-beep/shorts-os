@@ -88,6 +88,14 @@ const fakeDirectorOut = {
     { segment_text: "c", broll_search_query: "x", duration_seconds: 4 },
     { segment_text: "d", broll_search_query: "x", duration_seconds: 4 },
   ],
+  caption_props: {
+    variant: "word-by-word" as const,
+    accent_color: "#FFD23F",
+    accent_word_policy: "first-noun" as const,
+    highlighted_words: [],
+    animation_speed: 1.0,
+    font_scale: 1.0,
+  },
   rationale: "x".repeat(40),
 };
 
