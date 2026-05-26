@@ -18,6 +18,28 @@ Each phase's implementation plan MUST include the Remotion features assigned to 
 
 ---
 
+## v1.5: yt-dlp cookies auto-refresh
+
+**Status:** Deferred from Plan #4 Phase 4 — see [2026-05-26-plan-4-ip-block-decision.md](superpowers/notes/2026-05-26-plan-4-ip-block-decision.md).
+
+**Trigger to start:** manual monthly cookie refresh (introduced by Plan #4 Phase 4 Task 2) is proven stable in production for at least 3 consecutive operator refresh cycles, with zero `clip_ingest_zero_yield` `operator_alerts` triggered.
+
+**Scope:**
+- Headless browser (Playwright or Puppeteer) running inside a Vercel Sandbox microVM, scheduled monthly via a new cron entry in `vercel.ts`.
+- Browser logs into Reddit + YouTube using operator-supplied credentials (stored encrypted via the existing `src/lib/encryption.ts` AES-256-GCM helper — same key-rotation pattern as `channels.oauth_refresh_token_encrypted`).
+- After login, exports cookies in Netscape format and base64-encodes them.
+- Writes the new value into the Vercel project's `YTDLP_COOKIES_B64` env var via the Vercel REST API (token stored as its own Sensitive env var).
+- Operator gets an `operator_alerts` row on success ("cookies rotated, next refresh in ~30d") and on failure ("manual rotation needed").
+
+**Why deferred:**
+- Adds an encrypted operator-credential store we don't otherwise need yet.
+- Sandbox-resident headless browsers are heavyweight (~200MB+ Chromium binary download per run).
+- Phase 4 Task 1 decision matrix scored manual refresh at acceptable cost given current operator workflow.
+
+**Acceptance:** one full month with no operator-driven `vercel env` touches on `YTDLP_COOKIES_B64` and zero `clip_ingest_zero_yield` operator_alerts triggered.
+
+---
+
 ## Plan #8: Long-form AI character content vertical
 
 **Target:** 15–30 minute horizontal video, AI characters, senior-targeted high-CPM niches (financial education, retirement, IRS/Medicare, etc.)

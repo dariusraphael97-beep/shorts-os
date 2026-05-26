@@ -59,6 +59,7 @@ export class VercelSandboxRenderWorker implements RenderWorker {
       OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION: process.env.OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION ?? '',
       GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
       GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '',
+      YTDLP_COOKIES_B64: process.env.YTDLP_COOKIES_B64 ?? '',
     };
 
     // source option clones + checks out the repo before the first command runs.

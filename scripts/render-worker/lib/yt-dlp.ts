@@ -62,6 +62,24 @@ async function getWrap(): Promise<YTDlpWrapInstance> {
   return cachedWrap;
 }
 
+// Reddit + YouTube refuse anonymous traffic from Vercel datacenter IPs. Operator
+// supplies a base64-encoded Netscape cookies.txt as YTDLP_COOKIES_B64; we decode
+// it once per worker boot to /tmp/cookies.txt and pass --cookies on every call.
+const COOKIES_PATH = '/tmp/cookies.txt';
+let cookiesReady: Promise<string | null> | null = null;
+
+async function ensureCookiesFile(): Promise<string | null> {
+  if (cookiesReady) return cookiesReady;
+  cookiesReady = (async () => {
+    const b64 = process.env.YTDLP_COOKIES_B64;
+    if (!b64) return null;
+    const decoded = Buffer.from(b64, 'base64').toString('utf8');
+    await writeFile(COOKIES_PATH, decoded, { mode: 0o600 });
+    return COOKIES_PATH;
+  })();
+  return cookiesReady;
+}
+
 export interface YtDlpDownloadResult {
   videoPath: string;
   autoSubtitlesText: string | null;
@@ -72,9 +90,10 @@ export async function downloadVideoAndAutoSubs(args: {
   outputPath: string;
 }): Promise<YtDlpDownloadResult> {
   const wrap = await getWrap();
+  const cookiesPath = await ensureCookiesFile();
   const vttPath = args.outputPath.replace(/\.mp4$/, '') + '.en.vtt';
 
-  await wrap.execPromise([
+  const ytdlpArgs = [
     args.sourceUrl,
     '--format', 'best[ext=mp4]/best',
     '--merge-output-format', 'mp4',
@@ -86,7 +105,10 @@ export async function downloadVideoAndAutoSubs(args: {
     '--max-filesize', '200M',
     '--socket-timeout', '30',
     '-o', args.outputPath,
-  ]);
+  ];
+  if (cookiesPath) ytdlpArgs.push('--cookies', cookiesPath);
+
+  await wrap.execPromise(ytdlpArgs);
 
   let autoSubtitlesText: string | null = null;
   try {
@@ -115,4 +137,5 @@ function vttToPlainText(vtt: string): string {
 
 export function _resetForTests() {
   cachedWrap = null;
+  cookiesReady = null;
 }
