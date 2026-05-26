@@ -101,43 +101,29 @@ async function runFontProbe(): Promise<Response> {
     }, { status: 500 });
   }
 
-  // Probe what system tools are available and install Chromium deps.
-  // The Sandbox node24 runtime does not have apt-get; use the Remotion
-  // browser-ensure + npx @puppeteer/browsers approach via a shell probe.
-  const sysProbe = await sandbox.runCommand({
-    cmd: 'sh',
-    args: ['-c', [
-      'echo "OS:$(cat /etc/os-release 2>/dev/null | head -3)"',
-      'which apt-get 2>/dev/null && echo "HAS_APT=yes" || echo "HAS_APT=no"',
-      'which apk 2>/dev/null && echo "HAS_APK=yes" || echo "HAS_APK=no"',
-      'which yum 2>/dev/null && echo "HAS_YUM=yes" || echo "HAS_YUM=no"',
-      'ls /lib/x86_64-linux-gnu/libnspr4.so 2>/dev/null && echo "HAS_NSPR=yes" || echo "HAS_NSPR=no"',
-      'ls /usr/lib/x86_64-linux-gnu/libnspr4.so 2>/dev/null && echo "HAS_NSPR2=yes" || echo "HAS_NSPR2=no"',
-      'find / -name "libnspr4.so" 2>/dev/null | head -3',
-    ].join('; '),
+  // Vercel Sandbox is Amazon Linux 2023 (yum-based). Install Chromium
+  // system libs required by Remotion's bundled Chromium (libnspr4 et al).
+  // The Sandbox SDK runCommand supports `sudo: true` for privileged ops.
+  const tDeps = Date.now();
+  const yumInstall = await sandbox.runCommand({
+    cmd: 'yum',
+    args: ['install', '-y', '-q',
+      'nspr', 'nss', 'atk', 'at-spi2-atk', 'cups-libs', 'libdrm', 'libxkbcommon',
+      'libXcomposite', 'libXdamage', 'libXfixes', 'libXrandr', 'mesa-libgbm',
+      'alsa-lib', 'pango', 'cairo', 'libxshmfence',
     ],
+    sudo: true,
   });
-  const sysInfo = await sysProbe.stdout();
-  // Return diagnostic info so we can understand the environment
-  if (!sysInfo.includes('HAS_NSPR=yes') && !sysInfo.includes('HAS_NSPR2=yes')) {
-    // Try installing Chromium deps via the available package manager
-    let installOk = false;
-    if (sysInfo.includes('HAS_APT=yes')) {
-      const upd = await sandbox.runCommand({ cmd: 'apt-get', args: ['update', '-qq'], sudo: true, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-      const ins = await sandbox.runCommand({ cmd: 'apt-get', args: ['install', '-y', '--no-install-recommends', 'libnspr4', 'libnss3', 'libatk1.0-0', 'libatk-bridge2.0-0', 'libcups2', 'libdrm2', 'libxkbcommon0', 'libxcomposite1', 'libxdamage1', 'libxfixes3', 'libxrandr2', 'libgbm1', 'libasound2', 'libpango-1.0-0', 'libpangocairo-1.0-0'], sudo: true, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-      installOk = ins.exitCode === 0;
-      if (!installOk) {
-        return NextResponse.json({ stage: 'apt_install', exit: ins.exitCode, sysInfo, stderr: (await ins.stderr()).slice(-2000) }, { status: 500 });
-      }
-    } else {
-      // No apt-get: return diagnostic info to inform next iteration
-      return NextResponse.json({
-        stage: 'sys_probe',
-        sysInfo,
-        error: 'No package manager found for Chromium deps installation',
-      }, { status: 500 });
-    }
+  if (yumInstall.exitCode !== 0) {
+    return NextResponse.json({
+      stage: 'yum_install',
+      exit: yumInstall.exitCode,
+      duration_ms: Date.now() - tDeps,
+      stderr: (await yumInstall.stderr()).slice(-2000),
+      stdout: (await yumInstall.stdout()).slice(-2000),
+    }, { status: 500 });
   }
+  const yumInstallMs = Date.now() - tDeps;
 
   // Use `remotion still` for single-frame PNG output (not `render`, which
   // interprets a .png output path as an image sequence).
@@ -172,6 +158,7 @@ async function runFontProbe(): Promise<Response> {
   return NextResponse.json({
     pass: result.ok,
     duration_ms: Date.now() - t0,
+    yum_install_ms: yumInstallMs,
     mismatches: result.mismatches,
     actual: result.actual,
     expected: (expectedFingerprint as FontFingerprint).hashes,
