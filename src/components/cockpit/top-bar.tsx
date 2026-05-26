@@ -27,6 +27,7 @@ export function TopBar() {
         <span className="font-mono text-xs">{todayLabel()}</span>
         <Link href="/lab" className="hover:text-text-primary transition">Lab</Link>
         <Link href="/lab/drafts" className="hover:text-text-primary transition">Drafts</Link>
+        <Link href="/clips" className="hover:text-text-primary transition">Clips</Link>
       </nav>
 
       <div className="flex items-center gap-3">
