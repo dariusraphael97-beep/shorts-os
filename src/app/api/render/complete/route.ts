@@ -62,25 +62,60 @@ export async function POST(req: Request) {
   const supabase = getServiceClient();
   if (body.result.status === 'succeeded') {
     const rows = await markJobSucceeded(supabase, { jobId: body.job_id });
-    // Phase 1: only render_f1 side-effect wired.
-    if (rows > 0 && 'render_artifact_url' in body.result.output) {
-      const url = body.result.output.render_artifact_url as string;
+    if (rows > 0) {
+      const out = body.result.output;
       // Phase 2 diagnostic: stash debug_trace string on last_error column so we can
-      // query it without adding a new schema field. Cleared on a clean re-render.
-      const trace = body.result.output.debug_trace;
+      // query it without adding a new schema field. Applies to all job_types.
+      const trace = out.debug_trace;
       const traceText = typeof trace === 'string' ? trace : null;
-      // Look up the render_jobs row to get the your_video_id
-      const { data: jobRow } = await supabase
-        .from('render_jobs')
-        .select('your_video_id')
-        .eq('id', body.job_id)
-        .single();
-      if (jobRow?.your_video_id) {
-        await supabase
-          .from('your_videos')
-          .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
-          .eq('id', jobRow.your_video_id);
+
+      // render_f1 side-effect — update your_videos.render_artifact_url + status
+      if ('render_artifact_url' in out) {
+        const url = out.render_artifact_url as string;
+        const { data: jobRow } = await supabase
+          .from('render_jobs')
+          .select('your_video_id')
+          .eq('id', body.job_id)
+          .single();
+        if (jobRow?.your_video_id) {
+          await supabase
+            .from('your_videos')
+            .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
+            .eq('id', jobRow.your_video_id);
+        }
       }
+
+      // clip_ingest side-effect — insert clip_library row + link via clip_library_id
+      if ('source_url' in out && 'local_path' in out) {
+        const { data: inserted, error: insErr } = await supabase
+          .from('clip_library')
+          .insert({
+            source_url: out.source_url as string,
+            source_platform: out.source_platform as string,
+            source_creator: (out.source_creator as string | null) ?? null,
+            local_path: out.local_path as string,
+            duration_seconds: out.duration_seconds as number,
+            width: (out.width as number | null) ?? null,
+            height: (out.height as number | null) ?? null,
+            description: (out.description as string | null) ?? null,
+            tags: (out.tags as string[] | undefined) ?? [],
+            niche_id: (out.niche_id as string | null) ?? null,
+            added_by: (out.added_by as string | undefined) ?? 'reddit_ingest',
+          })
+          .select('id')
+          .single();
+        // 23505 = unique_violation on source_url — idempotent on duplicate callback
+        if (insErr && insErr.code !== '23505') {
+          console.error('clip_library insert failed:', insErr);
+        }
+        if (inserted) {
+          await supabase
+            .from('render_jobs')
+            .update({ clip_library_id: inserted.id })
+            .eq('id', body.job_id);
+        }
+      }
+
       if (traceText) {
         await supabase
           .from('render_jobs')
