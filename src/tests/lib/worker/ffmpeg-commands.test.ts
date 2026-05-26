@@ -5,7 +5,8 @@ vi.mock("node:child_process");
 
 import {
   buildNormalizeShotArgs,
-  buildFinalComposeArgs,
+  buildBaseComposeArgs,   // renamed (was buildFinalComposeArgs)
+  buildCompositeArgs,     // new
 } from "../../../../scripts/render-worker/lib/ffmpeg-commands.ts";
 
 describe("buildNormalizeShotArgs", () => {
@@ -26,44 +27,47 @@ describe("buildNormalizeShotArgs", () => {
   });
 });
 
-describe("buildFinalComposeArgs", () => {
-  it("uses concat demuxer + amix(0.25 music) + subtitles filter", () => {
-    const argv = buildFinalComposeArgs({
+describe("buildBaseComposeArgs", () => {
+  it("uses concat demuxer + amix(0.25 music)", () => {
+    const argv = buildBaseComposeArgs({
       concatListPath: "/tmp/list.txt",
       voicePath: "/tmp/voice.wav",
       musicPath: "/tmp/music.mp3",
-      subtitlesPath: "/tmp/captions.srt",
-      outputPath: "/tmp/out.mp4",
+      outputPath: "/tmp/base.mp4",
     });
     expect(argv).toContain("-f");
     expect(argv).toContain("concat");
     expect(argv).toContain("/tmp/list.txt");
     expect(argv.join(" ")).toContain("[2:a]volume=0.25[m]");
     expect(argv.join(" ")).toContain("[1:a][m]amix=inputs=2:duration=first[a]");
-    expect(argv.join(" ")).toContain("subtitles=/tmp/captions.srt");
-    expect(argv).toContain("/tmp/out.mp4");
+    // Subtitles filter is NO LONGER in this pass — captions moved to overlay
+    expect(argv.join(" ")).not.toContain("subtitles=");
+    expect(argv).toContain("/tmp/base.mp4");
   });
 
   it("omits music branch when musicPath is null", () => {
-    const argv = buildFinalComposeArgs({
+    const argv = buildBaseComposeArgs({
       concatListPath: "/tmp/list.txt",
       voicePath: "/tmp/voice.wav",
       musicPath: null,
-      subtitlesPath: "/tmp/captions.srt",
-      outputPath: "/tmp/out.mp4",
+      outputPath: "/tmp/base.mp4",
     });
     expect(argv.join(" ")).not.toContain("amix");
     expect(argv.join(" ")).not.toContain("volume=0.25");
   });
+});
 
-  it("omits subtitles filter when subtitlesPath is null", () => {
-    const argv = buildFinalComposeArgs({
-      concatListPath: "/tmp/list.txt",
-      voicePath: "/tmp/voice.wav",
-      musicPath: null,
-      subtitlesPath: null,
+describe("buildCompositeArgs", () => {
+  it("overlays the transparent overlay video onto the base video", () => {
+    const argv = buildCompositeArgs({
+      basePath: "/tmp/base.mp4",
+      overlayPath: "/tmp/captions.mov",
       outputPath: "/tmp/out.mp4",
     });
-    expect(argv.join(" ")).not.toContain("subtitles=");
+    expect(argv).toContain("-i");
+    expect(argv).toContain("/tmp/base.mp4");
+    expect(argv).toContain("/tmp/captions.mov");
+    expect(argv.join(" ")).toContain("[0:v][1:v]overlay=format=auto[v]");
+    expect(argv).toContain("/tmp/out.mp4");
   });
 });
