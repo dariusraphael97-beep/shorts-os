@@ -29,6 +29,7 @@ export async function synthesizeToWav(args: {
       voice: { mode: 'id', id: args.voiceId },
       output_format: { container: 'wav', sample_rate: 44100, encoding: 'pcm_s16le' },
     }),
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`Cartesia TTS failed ${res.status}: ${await res.text()}`);
   const buffer = Buffer.from(await res.arrayBuffer());

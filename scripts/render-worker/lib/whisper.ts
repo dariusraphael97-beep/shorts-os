@@ -30,6 +30,7 @@ export async function transcribeWavWithWordTimestamps(
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`Groq Whisper failed ${res.status}: ${await res.text()}`);
   const parsed = ResponseSchema.parse(await res.json());

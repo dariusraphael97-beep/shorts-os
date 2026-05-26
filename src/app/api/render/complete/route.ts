@@ -89,7 +89,11 @@ export async function POST(req: Request) {
       }
     }
   } else {
-    await markJobFailed(supabase, { jobId: body.job_id, error: body.result.error });
+    // Phase 2 diagnostic: append the trace (if present) to the error so we
+    // can read it back from render_jobs.last_error after a stuck/crashed run.
+    const trace = body.result.output?.debug_trace;
+    const traceText = typeof trace === 'string' ? `\n\nTRACE:\n${trace}` : '';
+    await markJobFailed(supabase, { jobId: body.job_id, error: body.result.error + traceText });
   }
   return NextResponse.json({ ok: true });
 }
