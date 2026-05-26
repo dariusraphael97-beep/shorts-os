@@ -90,10 +90,16 @@ ${ctx.previousOutputs.writer.script}
 Channel persona:
 ${JSON.stringify(ctx.channel.persona, null, 2)}
 
+Channel default voice_id: ${ctx.channel.default_voice_id ?? "(none)"}
+
 Voice pool (you must pick a voice_id from this list — no others are valid):
 ${VOICE_POOL.map((v) => `- ${v.id} (${v.provider}): ${v.description}`).join("\n")}
 
-Pick the voice_id that best matches script tone (urgency, sincerity, humor) and channel persona.
+DECISION RULE:
+- Default strongly to the channel default voice_id. In ~95% of cases, the channel default IS the right pick.
+- Only deviate when the script's tone EXPLICITLY demands a different voice — e.g., a dramatic crash/disaster story may warrant the dramatic-deep voice, a high-energy hype piece may warrant the energetic voice.
+- A passing reference to "drama" or "energy" in the script is NOT enough — the script's overall tone has to genuinely match a non-default voice better than the default.
+
 Set speed (0.8–1.2; 1.0 is normal pace) and stability (0–1; lower = more expressive, higher = more consistent).
-Explain your pick in 1-2 sentences.`;
+Explain your pick in 1-2 sentences. If you picked the channel default, say so; if you deviated, name the specific tonal cue in the script that triggered the override.`;
 }

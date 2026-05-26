@@ -24,36 +24,40 @@ export const VISUAL_TREATMENT_DESCRIPTIONS: Record<VisualTreatment, string> = {
   "split-screen": "two clips side by side, comparison-style",
 };
 
+// Real Cartesia voice UUIDs (Plan #4 Phase 2). Slot 1 is the cars-channel
+// default and must NOT change without also updating channels.default_voice_id
+// for dyfrx_9754. Slots 2–6 are personas the Voice Coach may pick from when
+// the script's tone explicitly overrides the channel default.
 export const VOICE_POOL = [
   {
-    id: "sonic-narrator-male-deadpan",
+    id: "630ed21c-2c5c-41cf-9d82-10a7fd668370", // Corey — Supportive Buddy (US). Cars channel default.
     provider: "cartesia",
-    description: "Dry deadpan male, mid-pace, slightly skeptical",
+    description: "Inviting, cheerful young adult male for casual conversation (cars channel default)",
   },
   {
-    id: "sonic-narrator-female-warm",
+    id: "87286a8d-7ea7-4235-a41a-dd9fa6630feb", // Henry — Plainspoken Guy (US)
     provider: "cartesia",
-    description: "Warm conversational female, friendly storyteller",
+    description: "Relaxed, monotone, matter-of-fact male — deadpan delivery for skeptical/dry scripts",
   },
   {
-    id: "sonic-narrator-male-urgent",
+    id: "a167e0f3-df7e-4d52-a9c3-f949145efdab", // Blake — Helpful Agent (US)
     provider: "cartesia",
-    description: "Punchy urgent male, news-bulletin energy",
+    description: "Energetic adult male — punchy, TikTok-native pace for high-engagement openers",
   },
   {
-    id: "eleven-narrator-female-curious",
-    provider: "elevenlabs",
-    description: "Curious storytelling female, leans into mystery",
+    id: "5ee9feff-1265-424a-9d7f-8e4d431a12c7", // Ronald — Thinker (US)
+    provider: "cartesia",
+    description: "Intense, deep young adult male — dramatic weight for crash/disaster stories",
   },
   {
-    id: "eleven-narrator-male-gravelly",
-    provider: "elevenlabs",
-    description: "Gravelly documentary male, '60 Minutes' weight",
+    id: "a5136bf9-224c-4d76-b823-52bd5efcffcc", // Jameson — Easygoing Support (US)
+    provider: "cartesia",
+    description: "Friendly, laid-back male — podcast-style conversational casual",
   },
   {
-    id: "eleven-narrator-female-young",
-    provider: "elevenlabs",
-    description: "Energetic young female, TikTok-native pace",
+    id: "f9836c6e-a0bd-460e-9d3c-f7299fa60f94", // Caroline — Southern Guide (US)
+    provider: "cartesia",
+    description: "Wild-card: friendly, slow Southern US female — gender-flip + regional accent for distinctive overrides",
   },
 ] as const;
 
