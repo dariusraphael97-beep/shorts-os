@@ -5,7 +5,7 @@
 // the Next.js callback endpoint.
 import { getSupabase } from './lib/supabase.ts';
 import { postCallback } from './lib/callback.ts';
-import { runClipIngest } from './handlers/clip-ingest.ts';
+import { runClipIngest, ClipIngestError } from './handlers/clip-ingest.ts';
 import { runRenderF1, RenderF1Error } from './handlers/render-f1.ts';
 import { runRenderF2 } from './handlers/render-f2.ts';
 import { runUpload } from './handlers/upload.ts';
@@ -34,7 +34,7 @@ async function main() {
   try {
     let output: Record<string, unknown>;
     switch (job.job_type) {
-      case 'clip_ingest':  output = await runClipIngest(); break;
+      case 'clip_ingest':  output = await runClipIngest(job, supabase); break;
       case 'render_f1':    output = await runRenderF1(job, supabase); break;
       case 'render_f2':    output = await runRenderF2(); break;
       case 'upload':       output = await runUpload(); break;
@@ -43,7 +43,10 @@ async function main() {
     await postCallback({ jobId, jobToken, sandboxInvocationId, result: { status: 'succeeded', output } });
   } catch (err) {
     const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
-    const trace = err instanceof RenderF1Error ? err.trace : undefined;
+    const trace =
+      err instanceof RenderF1Error ? err.trace
+      : err instanceof ClipIngestError ? err.trace
+      : undefined;
     await postCallback({
       jobId, jobToken, sandboxInvocationId,
       result: { status: 'failed', error: msg, output: trace ? { debug_trace: trace } : undefined },

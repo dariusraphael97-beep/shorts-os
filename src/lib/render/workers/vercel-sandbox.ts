@@ -52,6 +52,7 @@ export class VercelSandboxRenderWorker implements RenderWorker {
       CARTESIA_API_KEY: process.env.CARTESIA_API_KEY ?? '',
       PEXELS_API_KEY: process.env.PEXELS_API_KEY ?? '',
       GROQ_API_KEY: process.env.GROQ_API_KEY ?? '',
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
       BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN ?? '',
       RENDER_CALLBACK_BASE_URL: process.env.RENDER_CALLBACK_BASE_URL ?? '',
       OAUTH_TOKEN_ENCRYPTION_KEY_V1: process.env.OAUTH_TOKEN_ENCRYPTION_KEY_V1 ?? '',
