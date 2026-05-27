@@ -6,6 +6,12 @@
 // Remotion title cards + animated callouts land in a follow-up phase after
 // the plan-4-phase-2-5 captions-overlay branch merges (see Task 18 in the
 // Phase 4 plan).
+//
+// Font: DejaVu Sans Bold is bundled in ../assets/ because the Vercel Sandbox
+// (Amazon Linux 2023) does not ship DejaVu fonts by default and the
+// /usr/share/fonts/ paths most ffmpeg drawtext examples assume don't exist.
+// fontPath is injected by the caller (the handler resolves it relative to its
+// own module path) so the pure builder stays filesystem-free.
 
 export interface F2ClipRef {
   clip_id: string;
@@ -22,6 +28,7 @@ export interface CompositeArgs {
   titleTemplate: string;
   layoutVariant: 'top5_sidebar' | 'top5_overlay';
   outputPath: string;
+  fontPath: string;
 }
 
 /** Trim a single source clip to [startSec, endSec] and rescale to 1080x1920. */
@@ -56,7 +63,7 @@ export function buildConcatListFile(clipPaths: string[]): string {
  * the bottom of the frame (top5_overlay).
  */
 export function buildCompositeArgs(args: CompositeArgs): string[] {
-  const drawTitle = `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${escapeDrawtext(
+  const drawTitle = `drawtext=fontfile=${args.fontPath}:text='${escapeDrawtext(
     args.titleTemplate,
   )}':fontcolor=white:fontsize=64:box=1:boxcolor=black@0.7:boxborderw=20:x=(w-text_w)/2:y=40`;
 
@@ -72,7 +79,7 @@ export function buildCompositeArgs(args: CompositeArgs): string[] {
         args.layoutVariant === 'top5_sidebar'
           ? 'x=40:y=h-220'
           : 'x=(w-text_w)/2:y=h-220';
-      return `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${labelText}':fontcolor=white:fontsize=48:box=1:boxcolor=black@0.6:boxborderw=15:${positioning}:enable='between(t,${startTime.toFixed(3)},${(startTime + segDur).toFixed(3)})'`;
+      return `drawtext=fontfile=${args.fontPath}:text='${labelText}':fontcolor=white:fontsize=48:box=1:boxcolor=black@0.6:boxborderw=15:${positioning}:enable='between(t,${startTime.toFixed(3)},${(startTime + segDur).toFixed(3)})'`;
     })
     .join(',');
 
