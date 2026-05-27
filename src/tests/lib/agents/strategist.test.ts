@@ -29,6 +29,7 @@ const fakeChannel = {
   default_tts_provider: "cartesia" as const,
   is_active: true,
   max_uploads_per_day: 2,
+  target_format_mix: { explainer: 0.6, compilation: 0.4 },
   created_at: "2026-05-24T00:00:00Z",
   updated_at: "2026-05-24T00:00:00Z",
 };
@@ -58,6 +59,8 @@ describe("runStrategist", () => {
         dispatch_directive: "Lean into the 1903 detail and the civic mistrust angle.",
         format_hints: ["open with the year", "one surprising claim"],
         selected_channel_id: "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5",
+        selected_format: "explainer",
+        analyst_guidance_acknowledged: true,
         rationale: "Matches dry-deadpan history voice and the persona's style guide.",
       },
     } as any);
@@ -72,7 +75,34 @@ describe("runStrategist", () => {
     expect(out.dispatch_directive).toMatch(/1903/);
     expect(out.format_hints).toContain("open with the year");
     expect(out.selected_channel_id).toBe(fakeChannel.id);
+    expect(out.selected_format).toBe("explainer");
+    expect(out.analyst_guidance_acknowledged).toBe(true);
     expect(generateObject).toHaveBeenCalledOnce();
+  });
+
+  it("accepts compilation format with a forced_format_incompatible override", async () => {
+    vi.mocked(generateObject).mockResolvedValue({
+      object: {
+        dispatch_directive: "Build a Top-5 around viral fail moments this week.",
+        format_hints: ["fast cuts", "build to payoff"],
+        selected_channel_id: "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5",
+        selected_format: "compilation",
+        analyst_guidance_acknowledged: true,
+        forced_format_incompatible: {
+          reason: "Topic is a single-claim explainer but clip_library is empty.",
+        },
+        rationale: "Empty clip library for the natural format forced compilation alternative.",
+      },
+    } as any);
+
+    const out = await runStrategist({
+      job: { id: "j1" } as any,
+      topic: fakeTopic as any,
+      channel: fakeChannel as any,
+      previousOutputs: {},
+    });
+    expect(out.selected_format).toBe("compilation");
+    expect(out.forced_format_incompatible?.reason).toMatch(/empty/i);
   });
 
   it("rejects output that fails schema validation", async () => {
@@ -81,6 +111,8 @@ describe("runStrategist", () => {
         dispatch_directive: "x", // too short — min 20
         format_hints: [],         // too few — min 1
         selected_channel_id: "not-a-uuid",
+        selected_format: "explainer",
+        analyst_guidance_acknowledged: false,
         rationale: "y",           // too short — min 20
       },
     } as any);
@@ -92,6 +124,27 @@ describe("runStrategist", () => {
         channel: fakeChannel as any,
         previousOutputs: {},
       })
+    ).rejects.toThrow();
+  });
+
+  it("rejects output missing selected_format", async () => {
+    vi.mocked(generateObject).mockResolvedValue({
+      object: {
+        dispatch_directive: "Lean into the 1903 detail and the civic mistrust angle.",
+        format_hints: ["open with the year"],
+        selected_channel_id: "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5",
+        analyst_guidance_acknowledged: true,
+        rationale: "Matches dry-deadpan history voice and the persona's style guide.",
+      },
+    } as any);
+
+    await expect(
+      runStrategist({
+        job: { id: "j1" } as any,
+        topic: fakeTopic as any,
+        channel: fakeChannel as any,
+        previousOutputs: {},
+      }),
     ).rejects.toThrow();
   });
 });

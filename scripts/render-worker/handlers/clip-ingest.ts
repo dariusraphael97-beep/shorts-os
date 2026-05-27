@@ -30,6 +30,21 @@ export class ClipIngestError extends Error {
   }
 }
 
+export function deriveSourcePlatform(
+  sourceUrl: string,
+): 'reddit' | 'youtube' | 'tiktok' | 'twitch' | 'upload' {
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase();
+    if (host.includes('reddit.com') || host.endsWith('redd.it')) return 'reddit';
+    if (host.includes('youtube.com') || host === 'youtu.be') return 'youtube';
+    if (host.includes('tiktok.com')) return 'tiktok';
+    if (host.includes('twitch.tv')) return 'twitch';
+    return 'upload';
+  } catch {
+    return 'upload';
+  }
+}
+
 interface ProbeResult {
   durationSeconds: number;
   width: number | null;
@@ -164,7 +179,7 @@ export async function runClipIngest(
 
     return {
       source_url: payload.source_url,
-      source_platform: 'reddit',
+      source_platform: deriveSourcePlatform(payload.source_url),
       source_creator: payload.source_creator,
       local_path: clipBlobUrl,
       thumbnail_url: thumbBlobUrl,

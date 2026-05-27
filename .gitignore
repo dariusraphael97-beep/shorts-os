@@ -42,3 +42,9 @@ yarn-error.log*
 next-env.d.ts
 scripts/probe-coldstart.sh
 scripts/gen-font-fingerprint.mjs
+
+# local agent state (per-machine, not shared)
+.claude/
+
+# operator scratch files
+most-likely-to-form.gs

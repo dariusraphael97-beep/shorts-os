@@ -67,6 +67,40 @@ describe('POST /api/render/complete', () => {
     expect(res.status).toBe(403);
   });
 
+  it('updates compilation_drafts on render_f2 success', async () => {
+    const token = signCallbackToken({ jobId: '550e8400-e29b-41d4-a716-446655440000', ttlSeconds: 60 });
+    const req = new Request('http://localhost/api/render/complete', {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        job_id: '550e8400-e29b-41d4-a716-446655440000',
+        sandbox_invocation_id: 'sb-f2',
+        result: {
+          status: 'succeeded',
+          output: {
+            compilation_draft_id: '11111111-1111-4111-8111-111111111111',
+            rendered_path: 'https://blob/compilation/x.mp4',
+            duration_seconds_actual: 28.5,
+          },
+        },
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const updateCall = mockUpdate.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'object' &&
+        call[0] !== null &&
+        'rendered_path' in (call[0] as Record<string, unknown>) &&
+        'status' in (call[0] as Record<string, unknown>),
+    );
+    expect(updateCall).toBeDefined();
+    expect((updateCall![0] as Record<string, unknown>).rendered_path).toBe(
+      'https://blob/compilation/x.mp4',
+    );
+    expect((updateCall![0] as Record<string, unknown>).status).toBe('rendered');
+  });
+
   it('rejects malformed body via Zod', async () => {
     const token = signCallbackToken({ jobId: '550e8400-e29b-41d4-a716-446655440000', ttlSeconds: 60 });
     const req = new Request('http://localhost/api/render/complete', {

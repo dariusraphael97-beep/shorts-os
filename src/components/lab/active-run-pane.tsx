@@ -20,6 +20,7 @@ import type { StrategistOutput } from "@/lib/agents/strategist";
 import type { WriterOutput } from "@/lib/agents/writer";
 import type { VoiceCoachOutput } from "@/lib/agents/voice-coach";
 import type { DirectorOutput } from "@/lib/agents/director";
+import type { ComposerOutput } from "@/lib/agents/composer";
 import {
   PipelineStrip,
   deriveChipState,
@@ -39,6 +40,7 @@ type RunState = {
   writer: AgentSlotBase & { output: WriterOutput | null; streamedText: string };
   voiceCoach: AgentSlotBase & { output: VoiceCoachOutput | null };
   director: AgentSlotBase & { output: DirectorOutput | null };
+  composer: AgentSlotBase & { output: ComposerOutput | null };
   failure: { agent: AgentId; error: string } | null;
   completed: boolean;
 };
@@ -51,6 +53,7 @@ const INITIAL: RunState = {
   writer: { state: null, output: null, streamedText: "" },
   voiceCoach: { state: null, output: null },
   director: { state: null, output: null },
+  composer: { state: null, output: null },
   failure: null,
   completed: false,
 };
@@ -154,6 +157,11 @@ export function ActiveRunPane() {
       Boolean(run.director.output),
       run.failure?.agent === "director",
     ),
+    composer: deriveChipState(
+      run.composer.state,
+      Boolean(run.composer.output),
+      run.failure?.agent === "composer",
+    ),
   };
 
   return (
@@ -237,11 +245,14 @@ function applyEvent(setRun: React.Dispatch<React.SetStateAction<RunState>>, ev: 
   });
 }
 
-function mapAgentToKey(agent: AgentId): "strategist" | "writer" | "voiceCoach" | "director" {
+function mapAgentToKey(
+  agent: AgentId,
+): "strategist" | "writer" | "voiceCoach" | "director" | "composer" {
   switch (agent) {
     case "strategist": return "strategist";
     case "writer": return "writer";
     case "voice_coach": return "voiceCoach";
     case "director": return "director";
+    case "composer": return "composer";
   }
 }

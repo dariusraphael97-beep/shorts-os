@@ -21,6 +21,7 @@ const AGENT_BASE: Record<AgentId, { label: string; emoji: string }> = {
   writer:     { label: "Writer",     emoji: "✍️" },
   voice_coach:{ label: "Voice Coach",emoji: "🎙️" },
   director:   { label: "Director",   emoji: "🎬" },
+  composer:   { label: "Composer",   emoji: "🎼" },
 };
 
 const STATE_STYLES: Record<AgentChipState, string> = {

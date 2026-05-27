@@ -26,6 +26,9 @@ import { runStrategist, type StrategistOutput } from "./strategist";
 import { runWriter, type WriterOutput } from "./writer";
 import { runVoiceCoach, type VoiceCoachOutput } from "./voice-coach";
 import { runDirector, type DirectorOutput } from "./director";
+import { runComposer } from "./composer";
+import { computeRecentMix, isFormatMixDrift } from "./format-mix";
+import { createOperatorAlert } from "@/lib/supabase/repositories/operator-alerts";
 import { VOICE_POOL, VISUAL_TREATMENTS } from "./constants";
 
 export class ConcurrentRunError extends Error {
@@ -62,6 +65,7 @@ export async function* runPipeline(args: {
     writer: 60,
     voice_coach: 80,
     director: 95,
+    composer: 95,
   };
 
   let strategistOut: StrategistOutput;
@@ -98,6 +102,58 @@ export async function* runPipeline(args: {
       reasoning: strategistOut.rationale,
     });
     yield* lifecycleAfter(supabase, job.id, "strategist", progressByAgent.strategist, Date.now() - stratStart);
+
+    // ────── Format-mix drift check (warn-only in Phase 4) ──────
+    try {
+      const currentMix = await computeRecentMix(supabase, { channelId: channel.id, lookbackDays: 30 });
+      if (isFormatMixDrift(currentMix, channel.target_format_mix)) {
+        await createOperatorAlert(supabase, {
+          channelId: channel.id,
+          category: "format_mix_drift",
+          severity: "warn",
+          message: `Recent mix ${Math.round(currentMix.explainer * 100)}/${Math.round(currentMix.compilation * 100)} drifts from target ${Math.round(channel.target_format_mix.explainer * 100)}/${Math.round(channel.target_format_mix.compilation * 100)}.`,
+          context: { current_mix: currentMix, target_mix: channel.target_format_mix },
+        });
+      }
+    } catch {
+      // drift detection is informational; never block dispatch on its failure
+    }
+
+    // ────── Branch on selected_format ──────
+    if (strategistOut.selected_format === "compilation") {
+      currentAgent = "composer";
+      yield* lifecycleBefore(supabase, "composer", `Composing: ${topic.title}`);
+      const compStart = Date.now();
+      const { output: composerOut, draftId, fallbackUsed } = await runComposer({
+        job,
+        topic,
+        channel: channel as never,
+        strategist: strategistOut,
+        supabase,
+      });
+      yield { type: "agent_output", data: { agent: "composer", output: composerOut } };
+      await recordAgentMessage(supabase, {
+        jobId: job.id,
+        fromAgent: "strategist",
+        toAgent: "composer",
+        intent: "compilation_brief",
+        payload: strategistOut as unknown as Record<string, unknown>,
+      });
+      await recordDecision(supabase, {
+        jobId: job.id,
+        agentId: "composer",
+        decisionType: "compilation_assembly",
+        inputs: { topic_id: topic.id, dispatch_directive: strategistOut.dispatch_directive },
+        chosen: { ...(composerOut as unknown as Record<string, unknown>), draft_id: draftId, fallback: fallbackUsed },
+        reasoning: fallbackUsed
+          ? `${composerOut.rationale} [fallback: LLM validation failed twice]`
+          : composerOut.rationale,
+      });
+      yield* lifecycleAfter(supabase, job.id, "composer", progressByAgent.composer, Date.now() - compStart);
+      await finishJobSuccess(supabase, job.id);
+      yield { type: "job_completed", data: { videoId: draftId } };
+      return;
+    }
 
     // ────── Writer ──────
     currentAgent = "writer";

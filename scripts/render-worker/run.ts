@@ -8,7 +8,7 @@ import { getSupabase } from './lib/supabase.ts';
 import { postCallback } from './lib/callback.ts';
 import { runClipIngest, ClipIngestError } from './handlers/clip-ingest.ts';
 import { runRenderF1, RenderF1Error } from './handlers/render-f1.ts';
-import { runRenderF2 } from './handlers/render-f2.ts';
+import { runRenderF2, RenderF2Error } from './handlers/render-f2.ts';
 import { runUpload } from './handlers/upload.ts';
 
 const jobId = process.argv[2];
@@ -43,7 +43,7 @@ async function main() {
     switch (job.job_type) {
       case 'clip_ingest':  output = await runClipIngest(job, supabase); break;
       case 'render_f1':    output = await runRenderF1(job, supabase); break;
-      case 'render_f2':    output = await runRenderF2(); break;
+      case 'render_f2':    output = await runRenderF2(job, supabase); break;
       case 'upload':       output = await runUpload(); break;
       default: throw new Error(`unknown job_type: ${job.job_type}`);
     }
@@ -52,6 +52,7 @@ async function main() {
     const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
     const trace =
       err instanceof RenderF1Error ? err.trace
+      : err instanceof RenderF2Error ? err.trace
       : err instanceof ClipIngestError ? err.trace
       : undefined;
     await postCallback({

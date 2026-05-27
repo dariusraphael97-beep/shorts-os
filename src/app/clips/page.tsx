@@ -1,9 +1,14 @@
 // src/app/clips/page.tsx
 //
-// Plan #4 Phase 3 — Clips page. Phase 3 ships Inbox tab only.
-// Phase 4 will add Candidates + Rendered tabs for Format-2 compilations.
+// Plan #4 Phase 4 — Clips page. Three tabs: Inbox (auto-ingested clip_library),
+// Candidates (proposed compilation_drafts awaiting approval), Rendered
+// (compilation_drafts whose render_f2 job succeeded, awaiting promotion to
+// your_videos).
 import { CockpitShell } from "@/components/cockpit/cockpit-shell";
 import { InboxTab } from "@/components/clips/inbox-tab";
+import { CandidatesTab } from "@/components/clips/candidates-tab";
+import { RenderedTab } from "@/components/clips/rendered-tab";
+import { ClipsTabs } from "@/components/clips/clips-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +19,15 @@ export default async function ClipsPage() {
         <header>
           <h1 className="text-2xl font-semibold text-text-primary">Clips</h1>
           <p className="text-text-secondary text-sm mt-1">
-            Auto-ingested clips ready for Format-2 compilations. Block low-signal sources here.
+            Inbox: auto-ingested clip_library. Candidates: compilation drafts waiting on you.
+            Rendered: finished renders to promote into your_videos.
           </p>
         </header>
-        <InboxTab />
+        <ClipsTabs
+          inbox={<InboxTab />}
+          candidates={<CandidatesTab />}
+          rendered={<RenderedTab />}
+        />
       </div>
     </CockpitShell>
   );

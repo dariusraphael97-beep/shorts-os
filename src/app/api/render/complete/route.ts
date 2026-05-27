@@ -85,6 +85,21 @@ export async function POST(req: Request) {
         }
       }
 
+      // render_f2 side-effect — update compilation_drafts.rendered_path + status='rendered'
+      if ('compilation_draft_id' in out && 'rendered_path' in out) {
+        const draftId = out.compilation_draft_id as string;
+        const renderedPath = out.rendered_path as string;
+        const { error: updErr } = await supabase
+          .from('compilation_drafts')
+          .update({
+            rendered_path: renderedPath,
+            status: 'rendered',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', draftId);
+        if (updErr) console.error('compilation_drafts rendered update failed:', updErr);
+      }
+
       // clip_ingest side-effect — insert clip_library row + link via clip_library_id
       if ('source_url' in out && 'local_path' in out) {
         const { data: inserted, error: insErr } = await supabase
@@ -129,6 +144,21 @@ export async function POST(req: Request) {
     const trace = body.result.output?.debug_trace;
     const traceText = typeof trace === 'string' ? `\n\nTRACE:\n${trace}` : '';
     await markJobFailed(supabase, { jobId: body.job_id, error: body.result.error + traceText });
+
+    // render_f2 failure side-effect — flip the linked compilation_draft to status='failed'
+    // so the operator sees the broken draft surfaced. compilation_draft_id is recorded on
+    // the render_jobs row at enqueue time.
+    const { data: jobRow } = await supabase
+      .from('render_jobs')
+      .select('job_type, compilation_draft_id')
+      .eq('id', body.job_id)
+      .maybeSingle();
+    if (jobRow?.job_type === 'render_f2' && jobRow.compilation_draft_id) {
+      await supabase
+        .from('compilation_drafts')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', jobRow.compilation_draft_id);
+    }
   }
   return NextResponse.json({ ok: true });
 }
