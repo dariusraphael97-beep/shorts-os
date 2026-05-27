@@ -76,3 +76,16 @@ export async function loadEncryptedRefreshToken(
   const blob = JSON.parse(raw) as EncryptedSecret;
   return decryptSecret(blob);
 }
+
+export async function isYouTubeConnected(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('channels')
+    .select('oauth_refresh_token_encrypted')
+    .eq('id', channelId)
+    .single();
+  if (error) throw new Error(`isYouTubeConnected: ${error.message}`);
+  return (data as { oauth_refresh_token_encrypted: string | null }).oauth_refresh_token_encrypted != null;
+}
