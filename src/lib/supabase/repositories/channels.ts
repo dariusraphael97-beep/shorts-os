@@ -9,6 +9,8 @@ export type ChannelPersona = {
   forbidden: string[];
 };
 
+export type FormatMix = { explainer: number; compilation: number };
+
 export type Channel = {
   id: string;
   slug: string;
@@ -21,6 +23,7 @@ export type Channel = {
   default_tts_provider: "cartesia" | "elevenlabs" | null;
   is_active: boolean;
   max_uploads_per_day: number;
+  target_format_mix: FormatMix;
   created_at: string;
   updated_at: string;
 };

@@ -61,6 +61,8 @@ const fakeStrategistOut = {
   dispatch_directive: "x".repeat(40),
   format_hints: ["a"],
   selected_channel_id: "ch-uuid",
+  selected_format: "explainer" as const,
+  analyst_guidance_acknowledged: true,
   rationale: "x".repeat(40),
 };
 

@@ -62,6 +62,7 @@ export async function* runPipeline(args: {
     writer: 60,
     voice_coach: 80,
     director: 95,
+    composer: 95,
   };
 
   let strategistOut: StrategistOutput;

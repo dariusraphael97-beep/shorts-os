@@ -6,7 +6,7 @@
 
 import "server-only";
 
-export type AgentId = "strategist" | "writer" | "voice_coach" | "director";
+export type AgentId = "strategist" | "writer" | "voice_coach" | "director" | "composer";
 
 export type AgentState = "idle" | "thinking" | "working" | "awaiting_input";
 
