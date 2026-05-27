@@ -7,6 +7,7 @@ export type AgentMessageIntent =
   | "script"
   | "voice_pick"
   | "shot_list"
+  | "compilation_brief"
   | "error";
 
 export async function recordAgentMessage(

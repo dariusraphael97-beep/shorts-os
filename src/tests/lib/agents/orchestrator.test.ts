@@ -4,6 +4,14 @@ vi.mock("@/lib/agents/strategist", () => ({ runStrategist: vi.fn() }));
 vi.mock("@/lib/agents/writer", () => ({ runWriter: vi.fn() }));
 vi.mock("@/lib/agents/voice-coach", () => ({ runVoiceCoach: vi.fn() }));
 vi.mock("@/lib/agents/director", () => ({ runDirector: vi.fn() }));
+vi.mock("@/lib/agents/composer", () => ({ runComposer: vi.fn() }));
+vi.mock("@/lib/agents/format-mix", () => ({
+  computeRecentMix: vi.fn(),
+  isFormatMixDrift: vi.fn(),
+}));
+vi.mock("@/lib/supabase/repositories/operator-alerts", () => ({
+  createOperatorAlert: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/repositories/channels", () => ({ getDefaultChannel: vi.fn() }));
 vi.mock("@/lib/supabase/repositories/topic-queue", () => ({ getTopicById: vi.fn() }));
@@ -23,6 +31,9 @@ import { runStrategist } from "@/lib/agents/strategist";
 import { runWriter } from "@/lib/agents/writer";
 import { runVoiceCoach } from "@/lib/agents/voice-coach";
 import { runDirector } from "@/lib/agents/director";
+import { runComposer } from "@/lib/agents/composer";
+import { computeRecentMix, isFormatMixDrift } from "@/lib/agents/format-mix";
+import { createOperatorAlert } from "@/lib/supabase/repositories/operator-alerts";
 import { getDefaultChannel } from "@/lib/supabase/repositories/channels";
 import { getTopicById } from "@/lib/supabase/repositories/topic-queue";
 import {
@@ -44,6 +55,7 @@ const fakeChannel = {
   persona: { niche: "history" },
   default_voice_id: "x",
   default_tts_provider: "cartesia",
+  target_format_mix: { explainer: 0.6, compilation: 0.4 },
 } as any;
 
 const fakeTopic = {
@@ -117,6 +129,9 @@ describe("runPipeline — success path", () => {
     vi.mocked(runVoiceCoach).mockResolvedValue(fakeVoiceCoachOut);
     vi.mocked(runDirector).mockResolvedValue(fakeDirectorOut);
     vi.mocked(createVideoDraft).mockResolvedValue({ id: "video-uuid" } as any);
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.6, compilation: 0.4 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(false);
+    vi.mocked(createOperatorAlert).mockResolvedValue({} as any);
   });
 
   it("emits events in the correct order", async () => {
@@ -241,6 +256,9 @@ describe("runPipeline — voice coach fallback", () => {
     vi.mocked(runVoiceCoach).mockResolvedValue(fallbackVoiceCoachOut as any);
     vi.mocked(runDirector).mockResolvedValue(fakeDirectorOut);
     vi.mocked(createVideoDraft).mockResolvedValue({ id: "video-uuid" } as any);
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.6, compilation: 0.4 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(false);
+    vi.mocked(createOperatorAlert).mockResolvedValue({} as any);
   });
 
   it("emits agent_output + agent_done for voice_coach on fallback", async () => {
@@ -292,6 +310,9 @@ describe("runPipeline — failure path", () => {
       yield { type: "chunk" as const, text: "In 1903" };
       throw new Error("rate limit");
     });
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.6, compilation: 0.4 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(false);
+    vi.mocked(createOperatorAlert).mockResolvedValue({} as any);
   });
 
   it("emits job_failed with correct agent when Writer throws", async () => {
@@ -327,5 +348,159 @@ describe("runPipeline — failure path", () => {
     const writerCalls = vi.mocked(updateAgentState).mock.calls.filter((c) => c[1] === "writer");
     const last = writerCalls[writerCalls.length - 1];
     expect(last[2]).toBe("idle");
+  });
+});
+
+describe("runPipeline — compilation branch", () => {
+  const fakeComposerOut = {
+    title_template: "TOP 5 STREET FAILS",
+    accent_word: "FAILS",
+    title_formula_id: "top_5" as const,
+    reveal_pattern: "dramatic" as const,
+    caption_style: "mixed" as const,
+    layout_variant: "top5_sidebar" as const,
+    clip_refs: [1, 2, 3, 4, 5].map((n) => ({
+      clip_id: `c-${n}`,
+      start_sec: 0,
+      end_sec: 6,
+      label: `clip ${n}`,
+      order: n,
+    })),
+    music_track_id: "m1",
+    rationale: "strong dramatic arc, music supports pacing",
+  };
+
+  const compilationStrategistOut = {
+    ...fakeStrategistOut,
+    selected_format: "compilation" as const,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue(null);
+    vi.mocked(getTopicById).mockResolvedValue(fakeTopic);
+    vi.mocked(getDefaultChannel).mockResolvedValue(fakeChannel);
+    vi.mocked(createProduceVideoJob).mockResolvedValue(fakeJob);
+    vi.mocked(runStrategist).mockResolvedValue(compilationStrategistOut);
+    vi.mocked(runComposer).mockResolvedValue({
+      output: fakeComposerOut,
+      draftId: "draft-uuid-1",
+      fallbackUsed: false,
+    } as any);
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.6, compilation: 0.4 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(false);
+    vi.mocked(createOperatorAlert).mockResolvedValue({} as any);
+  });
+
+  it("routes to Composer and skips Writer / Voice Coach / Director", async () => {
+    const events: any[] = [];
+    for await (const ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      events.push(ev);
+    }
+    expect(runComposer).toHaveBeenCalledOnce();
+    expect(runWriter).not.toHaveBeenCalled();
+    expect(runVoiceCoach).not.toHaveBeenCalled();
+    expect(runDirector).not.toHaveBeenCalled();
+    expect(createVideoDraft).not.toHaveBeenCalled();
+
+    expect(events.filter((e) => e.type === "agent_output" && e.data.agent === "composer")).toHaveLength(1);
+    const completed = events.find((e) => e.type === "job_completed");
+    expect(completed).toBeDefined();
+    expect(completed.data.videoId).toBe("draft-uuid-1");
+  });
+
+  it("records compilation_brief agent_message + compilation_assembly decision", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    const msgCall = vi.mocked(recordAgentMessage).mock.calls.find(
+      (c) => c[1].intent === "compilation_brief",
+    );
+    expect(msgCall).toBeDefined();
+    expect(msgCall![1].fromAgent).toBe("strategist");
+    expect(msgCall![1].toAgent).toBe("composer");
+
+    const decisionCall = vi.mocked(recordDecision).mock.calls.find(
+      (c) => c[1].agentId === "composer",
+    );
+    expect(decisionCall).toBeDefined();
+    expect(decisionCall![1].decisionType).toBe("compilation_assembly");
+    expect((decisionCall![1].chosen as any).fallback).toBe(false);
+    expect((decisionCall![1].chosen as any).draft_id).toBe("draft-uuid-1");
+  });
+
+  it("annotates the decision when Composer used the heuristic fallback", async () => {
+    vi.mocked(runComposer).mockResolvedValue({
+      output: fakeComposerOut,
+      draftId: "draft-uuid-2",
+      fallbackUsed: true,
+    } as any);
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    const decisionCall = vi.mocked(recordDecision).mock.calls.find(
+      (c) => c[1].agentId === "composer",
+    );
+    expect((decisionCall![1].chosen as any).fallback).toBe(true);
+    expect(decisionCall![1].reasoning).toMatch(/fallback/i);
+  });
+
+  it("calls finishJobSuccess and emits agent_done for composer", async () => {
+    const events: any[] = [];
+    for await (const ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      events.push(ev);
+    }
+    expect(finishJobSuccess).toHaveBeenCalledWith(expect.anything(), "job-uuid");
+    expect(events.filter((e) => e.type === "agent_done" && e.data.agent === "composer")).toHaveLength(1);
+  });
+});
+
+describe("runPipeline — format-mix drift alert", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getActiveProduceVideoJob).mockResolvedValue(null);
+    vi.mocked(getTopicById).mockResolvedValue(fakeTopic);
+    vi.mocked(getDefaultChannel).mockResolvedValue(fakeChannel);
+    vi.mocked(createProduceVideoJob).mockResolvedValue(fakeJob);
+    vi.mocked(runStrategist).mockResolvedValue(fakeStrategistOut);
+    vi.mocked(runWriter).mockImplementation(async function* () {
+      yield { type: "done" as const, output: fakeWriterOut };
+    });
+    vi.mocked(runVoiceCoach).mockResolvedValue(fakeVoiceCoachOut);
+    vi.mocked(runDirector).mockResolvedValue(fakeDirectorOut);
+    vi.mocked(createVideoDraft).mockResolvedValue({ id: "video-uuid" } as any);
+    vi.mocked(createOperatorAlert).mockResolvedValue({} as any);
+  });
+
+  it("writes a format_mix_drift operator_alert when isFormatMixDrift returns true", async () => {
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.3, compilation: 0.7 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(true);
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    expect(createOperatorAlert).toHaveBeenCalledOnce();
+    const args = vi.mocked(createOperatorAlert).mock.calls[0][1];
+    expect(args.category).toBe("format_mix_drift");
+    expect(args.severity).toBe("warn");
+    expect(args.channelId).toBe("ch-uuid");
+  });
+
+  it("does NOT write an alert when no drift", async () => {
+    vi.mocked(computeRecentMix).mockResolvedValue({ explainer: 0.6, compilation: 0.4 });
+    vi.mocked(isFormatMixDrift).mockReturnValue(false);
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      /* drain */
+    }
+    expect(createOperatorAlert).not.toHaveBeenCalled();
+  });
+
+  it("does NOT block dispatch if the drift check itself throws", async () => {
+    vi.mocked(computeRecentMix).mockRejectedValue(new Error("supabase exploded"));
+    const events: any[] = [];
+    for await (const ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) {
+      events.push(ev);
+    }
+    // Pipeline still completes; the error swallowed.
+    expect(events[events.length - 1].type).toBe("job_completed");
   });
 });

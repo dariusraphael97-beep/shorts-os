@@ -12,7 +12,8 @@ export type DecisionType =
   | "topic_dispatch"
   | "script"
   | "voice_pick"
-  | "shot_list";
+  | "shot_list"
+  | "compilation_assembly";
 
 export async function recordDecision(
   supabase: SupabaseClient,
