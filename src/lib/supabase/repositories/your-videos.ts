@@ -11,7 +11,7 @@ export type YourVideo = {
   url: string | null;
   title: string;
   description: string | null;
-  script: string;
+  script: string | null;
   voice_provider: string | null;
   voice_id: string | null;
   duration_seconds: number | null;
@@ -20,6 +20,7 @@ export type YourVideo = {
   posted_at: string | null;
   status: VideoStatus;
   render_artifact_url: string | null;
+  source_compilation_draft_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -75,6 +76,36 @@ export async function listRecentDrafts(
 export async function discardDraft(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.from("your_videos").update({ status: "failed" }).eq("id", id);
   if (error) throw new Error(`discardDraft: ${error.message}`);
+}
+
+export async function createPromotedVideo(
+  supabase: SupabaseClient,
+  args: {
+    channelId: string;
+    title: string;
+    renderArtifactUrl: string;
+    durationSeconds: number;
+    sourceCompilationDraftId: string;
+  },
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .insert({
+      channel_id: args.channelId,
+      title: args.title,
+      script: null, // compilations have no narration script
+      voice_provider: null,
+      voice_id: null,
+      visual_treatment: "top5_compilation",
+      duration_seconds: args.durationSeconds,
+      render_artifact_url: args.renderArtifactUrl,
+      status: "rendered" as VideoStatus,
+      source_compilation_draft_id: args.sourceCompilationDraftId,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`createPromotedVideo: ${error.message}`);
+  return data.id as string;
 }
 
 export async function listVideosByStatus(
