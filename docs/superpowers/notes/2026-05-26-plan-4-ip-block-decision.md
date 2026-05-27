@@ -55,9 +55,39 @@ Lowest total, lowest cash cost, fastest implementation, ToS-aligned because Dari
 - **Cadence baseline:** ~30 days on YouTube cookies; ~90 days on Reddit cookies. Operator sets a monthly calendar reminder.
 - **v1.5 upgrade path:** auto-refresh via headless browser running in Sandbox once a month — see [docs/future-plans.md](../../future-plans.md). Only worth building once manual monthly refresh is proven stable.
 
-## Smoke result
+## Smoke result (2026-05-26 / 27)
 
-*Populated by Task 3 of the Phase 4 plan after the operator's prod smoke completes.*
+**Status: PARTIAL PASS — pivot to direct-MP4 seeding for Phase 4 development; real Reddit ingest deferred.**
+
+Test URL: `https://www.reddit.com/r/IdiotsInCars/comments/1to7jrl/oc_my_first_near_miss_of_the_weekend_caught_on/`
+
+### What worked
+- Cookies plumbing (Phase 4 Task 2): `--cookies /tmp/cookies.txt` is present in every yt-dlp invocation logged in `render_jobs.last_error`. Env-var → sandbox env → /tmp file → yt-dlp arg path is end-to-end correct.
+- Worker fixes from Phase 3 (yt-dlp-wrap ESM unwrap, pyinstaller standalone binary) all hold up.
+- Locally on the operator's Mac: `yt-dlp --cookies cookies.txt --skip-download --print "%(title)s" <test URL>` returns `[OC] My first near miss of the weekend caught on camera` — i.e., the cookies file itself contains a valid Reddit session.
+
+### What didn't work — and why
+- 3 consecutive `clip_ingest` jobs (`2a48361c`, `9671212f`, `fad36b12`, `5307ffc8`, `03adf631`) all failed with the same Reddit response: `Account authentication is required. Use --cookies ...`
+- The failure occurs **even with `--cookies /tmp/cookies.txt` passed AND the same cookies file working locally**.
+- Conclusion: **Reddit invalidates the session when the IP changes from the operator's residential IP (where the cookie was issued) to a Vercel datacenter IP**. Risk #4 in the scoring matrix (breakage rate / IP detection) called this out as a 3/5 risk; in practice it is a hard block for Reddit, not a soft degradation.
+
+### Implication for the scoring matrix
+Option (A) effectively reduces to: works for YouTube (account-bound cookies survive IP change there), does NOT work for Reddit (session-bound cookies invalidate on IP change). The matrix didn't decompose per-host risk; doing so retroactively:
+
+| | YouTube | Reddit |
+|---|---|---|
+| (A) Cookies | works (per Phase 3 manual tests; Phase 4 didn't retest) | **broken — IP-bound session** |
+| (B) Proxy | works (vendor IPs are residential) | works (vendor IPs are residential) |
+| (C) OAuth | doesn't apply (no third-party download API) | works for discovery only, not video download |
+
+### Decision update
+- **Keep Option (A) for YouTube** ingest (when we get there in Plan #5+).
+- **For Reddit specifically: Option (A) is dead.** Future-Phase-5 work picks (B) Bright Data proxy when budget allows ($3-15/mo at current ingest cadence).
+- **Phase 4 development unblocks via direct-MP4 seeding:** operator manually drops 5+ direct-MP4 URLs into `/clips → Ingest URL manually` to populate `clip_library` with real rows that Composer can run against. Direct MP4 URLs were already proven in the Phase 3 benchmark (PARTIAL PASS, 8.9s wall-clock per clip).
+- Reddit OAuth `client_credentials` (Task 2 steps 1-6 in the Phase 4 plan) was **never implemented** in this branch because operator's Reddit app-registration form was broken — see memory `project_reddit_script_app_safari`. With Option (A) dead for Reddit anyway, the Reddit-OAuth-for-discovery work is also deferred. Discovery cron stays disabled until a Phase 5 decision on (B).
+
+### Rotation policy update
+The rotation policy above (re-export when ≥3 consecutive cookie-flavored failures appear) still applies for YouTube. For Reddit it does not — the failure isn't a stale cookie, it's the IP itself.
 
 ## Out-of-scope for Phase 4 (defer)
 
