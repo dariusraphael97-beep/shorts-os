@@ -2,16 +2,19 @@
 //
 // Pure ffmpeg argv builders for the Format-2 (Top-5 compilation) renderer.
 // No filesystem IO here — keeps the handler thin and the math testable.
-// Phase 4 v1 uses ffmpeg drawtext for the title bar + numbered overlays;
-// Remotion title cards + animated callouts land in a follow-up phase after
-// the plan-4-phase-2-5 captions-overlay branch merges (see Task 18 in the
-// Phase 4 plan).
 //
-// Font: DejaVu Sans Bold is bundled in ../assets/ because the Vercel Sandbox
-// (Amazon Linux 2023) does not ship DejaVu fonts by default and the
-// /usr/share/fonts/ paths most ffmpeg drawtext examples assume don't exist.
-// fontPath is injected by the caller (the handler resolves it relative to its
-// own module path) so the pure builder stays filesystem-free.
+// Phase 4 v1 does NOT render the title bar or numbered overlays via ffmpeg
+// drawtext. Root cause: ffmpeg-static's Linux binary (BtbN b6.1.1) is compiled
+// with --enable-libfreetype + --enable-fontconfig but the `drawtext` filter
+// itself is not in the static build — confirmed by running
+// `strings ffmpeg | grep drawtext` against the linux-x64 binary (0 hits) vs
+// the darwin binary (1 hit + "Draw text on top..."). The composite step
+// emitted `Filter not found` on the first prod smoke (job 06be61ec).
+//
+// Title bar + numbered overlays will be added by the Task 18 follow-up phase
+// using Remotion compositions (which produce a transparent overlay mp4 that
+// ffmpeg can `overlay` onto the base — overlay IS in the static build, as
+// the Phase 2.5 captions pipeline uses it).
 
 export interface F2ClipRef {
   clip_id: string;
@@ -28,7 +31,6 @@ export interface CompositeArgs {
   titleTemplate: string;
   layoutVariant: 'top5_sidebar' | 'top5_overlay';
   outputPath: string;
-  fontPath: string;
 }
 
 /** Trim a single source clip to [startSec, endSec] and rescale to 1080x1920. */
@@ -63,35 +65,21 @@ export function buildConcatListFile(clipPaths: string[]): string {
  * the bottom of the frame (top5_overlay).
  */
 export function buildCompositeArgs(args: CompositeArgs): string[] {
-  const drawTitle = `drawtext=fontfile=${args.fontPath}:text='${escapeDrawtext(
-    args.titleTemplate,
-  )}':fontcolor=white:fontsize=64:box=1:boxcolor=black@0.7:boxborderw=20:x=(w-text_w)/2:y=40`;
-
-  const sortedRefs = [...args.refs].sort((a, b) => a.order - b.order);
-  const labels = sortedRefs
-    .map((r, i) => {
-      const startTime = sortedRefs
-        .slice(0, i)
-        .reduce((a, x) => a + (x.end_sec - x.start_sec), 0);
-      const segDur = r.end_sec - r.start_sec;
-      const labelText = escapeDrawtext(`#${5 - i} ${r.label}`);
-      const positioning =
-        args.layoutVariant === 'top5_sidebar'
-          ? 'x=40:y=h-220'
-          : 'x=(w-text_w)/2:y=h-220';
-      return `drawtext=fontfile=${args.fontPath}:text='${labelText}':fontcolor=white:fontsize=48:box=1:boxcolor=black@0.6:boxborderw=15:${positioning}:enable='between(t,${startTime.toFixed(3)},${(startTime + segDur).toFixed(3)})'`;
-    })
-    .join(',');
-
-  const videoFilter = labels.length > 0 ? `${drawTitle},${labels}` : drawTitle;
+  // Phase 4 v1: just mux ducked background music with the concatenated video.
+  // titleTemplate + refs + layoutVariant are kept on the signature so the
+  // Task 18 follow-up phase can wire in Remotion-rendered title/label overlays
+  // without changing this function's call sites.
+  void args.titleTemplate;
+  void args.refs;
+  void args.layoutVariant;
 
   return [
     '-y',
     '-i', args.concatVideoPath,
     '-i', args.musicPath,
     '-filter_complex',
-    `[0:v]${videoFilter}[v];[1:a]volume=0.20[mb];[0:a][mb]amix=inputs=2:duration=first:dropout_transition=3[a]`,
-    '-map', '[v]', '-map', '[a]',
+    '[1:a]volume=0.20[mb];[0:a][mb]amix=inputs=2:duration=first:dropout_transition=3[a]',
+    '-map', '0:v', '-map', '[a]',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '21',
     '-c:a', 'aac', '-b:a', '192k',
     '-r', '30',
@@ -100,7 +88,11 @@ export function buildCompositeArgs(args: CompositeArgs): string[] {
   ];
 }
 
-/** Escape ffmpeg drawtext-special characters. */
+/**
+ * Escape ffmpeg drawtext-special characters. Kept as an export for the Task 18
+ * Remotion-based title/label follow-up (which still serializes some props as
+ * drawtext-style strings).
+ */
 export function escapeDrawtext(s: string): string {
   return s.replace(/[\\:%']/g, (c) => `\\${c}`);
 }

@@ -14,8 +14,7 @@
 
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { join, dirname, resolve as resolvePath } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import ffmpegStatic from 'ffmpeg-static';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { uploadMp4ToBlob } from '../lib/blob.ts';
@@ -26,12 +25,6 @@ import {
   buildCompositeArgs,
   type F2ClipRef,
 } from '../lib/compile-f2.ts';
-
-// Bundled font for drawtext — Vercel Sandbox does not have DejaVu pre-installed.
-const FONT_PATH = resolvePath(
-  dirname(fileURLToPath(import.meta.url)),
-  '../assets/DejaVuSans-Bold.ttf',
-);
 
 export class RenderF2Error extends Error {
   constructor(message: string, public trace: string) {
@@ -139,7 +132,9 @@ export async function runRenderF2(
     await runFfmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', concatPath]);
     log(`concatenated 5 trims`);
 
-    // Composite title + labels + ducked music
+    // Composite (Phase 4 v1: ducked music mux only; title bar + numbered
+    // overlays land in Task 18 via Remotion because the Linux ffmpeg-static
+    // build lacks drawtext).
     const outputPath = join(tmp, 'out.mp4');
     await runFfmpeg(
       buildCompositeArgs({
@@ -149,7 +144,6 @@ export async function runRenderF2(
         titleTemplate: draft.title_template,
         layoutVariant: draft.layout_variant,
         outputPath,
-        fontPath: FONT_PATH,
       }),
     );
     const outStat = await stat(outputPath);
