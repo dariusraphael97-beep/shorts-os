@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DateTime } from 'luxon';
 
 export type VideoStatus = "draft" | "rendering" | "rendered" | "posted" | "failed";
 
@@ -122,4 +123,32 @@ export async function listVideosByStatus(
     .limit(limit);
   if (error) throw new Error(`listVideosByStatus: ${error.message}`);
   return (data ?? []) as YourVideo[];
+}
+
+export async function markPosted(
+  supabase: SupabaseClient,
+  args: {
+    videoId: string;
+    externalVideoId: string;
+    url: string;
+    postedAt: Date;
+    channelTimezone: string;
+  },
+): Promise<void> {
+  const local = DateTime.fromJSDate(args.postedAt).setZone(args.channelTimezone);
+  // luxon weekday: 1=Mon..7=Sun. Convert to 0=Sun..6=Sat.
+  const dow = local.weekday === 7 ? 0 : local.weekday;
+  const { error } = await supabase
+    .from('your_videos')
+    .update({
+      external_video_id: args.externalVideoId,
+      url: args.url,
+      posted_at: args.postedAt.toISOString(),
+      posted_hour_local: local.hour,
+      posted_dow_local: dow,
+      status: 'posted',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', args.videoId);
+  if (error) throw new Error(`markPosted: ${error.message}`);
 }
