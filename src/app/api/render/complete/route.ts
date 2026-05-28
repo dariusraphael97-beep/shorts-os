@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { getServiceClient } from '@/lib/supabase/server';
 import { verifyCallbackToken, CallbackTokenError } from '@/lib/render/callback-token';
 import { markJobSucceeded, markJobFailed } from '@/lib/supabase/repositories/render-jobs';
+import { markPosted } from '@/lib/supabase/repositories/your-videos';
 
 const CompleteBody = z.object({
   job_id: z.string().uuid(),
@@ -100,6 +101,35 @@ export async function POST(req: Request) {
         if (updErr) console.error('compilation_drafts rendered update failed:', updErr);
       }
 
+      // upload side-effect — mark your_videos posted + record local hour/dow
+      if ('your_video_id' in out && 'external_video_id' in out && 'url' in out) {
+        const yourVideoId = out.your_video_id as string;
+        const externalVideoId = out.external_video_id as string;
+        const url = out.url as string;
+        const { data: vidRow } = await supabase
+          .from('your_videos')
+          .select('channel_id')
+          .eq('id', yourVideoId)
+          .single();
+        const channelId = vidRow?.channel_id;
+        let channelTimezone = 'America/New_York';
+        if (channelId) {
+          const { data: chanRow } = await supabase
+            .from('channels')
+            .select('timezone')
+            .eq('id', channelId)
+            .single();
+          if (chanRow?.timezone) channelTimezone = chanRow.timezone as string;
+        }
+        await markPosted(supabase, {
+          videoId: yourVideoId,
+          externalVideoId,
+          url,
+          postedAt: new Date(),
+          channelTimezone,
+        });
+      }
+
       // clip_ingest side-effect — insert clip_library row + link via clip_library_id
       if ('source_url' in out && 'local_path' in out) {
         const { data: inserted, error: insErr } = await supabase
@@ -150,7 +180,7 @@ export async function POST(req: Request) {
     // the render_jobs row at enqueue time.
     const { data: jobRow } = await supabase
       .from('render_jobs')
-      .select('job_type, compilation_draft_id')
+      .select('job_type, compilation_draft_id, your_video_id')
       .eq('id', body.job_id)
       .maybeSingle();
     if (jobRow?.job_type === 'render_f2' && jobRow.compilation_draft_id) {
@@ -158,6 +188,31 @@ export async function POST(req: Request) {
         .from('compilation_drafts')
         .update({ status: 'failed', updated_at: new Date().toISOString() })
         .eq('id', jobRow.compilation_draft_id);
+    }
+    // upload failure side-effect — flip your_videos.status='failed' + write operator_alert on token-related errors.
+    if (jobRow?.job_type === 'upload' && jobRow.your_video_id) {
+      await supabase
+        .from('your_videos')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', jobRow.your_video_id);
+      const isOAuth = body.result.error.toLowerCase().includes('token refresh') ||
+                      body.result.error.toLowerCase().includes('invalid_grant');
+      if (isOAuth) {
+        const { data: vidRow } = await supabase
+          .from('your_videos')
+          .select('channel_id')
+          .eq('id', jobRow.your_video_id)
+          .single();
+        if (vidRow?.channel_id) {
+          await supabase.from('operator_alerts').insert({
+            channel_id: vidRow.channel_id,
+            category: 'oauth_token_revoked',
+            severity: 'error',
+            message: 'YouTube refresh token rejected. Reconnect at /settings/channel.',
+            context: { job_id: body.job_id, error: body.result.error },
+          });
+        }
+      }
     }
   }
   return NextResponse.json({ ok: true });
