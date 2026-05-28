@@ -29,6 +29,10 @@ export interface UploadResult {
 const INIT_ENDPOINT =
   'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
 
+// Node 24's fetch has no implicit timeout — a hung server pins the process for
+// the Sandbox's lifetime. 90s per fetch is plenty for a Shorts-sized MP4.
+const FETCH_TIMEOUT_MS = 90_000;
+
 export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
   const metadata = {
     snippet: {
@@ -45,7 +49,7 @@ export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
   };
 
   // 1. Initiate session
-  const initRes = await fetch(INIT_ENDPOINT, {
+  const initRes = await fetchWithTimeout(INIT_ENDPOINT, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${args.accessToken}`,
@@ -64,7 +68,7 @@ export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
   }
 
   // 2. PUT bytes
-  const putRes = await fetch(sessionUrl, {
+  const putRes = await fetchWithTimeout(sessionUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(args.videoBytes.byteLength) },
     body: args.videoBytes as BodyInit,
@@ -80,4 +84,19 @@ export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
     externalVideoId: json.id,
     url: `https://www.youtube.com/shorts/${json.id}`,
   };
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ac.signal });
+  } catch (err) {
+    if ((err as { name?: string }).name === 'AbortError') {
+      throw new YouTubeUploadError(`fetch timeout after ${FETCH_TIMEOUT_MS}ms: ${url}`, 0);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }

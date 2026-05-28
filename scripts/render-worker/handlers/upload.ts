@@ -89,9 +89,19 @@ export async function runUpload(
     }
 
     log(`downloading mp4 from ${video.render_artifact_url}`);
-    const dlRes = await fetch(video.render_artifact_url);
-    if (!dlRes.ok) throw new Error(`mp4 download: ${dlRes.status}`);
-    const videoBytes = new Uint8Array(await dlRes.arrayBuffer());
+    const dlAc = new AbortController();
+    const dlTimer = setTimeout(() => dlAc.abort(), 60_000);
+    let videoBytes: Uint8Array;
+    try {
+      const dlRes = await fetch(video.render_artifact_url, { signal: dlAc.signal });
+      if (!dlRes.ok) throw new Error(`mp4 download: ${dlRes.status}`);
+      videoBytes = new Uint8Array(await dlRes.arrayBuffer());
+    } catch (err) {
+      if ((err as { name?: string }).name === 'AbortError') throw new Error('mp4 download: timeout after 60s');
+      throw err;
+    } finally {
+      clearTimeout(dlTimer);
+    }
     log(`downloaded ${videoBytes.byteLength} bytes`);
 
     log('uploading to YouTube');
