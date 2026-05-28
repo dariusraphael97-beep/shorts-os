@@ -6,6 +6,7 @@ import type { VideoStatus } from "@/lib/supabase/repositories/your-videos";
 import { DraftsTabs, type DraftsTab } from "@/components/lab/drafts-tabs";
 import { DraftRow } from "@/components/lab/draft-row";
 import { RenderedRow } from "@/components/lab/rendered-row";
+import { ScheduledRow } from "@/components/lab/scheduled-row";
 import { PostedRow } from "@/components/lab/posted-row";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +17,14 @@ export default async function LabDraftsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const active: DraftsTab = tab === "rendered" || tab === "posted" ? tab : "draft";
+  const active: DraftsTab =
+    tab === "rendered" || tab === "posted" || tab === "scheduled" ? tab : "draft";
 
   const supabase = getServiceClient();
   const statusFor: Record<DraftsTab, VideoStatus | VideoStatus[]> = {
     draft: ["draft", "rendering"],
     rendered: "rendered",
+    scheduled: ["scheduled", "uploading"],
     posted: "posted",
   };
   const videos = await listVideosByStatus(supabase, statusFor[active], 20);
@@ -43,13 +46,15 @@ export default async function LabDraftsPage({
             <p className="px-4 py-6 text-sm text-text-muted">
               {active === "draft" && "No drafts. Dispatch a topic from /lab to make one."}
               {active === "rendered" && "No rendered videos yet. Render a draft to see it here."}
-              {active === "posted" && "No posted videos yet. Posting pipeline ships in Phase 5."}
+              {active === "scheduled" && "No scheduled videos yet. Approve a rendered video to schedule it."}
+              {active === "posted" && "No posted videos yet."}
             </p>
           ) : (
             <ul className="divide-y divide-subtle">
               {videos.map((v) => {
                 if (active === "draft") return <DraftRow key={v.id} draft={v} />;
                 if (active === "rendered") return <RenderedRow key={v.id} video={v} />;
+                if (active === "scheduled") return <ScheduledRow key={v.id} video={v} />;
                 return <PostedRow key={v.id} video={v} />;
               })}
             </ul>

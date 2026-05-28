@@ -47,14 +47,22 @@ export function RenderedCard(props: { draft: CompilationDraftRow }) {
         </div>
       )}
       {error && <p className="text-xs text-red-400 font-mono">{error}</p>}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           type="button"
           disabled={busy || !props.draft.rendered_path}
           onClick={() => post(`/api/clips/rendered/${props.draft.id}/approve`)}
           className="px-3 py-1.5 rounded text-sm bg-text-primary text-app disabled:opacity-50"
         >
-          Approve
+          Approve &amp; Schedule
+        </button>
+        <button
+          type="button"
+          disabled={busy || !props.draft.rendered_path}
+          onClick={() => post(`/api/clips/rendered/${props.draft.id}/approve?action=post_now`)}
+          className="px-3 py-1.5 rounded text-sm border border-border hover:bg-surface-2 disabled:opacity-50"
+        >
+          Post now
         </button>
         <button
           type="button"

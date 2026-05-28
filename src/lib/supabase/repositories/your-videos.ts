@@ -19,6 +19,9 @@ export type YourVideo = {
   visual_treatment: string | null;
   caption_props: Record<string, unknown> | null;
   posted_at: string | null;
+  scheduled_for: string | null;
+  posted_hour_local: number | null;
+  posted_dow_local: number | null;
   status: VideoStatus;
   render_artifact_url: string | null;
   source_compilation_draft_id: string | null;
@@ -87,23 +90,27 @@ export async function createPromotedVideo(
     renderArtifactUrl: string;
     durationSeconds: number;
     sourceCompilationDraftId: string;
+    targetStatus?: 'rendered' | 'scheduled' | 'uploading';
+    scheduledFor?: Date | null;
   },
 ): Promise<string> {
+  const status: VideoStatus = (args.targetStatus ?? 'rendered') as VideoStatus;
   const { data, error } = await supabase
-    .from("your_videos")
+    .from('your_videos')
     .insert({
       channel_id: args.channelId,
       title: args.title,
-      script: null, // compilations have no narration script
+      script: null,
       voice_provider: null,
       voice_id: null,
-      visual_treatment: "top5_compilation",
+      visual_treatment: 'top5_compilation',
       duration_seconds: args.durationSeconds,
       render_artifact_url: args.renderArtifactUrl,
-      status: "rendered" as VideoStatus,
+      status,
+      scheduled_for: args.scheduledFor ? args.scheduledFor.toISOString() : null,
       source_compilation_draft_id: args.sourceCompilationDraftId,
     })
-    .select("id")
+    .select('id')
     .single();
   if (error) throw new Error(`createPromotedVideo: ${error.message}`);
   return data.id as string;
