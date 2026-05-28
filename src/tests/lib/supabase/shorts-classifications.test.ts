@@ -30,6 +30,12 @@ function makeClient(rows: Record<string, unknown>[] | null, error: unknown = nul
 }
 
 describe('shorts-classifications repository', () => {
+  it('getClassificationByVideoId returns null on PGRST116', async () => {
+    const client = makeClient(null, { code: 'PGRST116' });
+    const result = await getClassificationByVideoId(client, 'missing');
+    expect(result).toBeNull();
+  });
+
   it('upsertClassification stores label set', async () => {
     const row = { video_id: 'abc', topic_label: 'AI for seniors', format_label: 'narrated_storytelling', confidence: 0.84 };
     const client = makeClient([row]);
