@@ -17,6 +17,7 @@ export type Channel = {
   display_name: string;
   platform: "youtube" | "tiktok" | "instagram";
   external_channel_id: string | null;
+  oauth_refresh_token_encrypted: string | null;
   niche_id: string | null;
   persona: ChannelPersona;
   default_voice_id: string | null;
@@ -42,4 +43,49 @@ export async function getDefaultChannel(supabase: SupabaseClient): Promise<Chann
   if (error) throw new Error(`getDefaultChannel: ${error.message}`);
   if (!data) throw new Error("getDefaultChannel: no active channel — did the seed migration run?");
   return data as Channel;
+}
+
+import { encryptSecret, decryptSecret, type EncryptedSecret } from '@/lib/encryption';
+
+export async function saveEncryptedRefreshToken(
+  supabase: SupabaseClient,
+  channelId: string,
+  refreshToken: string,
+): Promise<void> {
+  const blob = encryptSecret(refreshToken);
+  const json = JSON.stringify(blob);
+  const { error } = await supabase
+    .from('channels')
+    .update({ oauth_refresh_token_encrypted: json })
+    .eq('id', channelId);
+  if (error) throw new Error(`saveEncryptedRefreshToken: ${error.message}`);
+}
+
+export async function loadEncryptedRefreshToken(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('channels')
+    .select('oauth_refresh_token_encrypted')
+    .eq('id', channelId)
+    .single();
+  if (error) throw new Error(`loadEncryptedRefreshToken: ${error.message}`);
+  const raw = (data as { oauth_refresh_token_encrypted: string | null }).oauth_refresh_token_encrypted;
+  if (!raw) return null;
+  const blob = JSON.parse(raw) as EncryptedSecret;
+  return decryptSecret(blob);
+}
+
+export async function isYouTubeConnected(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('channels')
+    .select('oauth_refresh_token_encrypted')
+    .eq('id', channelId)
+    .single();
+  if (error) throw new Error(`isYouTubeConnected: ${error.message}`);
+  return (data as { oauth_refresh_token_encrypted: string | null }).oauth_refresh_token_encrypted != null;
 }
