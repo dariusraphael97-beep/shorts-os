@@ -13,7 +13,7 @@ describe('youtube-upload helper', () => {
       const method = init?.method ?? 'GET';
       const headers = (init?.headers ?? {}) as Record<string, string>;
       calls.push({ url: u, method, headers });
-      if (u.includes('uploads?uploadType=resumable')) {
+      if (u.includes('videos?uploadType=resumable')) {
         return new Response(null, {
           status: 200,
           headers: { location: 'https://upload.example.com/RESUMABLE_SESSION' },

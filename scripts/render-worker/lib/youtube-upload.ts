@@ -26,10 +26,8 @@ export interface UploadResult {
   url: string;
 }
 
-// NOTE: URL intentionally contains both "videos?uploadType=resumable" (assertion) and
-// "uploads?uploadType=resumable" (mock routing) substrings required by the upload test.
 const INIT_ENDPOINT =
-  'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status&_uploads?uploadType=resumable=1';
+  'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
 
 export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
   const metadata = {
@@ -69,10 +67,7 @@ export async function uploadVideo(args: UploadArgs): Promise<UploadResult> {
   const putRes = await fetch(sessionUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(args.videoBytes.byteLength) },
-    body: args.videoBytes.buffer.slice(
-      args.videoBytes.byteOffset,
-      args.videoBytes.byteOffset + args.videoBytes.byteLength,
-    ) as ArrayBuffer,
+    body: args.videoBytes as BodyInit,
   });
   if (!putRes.ok) {
     throw new YouTubeUploadError(`upload PUT: ${putRes.status} ${await putRes.text()}`, putRes.status);
