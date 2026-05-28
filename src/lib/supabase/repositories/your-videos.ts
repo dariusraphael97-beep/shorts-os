@@ -19,6 +19,9 @@ export type YourVideo = {
   visual_treatment: string | null;
   caption_props: Record<string, unknown> | null;
   posted_at: string | null;
+  scheduled_for: string | null;
+  posted_hour_local: number | null;
+  posted_dow_local: number | null;
   status: VideoStatus;
   render_artifact_url: string | null;
   source_compilation_draft_id: string | null;

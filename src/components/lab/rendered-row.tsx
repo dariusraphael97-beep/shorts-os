@@ -10,12 +10,34 @@ export function RenderedRow({ video }: { video: YourVideo }) {
   async function postNow() {
     setBusy(true);
     try {
-      await fetch("/api/lab/upload", {
+      const res = await fetch("/api/lab/upload", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ videoId: video.id }),
       });
-      alert("Post Now stub fired — real upload ships in Phase 5.");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`Upload failed: ${j.error ?? res.statusText}`);
+        return;
+      }
+      location.reload();
+    } finally { setBusy(false); }
+  }
+
+  async function approveAndSchedule() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/lab/schedule", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ videoId: video.id }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`Schedule failed: ${j.error ?? res.statusText}`);
+        return;
+      }
+      location.reload();
     } finally { setBusy(false); }
   }
 
@@ -55,16 +77,16 @@ export function RenderedRow({ video }: { video: YourVideo }) {
 
       <div className="flex items-center gap-2">
         <button
-          disabled
-          className="px-3 py-1.5 rounded bg-elevated text-text-muted text-xs font-medium border border-subtle cursor-not-allowed"
-          title="Scheduling ships in Phase 5"
+          onClick={approveAndSchedule}
+          disabled={busy}
+          className="px-3 py-1.5 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90 disabled:opacity-50"
         >
-          Approve &amp; Schedule (Phase 5)
+          Approve &amp; Schedule
         </button>
         <button
           onClick={postNow}
           disabled={busy}
-          className="px-3 py-1.5 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90 disabled:opacity-50"
+          className="px-3 py-1.5 rounded bg-elevated text-text-primary text-xs font-medium hover:bg-hover border border-subtle disabled:opacity-50"
         >
           Post now
         </button>
