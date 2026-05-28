@@ -1,43 +1,131 @@
-import "server-only";
-import { NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase/server";
-import { assertCronAuth, scraperLog } from "@/lib/scrapers/shared";
+import 'server-only';
+import { NextResponse } from 'next/server';
+import { DateTime } from 'luxon';
+import { getServiceClient } from '@/lib/supabase/server';
+import { assertCronAuth, scraperLog } from '@/lib/scrapers/shared';
+import { loadEncryptedRefreshToken } from '@/lib/supabase/repositories/channels';
+import { refreshAccessToken, GoogleTokenError } from '@/lib/clients/google-oauth';
+import {
+  fetchVideoStats,
+  fetchCoreReport,
+  fetchRetentionReport,
+} from '@/lib/clients/youtube-analytics';
+import { upsertVideoAnalytics } from '@/lib/supabase/repositories/video-analytics';
 
 export const maxDuration = 300;
 
-/**
- * Stub performance-sync cron. The real implementation arrives in Plan #4
- * once channels are publishing and we have a YouTube Analytics integration
- * to pull view/retention metrics from. For now we just confirm we can read
- * the active channels list and exit.
- */
+interface ChannelRow {
+  id: string;
+  external_channel_id: string | null;
+  timezone: string;
+}
+
+interface VideoRow {
+  id: string;
+  external_video_id: string | null;
+  channel_id: string;
+  posted_at: string | null;
+}
+
 export async function GET(req: Request) {
-  try {
-    assertCronAuth(req);
-  } catch (e) {
-    if (e instanceof Response) return e;
-    throw e;
-  }
-
+  try { assertCronAuth(req); } catch (e) { if (e instanceof Response) return e; throw e; }
   const supabase = getServiceClient();
-  const { data: channels, error } = await supabase
-    .from("channels")
-    .select("id, external_channel_id")
-    .eq("is_active", true)
-    .eq("platform", "youtube");
+  const windowDays = parseInt(process.env.ANALYTICS_SYNC_WINDOW_DAYS ?? '14', 10);
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 },
-    );
+  const { data: channels, error: chanErr } = await supabase
+    .from('channels')
+    .select('id, external_channel_id, timezone')
+    .eq('is_active', true)
+    .eq('platform', 'youtube');
+  if (chanErr) return NextResponse.json({ ok: false, error: chanErr.message }, { status: 500 });
+
+  const summary: Array<{ channelId: string; videos: number; errors: number }> = [];
+
+  for (const c of (channels ?? []) as ChannelRow[]) {
+    let videosCount = 0;
+    let errCount = 0;
+
+    if (!c.external_channel_id) {
+      summary.push({ channelId: c.id, videos: 0, errors: 1 });
+      continue;
+    }
+
+    const refreshToken = await loadEncryptedRefreshToken(supabase, c.id);
+    if (!refreshToken) {
+      summary.push({ channelId: c.id, videos: 0, errors: 1 });
+      continue;
+    }
+
+    let accessToken: string;
+    try {
+      const r = await refreshAccessToken({
+        refreshToken,
+        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      });
+      accessToken = r.accessToken;
+    } catch (err) {
+      if (err instanceof GoogleTokenError) {
+        summary.push({ channelId: c.id, videos: 0, errors: 1 });
+        continue;
+      }
+      throw err;
+    }
+
+    const windowStart = DateTime.utc().minus({ days: windowDays }).toISO();
+    const { data: videos, error: vidErr } = await supabase
+      .from('your_videos')
+      .select('id, external_video_id, channel_id, posted_at')
+      .eq('channel_id', c.id)
+      .eq('status', 'posted')
+      .gte('posted_at', windowStart);
+    if (vidErr) { summary.push({ channelId: c.id, videos: 0, errors: 1 }); continue; }
+
+    const startDate = DateTime.utc().minus({ days: windowDays }).toISODate();
+    const endDate = DateTime.utc().toISODate();
+
+    for (const v of (videos ?? []) as VideoRow[]) {
+      if (!v.external_video_id) continue;
+      try {
+        const [stats, core, retention] = await Promise.all([
+          fetchVideoStats({ accessToken, externalVideoId: v.external_video_id }),
+          fetchCoreReport({
+            accessToken,
+            externalChannelId: c.external_channel_id,
+            externalVideoId: v.external_video_id,
+            startDate: startDate!,
+            endDate: endDate!,
+          }),
+          fetchRetentionReport({
+            accessToken,
+            externalChannelId: c.external_channel_id,
+            externalVideoId: v.external_video_id,
+            startDate: startDate!,
+            endDate: endDate!,
+          }),
+        ]);
+        await upsertVideoAnalytics(supabase, {
+          yourVideoId: v.id,
+          snapshotAt: new Date(),
+          views: stats.views,
+          likes: stats.likes,
+          comments: stats.comments,
+          shares: null,
+          avgViewDurationSeconds: core.averageViewDurationSeconds,
+          ctrPct: core.ctrPct,
+          subscribersGained: core.subscribersGained,
+          impressions: core.impressions,
+          watchTimeSeconds: core.estimatedMinutesWatched * 60,
+          retentionCurve: retention,
+          rawPayload: { stats, core, retention },
+        });
+        videosCount += 1;
+      } catch {
+        errCount += 1;
+      }
+    }
+    summary.push({ channelId: c.id, videos: videosCount, errors: errCount });
   }
 
-  return NextResponse.json({
-    ok: true,
-    ...scraperLog("performance-sync", {
-      channelsFound: channels?.length ?? 0,
-      note: "stub until Plan #4",
-    }),
-  });
+  return NextResponse.json({ ok: true, ...scraperLog('performance-sync', { summary }) });
 }
