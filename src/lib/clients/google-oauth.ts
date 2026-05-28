@@ -22,6 +22,29 @@ export interface ExchangeResult {
 }
 
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+// Node 24's fetch has no implicit timeout — needed because the worker runs in a
+// Vercel Sandbox where a hung token endpoint pins the whole process for 15min.
+const TOKEN_FETCH_TIMEOUT_MS = 30_000;
+
+async function fetchToken(body: URLSearchParams, label: string): Promise<Response> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), TOKEN_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: ac.signal,
+    });
+  } catch (err) {
+    if ((err as { name?: string }).name === 'AbortError') {
+      throw new GoogleTokenError(`${label}: timeout after ${TOKEN_FETCH_TIMEOUT_MS}ms`, 0);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function exchangeCodeForTokens(args: ExchangeArgs): Promise<ExchangeResult> {
   const body = new URLSearchParams({
@@ -31,11 +54,7 @@ export async function exchangeCodeForTokens(args: ExchangeArgs): Promise<Exchang
     client_secret: args.clientSecret,
     redirect_uri: args.redirectUri,
   });
-  const res = await fetch(TOKEN_ENDPOINT, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body,
-  });
+  const res = await fetchToken(body, 'exchangeCodeForTokens');
   if (!res.ok) {
     throw new GoogleTokenError(`exchangeCodeForTokens: ${res.status} ${await res.text()}`, res.status);
   }
@@ -74,11 +93,7 @@ export async function refreshAccessToken(args: RefreshArgs): Promise<RefreshResu
     client_id: args.clientId,
     client_secret: args.clientSecret,
   });
-  const res = await fetch(TOKEN_ENDPOINT, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body,
-  });
+  const res = await fetchToken(body, 'refreshAccessToken');
   if (!res.ok) {
     throw new GoogleTokenError(`refreshAccessToken: ${res.status} ${await res.text()}`, res.status);
   }

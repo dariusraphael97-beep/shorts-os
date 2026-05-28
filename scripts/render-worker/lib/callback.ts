@@ -11,17 +11,24 @@ export interface CallbackArgs {
 export async function postCallback(args: CallbackArgs): Promise<void> {
   const base = process.env.RENDER_CALLBACK_BASE_URL;
   if (!base) throw new Error('RENDER_CALLBACK_BASE_URL must be set');
-  const res = await fetch(`${base}/api/render/complete`, {
-    method: 'POST',
-    headers: { 'authorization': `Bearer ${args.jobToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      job_id: args.jobId,
-      sandbox_invocation_id: args.sandboxInvocationId,
-      result: args.result,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`callback failed ${res.status}: ${text}`);
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 30_000);
+  try {
+    const res = await fetch(`${base}/api/render/complete`, {
+      method: 'POST',
+      headers: { 'authorization': `Bearer ${args.jobToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        job_id: args.jobId,
+        sandbox_invocation_id: args.sandboxInvocationId,
+        result: args.result,
+      }),
+      signal: ac.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`callback failed ${res.status}: ${text}`);
+    }
+  } finally {
+    clearTimeout(timer);
   }
 }
