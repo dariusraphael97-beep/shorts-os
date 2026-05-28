@@ -47,7 +47,7 @@ export default async function LabDraftsPage({
               {active === "draft" && "No drafts. Dispatch a topic from /lab to make one."}
               {active === "rendered" && "No rendered videos yet. Render a draft to see it here."}
               {active === "scheduled" && "No scheduled videos yet. Approve a rendered video to schedule it."}
-              {active === "posted" && "No posted videos yet. Posting pipeline ships in Phase 5."}
+              {active === "posted" && "No posted videos yet."}
             </p>
           ) : (
             <ul className="divide-y divide-subtle">

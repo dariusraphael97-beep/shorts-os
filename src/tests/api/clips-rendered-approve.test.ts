@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase/repositories/your-videos', () => ({
   slotIsOccupied: vi.fn(async () => false),
 }));
 vi.mock('@/lib/supabase/repositories/channels', () => ({
-  getDefaultChannel: vi.fn(async () => ({
+  getChannelById: vi.fn(async () => ({
     id: 'c1', timezone: 'America/New_York',
     posting_schedule: { weekdays: ['07:30'], weekends: ['11:30'] },
   })),
@@ -50,9 +50,10 @@ describe('POST /api/clips/rendered/[id]/approve', () => {
     expect((await callPOST(null)).status).toBe(404);
   });
 
-  it('409 when draft not in rendered status', async () => {
+  it('409 when draft not in rendered status — does not promote', async () => {
     vi.mocked(getDraftById).mockResolvedValue({ ...DRAFT, status: 'posted' } as never);
     expect((await callPOST(null)).status).toBe(409);
+    expect(createPromotedVideo).not.toHaveBeenCalled();
   });
 
   it('422 when rendered_path missing', async () => {

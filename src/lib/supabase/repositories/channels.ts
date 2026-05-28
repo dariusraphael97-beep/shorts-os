@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostingSchedule } from "@/lib/timezone";
 
 export type ChannelPersona = {
   niche: string;
@@ -25,9 +26,24 @@ export type Channel = {
   is_active: boolean;
   max_uploads_per_day: number;
   target_format_mix: FormatMix;
+  timezone: string;
+  posting_schedule: PostingSchedule;
   created_at: string;
   updated_at: string;
 };
+
+export async function getChannelById(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<Channel | null> {
+  const { data, error } = await supabase
+    .from("channels")
+    .select("*")
+    .eq("id", channelId)
+    .maybeSingle();
+  if (error) throw new Error(`getChannelById: ${error.message}`);
+  return (data as Channel | null) ?? null;
+}
 
 export async function getDefaultChannel(supabase: SupabaseClient): Promise<Channel> {
   // Single-channel mode: return the only active channel.

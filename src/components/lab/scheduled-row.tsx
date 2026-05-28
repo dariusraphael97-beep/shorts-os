@@ -14,8 +14,12 @@ export function ScheduledRow({ video }: { video: YourVideo }) {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ videoId: video.id }),
       });
-      if (!res.ok) alert('Cancel failed.');
-      else location.reload();
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`Cancel failed: ${j.error ?? res.statusText}`);
+        return;
+      }
+      location.reload();
     } finally { setBusy(false); }
   }
 
@@ -26,8 +30,12 @@ export function ScheduledRow({ video }: { video: YourVideo }) {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ videoId: video.id }),
       });
-      if (!res.ok) alert('Post-now failed.');
-      else location.reload();
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`Post-now failed: ${j.error ?? res.statusText}`);
+        return;
+      }
+      location.reload();
     } finally { setBusy(false); }
   }
 

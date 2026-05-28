@@ -6,9 +6,9 @@ import {
   setPromotedYourVideoId,
 } from '@/lib/supabase/repositories/compilation-drafts';
 import { createPromotedVideo, slotIsOccupied } from '@/lib/supabase/repositories/your-videos';
-import { getDefaultChannel } from '@/lib/supabase/repositories/channels';
+import { getChannelById } from '@/lib/supabase/repositories/channels';
 import { enqueueRenderJob } from '@/lib/supabase/repositories/render-jobs';
-import { nextOpenSlotAfter, BacklogOverflowError, type ChannelForSchedule } from '@/lib/timezone';
+import { nextOpenSlotAfter, BacklogOverflowError } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +48,8 @@ export async function POST(
   }
 
   // action === 'schedule' — default
-  const channel = await getDefaultChannel(supabase) as unknown as ChannelForSchedule;
+  const channel = await getChannelById(supabase, draft.channel_id);
+  if (!channel) return Response.json({ error: 'channel not found' }, { status: 404 });
   let scheduledFor: Date;
   try {
     const slot = await nextOpenSlotAfter(
