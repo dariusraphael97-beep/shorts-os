@@ -14,7 +14,7 @@ function makeClient(rows: Record<string, unknown>[] | null, error: unknown = nul
   return {
     from: () => ({
       upsert: () => ({ select: () => ({ single: async () => ({ data: rows?.[0] ?? null, error }) }) }),
-      update: () => ({ eq: () => ({ select: () => ({ then: (r: (v: { data: unknown[]; error: unknown; count: number }) => unknown) => r({ data: rows ?? [], error, count: rows?.length ?? 0 }) }) }) }),
+      update: () => ({ eq: () => ({ select: () => ({ then: (r: (v: { data: unknown[]; error: unknown; count: number }) => unknown) => r({ data: rows ?? [], error, count: rows?.length ?? 0 }) }), lt: () => ({ then: (r: (v: { data: unknown[]; error: unknown; count: number }) => unknown) => r({ data: rows ?? [], error, count: rows?.length ?? 0 }) }) }) }),
       select: () => ({
         eq: () => ({
           order: () => ({ limit: () => ({ then: (r: (v: { data: unknown[]; error: unknown }) => unknown) => r({ data: rows ?? [], error }) }) }),
@@ -46,5 +46,11 @@ describe('watched-channels repository', () => {
     const client = makeClient([{ channel_id: 'a' }, { channel_id: 'b' }]);
     const result = await listActiveWatchedChannels(client, 100);
     expect(result).toHaveLength(2);
+  });
+
+  it('evictInactiveWatchedChannels returns affected count', async () => {
+    const client = makeClient([{ channel_id: 'old1' }, { channel_id: 'old2' }]);
+    const result = await evictInactiveWatchedChannels(client, new Date('2026-01-01'));
+    expect(result).toBe(2);
   });
 });
