@@ -38,7 +38,7 @@
 - `supabase/migrations/20260528000007_kill_criteria.sql` — `kill_criteria_log` + seed one row for the Plan #5 start date.
 - `supabase/migrations/20260528000008_your_videos_additions.sql` — additive columns on `your_videos`: `source_niche_cluster_id`, `script_brief`, `review_id`, `editor_session_id`.
 - `supabase/migrations/20260528000009_fix_stuck_uploading_row.sql` — flip the prod row `11c221e0-693a-4e4c-a096-24725c4e327b` from `'uploading'` → `'rendered'`, null its `scheduled_for`, bump `updated_at`. Idempotent (`WHERE status = 'uploading'`).
-- `supabase/migrations/20260528000010_seed_agents.sql` — INSERT the 6 agent identities + their default `agent_settings`.
+- `supabase/migrations/20260528000010_seed_assistants.sql` — INSERT the 6 agent identities + their default `agent_settings`.
 
 **TypeScript types** (regenerated from Supabase schema):
 
@@ -1578,7 +1578,7 @@ npx vitest run src/tests/lib/supabase/agents.test.ts
 Create `supabase/migrations/20260528000004_agents.sql`:
 
 ```sql
--- Registry of agent identities (seeded in 20260528000010_seed_agents.sql)
+-- Registry of agent identities (seeded in 20260528000010_seed_assistants.sql)
 create table if not exists public.agents (
   id text primary key,
   display_name text not null,
@@ -2608,20 +2608,22 @@ git commit -m "fix(plan-5): unstick the prod row stuck at status='uploading'"
 
 ---
 
-### Task 10: Seed agents registry + default settings
+### Task 10: Seed assistants registry + default settings
 
 **Files:**
-- Create: `supabase/migrations/20260528000010_seed_agents.sql`
+- Create: `supabase/migrations/20260528000010_seed_assistants.sql`
 
-Seeds the six Phase-1-set agent identities with their display fields and disabled-state for Phase-3/4 agents.
+**Naming note (added after A4 landed):** Plan #4 already has a `public.agents` table for script-pipeline workers (strategist, scout, writer, director, voice_coach, etc.) wired through `src/lib/agents/orchestrator.ts`. To avoid collision, Plan #5's user-facing product personas became `assistants` end-to-end at the DB + repo layer (commit `fec0c8d`). The UI still labels them "Agents" per Darius's preference, but tables/repo/types use `assistant*` naming. This task seeds the 6 Plan #5 product personas into `public.assistants`.
+
+Seeds the six Phase-1-set assistant identities with their display fields and disabled-state for Phase-3/4 placeholder assistants.
 
 - [ ] **Step 1: Write the migration SQL**
 
-Create `supabase/migrations/20260528000010_seed_agents.sql`:
+Create `supabase/migrations/20260528000010_seed_assistants.sql`:
 
 ```sql
--- Seed the six Plan #5 Phase-1 agents
-insert into public.agents (id, display_name, role_description, icon_name, accent_color_var, is_enabled)
+-- Seed the six Plan #5 Phase-1 product assistants (user-facing personas, distinct from Plan #4 pipeline `agents`).
+insert into public.assistants (id, display_name, role_description, icon_name, accent_color_var, is_enabled)
 values
   ('niche_scout',         'Niche Scout',         'Finds and ranks proven + first-mover niches across all sources.', 'compass',    '--accent', true),
   ('watch_list_curator',  'Watch-list Curator',  'Manages the channel watch-list; auto-discovers and evicts.',      'eye',        '--accent', true),
@@ -2636,15 +2638,15 @@ on conflict (id) do update set
   accent_color_var = excluded.accent_color_var,
   is_enabled = excluded.is_enabled;
 
--- Default agent_status: all idle
-insert into public.agent_status (agent_id, state, current_activity)
-select id, 'idle', null from public.agents
-on conflict (agent_id) do nothing;
+-- Default assistant_status: all idle
+insert into public.assistant_status (assistant_id, state, current_activity)
+select id, 'idle', null from public.assistants
+on conflict (assistant_id) do nothing;
 
--- Default agent_settings: empty jsonb (each agent reads/writes its own keys later)
-insert into public.agent_settings (agent_id, settings)
-select id, '{}'::jsonb from public.agents
-on conflict (agent_id) do nothing;
+-- Default assistant_settings: empty jsonb (each assistant reads/writes its own keys later)
+insert into public.assistant_settings (assistant_id, settings)
+select id, '{}'::jsonb from public.assistants
+on conflict (assistant_id) do nothing;
 ```
 
 - [ ] **Step 2: Apply via Supabase MCP**
@@ -2660,14 +2662,14 @@ mcp__eb0e215d-09d2-42bf-b558-7c883674fdc6__apply_migration({
 Verify:
 
 ```sql
-select id, display_name, is_enabled from public.agents order by id;
+select id, display_name, is_enabled from public.assistants order by id;
 ```
 
 Expected: 6 rows with the IDs above; `analyst` and `editor_copilot` have `is_enabled=false`; others `true`.
 
 ```sql
-select count(*) from public.agent_status;
-select count(*) from public.agent_settings;
+select count(*) from public.assistant_status;
+select count(*) from public.assistant_settings;
 ```
 
 Expected: 6 / 6.
@@ -2675,7 +2677,7 @@ Expected: 6 / 6.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/20260528000010_seed_agents.sql
+git add supabase/migrations/20260528000010_seed_assistants.sql
 git commit -m "feat(plan-5): seed six agent identities + default status/settings"
 ```
 
@@ -2711,7 +2713,7 @@ Open `src/lib/supabase/types.ts` and confirm the following table names appear in
 - `shorts_observations`, `shorts_classifications`, `classification_samples`
 - `niche_clusters`, `niche_actions`, `niche_predictions`, `vidiq_appearances`
 - `watched_channels`, `video_velocity_snapshots`, `competitor_channels`
-- `agents`, `agent_status`, `agent_activity_log`, `agent_memory`, `agent_settings`, `agent_chat_threads`, `agent_chat_messages`
+- `assistants`, `assistant_status`, `assistant_activity_log`, `assistant_memory`, `assistant_settings`, `assistant_chat_threads`, `assistant_chat_messages`
 - `video_reviews`, `video_review_feedback`
 - `channel_personas`
 - `kill_criteria_log`
