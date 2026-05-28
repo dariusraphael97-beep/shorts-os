@@ -90,4 +90,16 @@ describe('nextOpenSlotAfter — DST', () => {
     const slot = await nextOpenSlotAfter(channel, since, async () => false);
     expect(slot.toUTC().toISO()).toBe('2026-11-01T06:30:00.000Z');
   });
+
+  it('fall-back 2026-11-01: pre-transition 00:30 slot is NOT shifted forward', async () => {
+    const channel: ChannelForSchedule = {
+      id: 'c1', timezone: 'America/New_York',
+      posting_schedule: { weekdays: ['07:30'], weekends: ['00:30', '11:30'] },
+    };
+    // Sun 2026-11-01 00:15 ET (still EDT, before the 02:00 transition).
+    // Expect 00:30 EDT = UTC 04:30, NOT 01:30 EDT (which would be UTC 05:30).
+    const since = DateTime.fromISO('2026-11-01T00:15:00', { zone: 'America/New_York' }).toUTC();
+    const slot = await nextOpenSlotAfter(channel, since, async () => false);
+    expect(slot.toUTC().toISO()).toBe('2026-11-01T04:30:00.000Z');
+  });
 });

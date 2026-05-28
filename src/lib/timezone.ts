@@ -24,8 +24,9 @@ const MAX_HORIZON_DAYS = 14;
 /**
  * Returns the next open slot (as a UTC DateTime) on or after `since`, per the
  * channel's posting_schedule + timezone. Skips DST-eliminated slots. For
- * fall-back ambiguous times, resolves to the SECOND occurrence
- * (standard-time, later in UTC).
+ * fall-back ambiguous times, resolves to the SECOND occurrence (standard-time,
+ * later in UTC) by shifting candidates whose wall clock is preserved after
+ * adding the offset delta.
  *
  * `isOccupied` is async because the cron uses a Supabase query.
  */
@@ -63,14 +64,17 @@ export async function nextOpenSlotAfter(
       // Detect by comparing the requested hour/minute against what luxon produced.
       if (candidate.hour !== h || candidate.minute !== min) continue;
 
-      // Fall-back: luxon defaults to the first (DST) occurrence for ambiguous times.
-      // If the candidate's offset differs from the post-transition offset, it means
-      // this slot falls in the ambiguous window. Shift to the second (standard-time)
-      // occurrence by adding the offset difference.
+      // Fall-back: when luxon resolves an ambiguous wall time to the first (DST) occurrence,
+      // shifting forward by the offset delta lands on the second (standard-time) occurrence
+      // AT THE SAME WALL CLOCK. For non-ambiguous times the shifted instant has a different
+      // wall clock, so we leave the original candidate alone.
       let slotLocal = candidate;
       if (candidate.offset !== postTransitionOffset) {
-        const offsetDiff = candidate.offset - postTransitionOffset; // positive minutes
-        slotLocal = candidate.plus({ minutes: offsetDiff });
+        const offsetDiff = candidate.offset - postTransitionOffset;
+        const shifted = candidate.plus({ minutes: offsetDiff });
+        if (shifted.hour === h && shifted.minute === min) {
+          slotLocal = shifted;
+        }
       }
 
       if (slotLocal <= sinceLocal) continue;
