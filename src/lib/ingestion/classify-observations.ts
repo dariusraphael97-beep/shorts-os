@@ -15,7 +15,8 @@ function toInput(o: ShortsObservation): ClassifierInput {
   return {
     videoId: o.video_id, title: o.title, description: o.description,
     tags: Array.isArray(o.tags) ? (o.tags as unknown[]).map(String) : [],
-    channelTitle: null, channelSubscriberCount: o.channel_subscriber_count,
+    channelTitle: null, // shorts_observations doesn't carry channel title; intentionally null
+    channelSubscriberCount: o.channel_subscriber_count,
     durationSeconds: o.duration_seconds, viewCount: o.view_count, likeCount: o.like_count,
     commentCount: o.comment_count, thumbnailUrl: o.thumbnail_url,
   };
@@ -80,7 +81,7 @@ export interface RunClassificationArgs {
 
 export async function runClassification(args: RunClassificationArgs): Promise<AdapterResult> {
   const queue = await args.fetchQueue(args.limit);
-  if (queue.length === 0) return { ingested: 0, skipped: 0, quotaUnits: 0, context: { classified: 0, sampled: 0 } };
+  if (queue.length === 0) return { ingested: 0, skipped: 0, quotaUnits: 0, context: { classified: 0, sampled: 0, transcriptHits: 0 } };
   const out = await classifyBatch(queue.map(toInput), args.deps);
   for (const c of out.classifications) await args.upsertClassification(c);
   for (const s of out.samples) await args.insertSample(s);

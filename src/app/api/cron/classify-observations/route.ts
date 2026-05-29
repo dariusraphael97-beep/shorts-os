@@ -13,7 +13,7 @@ const PER_RUN_LIMIT = 150;
 
 export async function GET(req: Request) {
   try { assertCronAuth(req); } catch (e) { if (e instanceof Response) return e; throw e; }
-  try { assertGatewayConfigured(); } catch (e) { return NextResponse.json({ error: serializeError(e) }, { status: 500 }); }
+  try { assertGatewayConfigured(); } catch (e) { return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 }); }
 
   const supabase = getServiceClient();
   try {
