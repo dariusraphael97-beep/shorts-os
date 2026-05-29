@@ -3,7 +3,6 @@
 import React from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { hoverLift } from "@/lib/motion";
-import { cn } from "@/lib/utils";
 
 interface HoverLiftProps {
   children: React.ReactNode;
