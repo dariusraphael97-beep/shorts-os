@@ -3,6 +3,7 @@ export * from "./assistant-status-dot";
 export * from "./discovery-state-badge";
 export * from "./keyboard-shortcut-hint";
 export * from "./mission-control-grid";
+export * from "./niche-card";
 export * from "./outlier-badge";
 export * from "./production-fit-badge";
 export * from "./proven-band-badge";
