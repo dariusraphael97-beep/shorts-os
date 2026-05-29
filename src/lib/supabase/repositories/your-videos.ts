@@ -25,6 +25,10 @@ export type YourVideo = {
   status: VideoStatus;
   render_artifact_url: string | null;
   source_compilation_draft_id: string | null;
+  source_niche_cluster_id: string | null;
+  script_brief: Record<string, unknown> | null;
+  review_id: string | null;
+  editor_session_id: string | null;
   created_at: string;
   updated_at: string;
 };
