@@ -45,4 +45,19 @@ describe("createTranscriptClient.fetchTranscript", () => {
     const res = await client.fetchTranscript("abc123");
     expect(res).toEqual({ text: "captioned line", language: "en", auto_generated: true });
   });
+
+  it("extracts captionTracks even with nested + sibling arrays (balanced scan)", async () => {
+    const trackXml = `<transcript><text start="0">nested ok</text></transcript>`;
+    globalThis.fetch = vi.fn(async (url: string | URL) => {
+      const u = String(url);
+      if (u.includes("/watch")) {
+        const body = `{"captionTracks":[{"baseUrl":"https://www.youtube.com/api/timedtext?v=abc123&lang=en","languageCode":"en","kind":"asr","altFormats":[{"id":1}]}],"translationLanguages":[{"languageCode":"fr"}],"audioTracks":[{"id":0}]}`;
+        return new Response(body, { status: 200 });
+      }
+      return new Response(trackXml, { status: 200 });
+    }) as typeof fetch;
+    const client = createTranscriptClient();
+    const res = await client.fetchTranscript("abc123");
+    expect(res).toEqual({ text: "nested ok", language: "en", auto_generated: true });
+  });
 });
