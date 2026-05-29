@@ -29,7 +29,9 @@ describe("HMAC session", () => {
     const cookie = signSession(old);
     const result = verifySession(cookie);
     expect(result.valid).toBe(false);
-    expect(result.reason).toMatch(/expired/i);
+    if (!result.valid) {
+      expect(result.reason).toMatch(/expired/i);
+    }
   });
 
   it("accepts a cookie 29 days old", () => {
