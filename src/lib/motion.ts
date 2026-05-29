@@ -26,6 +26,12 @@ export const modalScale = {
   exit: { opacity: 0, scale: 0.96, transition: { duration: DURATION.instant, ease: EASE.standard } },
 } satisfies Variants;
 
+export const backdropFade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: DURATION.quick, ease: EASE.standard } },
+  exit: { opacity: 0, transition: { duration: DURATION.quick, ease: EASE.standard } },
+} satisfies Variants;
+
 export const hoverLift = {
   rest: { y: 0, boxShadow: "var(--elev-1)" },
   hover: { y: -2, boxShadow: "var(--elev-2)", transition: { duration: DURATION.quick, ease: EASE.standard } },
