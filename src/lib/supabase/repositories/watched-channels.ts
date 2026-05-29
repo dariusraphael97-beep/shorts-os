@@ -86,3 +86,34 @@ export async function evictInactiveWatchedChannels(
   if (error) throw new Error(`evictInactiveWatchedChannels: ${error.message}`);
   return count ?? 0;
 }
+
+export interface UpdateWatchedChannelSnapshotParams {
+  channelId: string;
+  currentSubscriberCount: number;
+  subscriberGrowth30d?: number | null;
+  subscriberGrowth90d?: number | null;
+  outlierRate60d?: number | null;
+  uploadCadencePerWeek?: number | null;
+  lastSnapshottedAt: Date;
+}
+
+export async function updateWatchedChannelSnapshot(
+  supabase: SupabaseClient,
+  params: UpdateWatchedChannelSnapshotParams,
+): Promise<WatchedChannel> {
+  const { data, error } = await supabase
+    .from('watched_channels')
+    .update({
+      current_subscriber_count: params.currentSubscriberCount,
+      subscriber_growth_30d: params.subscriberGrowth30d ?? null,
+      subscriber_growth_90d: params.subscriberGrowth90d ?? null,
+      outlier_rate_60d: params.outlierRate60d ?? null,
+      upload_cadence_per_week: params.uploadCadencePerWeek ?? null,
+      last_snapshotted_at: params.lastSnapshottedAt.toISOString(),
+    })
+    .eq('channel_id', params.channelId)
+    .select()
+    .single();
+  if (error) throw new Error(`updateWatchedChannelSnapshot: ${error.message}`);
+  return data as WatchedChannel;
+}
