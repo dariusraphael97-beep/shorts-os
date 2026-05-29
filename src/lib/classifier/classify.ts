@@ -105,6 +105,7 @@ export async function classifyBatch(inputs: ClassifierInput[], deps: ClassifierD
     return { videoId: i.videoId, format: f, hadThumb: thumb !== null };
   });
   const formatByVideo = new Map(formats.map((f) => [f.videoId, f]));
+  const withTranscriptByVideo = new Map(withTranscript.map((w) => [w.videoId, w]));
 
   const model = `topic=${deps.topicModel};format=${deps.formatModel}`;
   const classifications: ClassificationRow[] = [];
@@ -126,14 +127,14 @@ export async function classifyBatch(inputs: ClassifierInput[], deps: ClassifierD
       confidence,
       model,
       promptVersion: deps.promptVersion,
-      visionUsed: true,
+      visionUsed: fmt.hadThumb, // a thumbnail image was actually attached to the format (vision) call
       transcriptUsed,
     };
     classifications.push(row);
     if (rng() < sampleRate) {
       samples.push({
         videoId: input.videoId,
-        promptFull: JSON.stringify({ topicModel: deps.topicModel, formatModel: deps.formatModel, input: withTranscript.find((w) => w.videoId === input.videoId) }),
+        promptFull: JSON.stringify({ topicModel: deps.topicModel, formatModel: deps.formatModel, input: withTranscriptByVideo.get(input.videoId) }),
         responseFull: JSON.stringify({ topic, format: fmt.format }),
         chosenLabels: { topic_label: row.topicLabel, format_label: row.formatLabel, audience_signal: row.audienceSignal, confidence: row.confidence },
       });
