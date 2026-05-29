@@ -102,3 +102,78 @@ export async function listShortsObservationsBySource(
   if (error) throw new Error(`listShortsObservationsBySource: ${error.message}`);
   return (data ?? []) as ShortsObservation[];
 }
+
+/** Observations with NO classification row yet (newest first) — classifier work queue. */
+export async function listUnclassifiedObservations(
+  supabase: SupabaseClient,
+  params: { limit: number },
+): Promise<ShortsObservation[]> {
+  const { data, error } = await (supabase
+    .from('shorts_observations')
+    .select('*, shorts_classifications!left(video_id)') as unknown as {
+      is: (col: string, val: null) => {
+        order: (col: string, opts: { ascending: boolean }) => {
+          limit: (n: number) => Promise<{ data: (Record<string, unknown> & { shorts_classifications: unknown })[] | null; error: { message: string } | null }>;
+        };
+      };
+    })
+    .is('shorts_classifications', null)
+    .order('observed_at', { ascending: false })
+    .limit(params.limit);
+  if (error) throw new Error(`listUnclassifiedObservations: ${error.message}`);
+  return (data ?? []).map((row) => {
+    const obs = { ...row } as Record<string, unknown>;
+    delete obs.shorts_classifications;
+    return obs as unknown as ShortsObservation;
+  });
+}
+
+export interface ClassifiedObservation {
+  video_id: string;
+  source: ShortsObservationSource;
+  channel_id: string | null;
+  channel_subscriber_count: number | null;
+  description: string | null;
+  view_count: number;
+  like_count: number;
+  comment_count: number;
+  published_at: string | null;
+  observed_at: string;
+  topic_label: string;
+  format_label: string;
+  audience_signal: string | null;
+  confidence: number;
+}
+
+/** Observation × classification join over a window, at/above a confidence floor — clustering input. */
+export async function listClassifiedObservationsSince(
+  supabase: SupabaseClient,
+  params: { since: Date; minConfidence: number },
+): Promise<ClassifiedObservation[]> {
+  const { data, error } = await supabase
+    .from('shorts_classifications')
+    .select(
+      'video_id, topic_label, format_label, audience_signal, confidence, ' +
+      'shorts_observations!inner(source, channel_id, channel_subscriber_count, description, view_count, like_count, comment_count, published_at, observed_at)',
+    )
+    .gte('confidence', params.minConfidence)
+    .gte('shorts_observations.observed_at', params.since.toISOString());
+  if (error) throw new Error(`listClassifiedObservationsSince: ${error.message}`);
+  type JoinRow = {
+    video_id: string; topic_label: string; format_label: string; audience_signal: string | null; confidence: number;
+    shorts_observations: {
+      source: ShortsObservationSource; channel_id: string | null; channel_subscriber_count: number | null;
+      description: string | null; view_count: number; like_count: number; comment_count: number;
+      published_at: string | null; observed_at: string;
+    };
+  };
+  return ((data ?? []) as unknown as JoinRow[]).map((r) => ({
+    video_id: r.video_id, topic_label: r.topic_label, format_label: r.format_label,
+    audience_signal: r.audience_signal, confidence: r.confidence,
+    source: r.shorts_observations.source, channel_id: r.shorts_observations.channel_id,
+    channel_subscriber_count: r.shorts_observations.channel_subscriber_count,
+    description: r.shorts_observations.description, view_count: r.shorts_observations.view_count,
+    like_count: r.shorts_observations.like_count, comment_count: r.shorts_observations.comment_count,
+    published_at: r.shorts_observations.published_at, observed_at: r.shorts_observations.observed_at,
+  }));
+}
