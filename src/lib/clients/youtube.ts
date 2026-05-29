@@ -103,3 +103,111 @@ export async function searchShortsByQuery(
     rawPayload: item,
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Extended videos.list helpers
+// ---------------------------------------------------------------------------
+
+export const YOUTUBE_QUOTA_COST = {
+  search: 100,
+  videosList: 1,
+  channelsList: 1,
+  playlistItems: 1,
+} as const;
+
+export type YouTubeVideoDetail = {
+  videoId: string;
+  title: string;
+  description: string;
+  tags: string[];
+  channelId: string;
+  channelTitle: string;
+  publishedAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+  durationSeconds: number;
+  thumbnailUrl: string | null;
+};
+
+type RawVideoItem = {
+  id: string;
+  snippet?: {
+    title?: string;
+    description?: string;
+    channelId?: string;
+    channelTitle?: string;
+    publishedAt?: string;
+    tags?: string[];
+    thumbnails?: { medium?: { url?: string }; high?: { url?: string }; default?: { url?: string } };
+  };
+  statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
+  contentDetails?: { duration?: string };
+};
+
+function mapVideoItem(item: RawVideoItem): YouTubeVideoDetail {
+  const s = item.snippet ?? {};
+  const stats = item.statistics ?? {};
+  const thumb = s.thumbnails?.medium?.url ?? s.thumbnails?.high?.url ?? s.thumbnails?.default?.url ?? null;
+  return {
+    videoId: item.id,
+    title: s.title ?? '',
+    description: s.description ?? '',
+    tags: s.tags ?? [],
+    channelId: s.channelId ?? '',
+    channelTitle: s.channelTitle ?? '',
+    publishedAt: s.publishedAt ?? '',
+    views: parseInt(stats.viewCount ?? '0', 10),
+    likes: parseInt(stats.likeCount ?? '0', 10),
+    comments: parseInt(stats.commentCount ?? '0', 10),
+    durationSeconds: parseISODurationToSeconds(item.contentDetails?.duration ?? 'PT0S'),
+    thumbnailUrl: thumb,
+  };
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+export async function fetchVideosByIds(params: {
+  apiKey: string;
+  videoIds: string[];
+}): Promise<YouTubeVideoDetail[]> {
+  const { apiKey, videoIds } = params;
+  if (videoIds.length === 0) return [];
+  const results: YouTubeVideoDetail[] = [];
+  for (const batch of chunk(videoIds, 50)) {
+    const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+    url.searchParams.set('part', 'snippet,statistics,contentDetails');
+    url.searchParams.set('id', batch.join(','));
+    url.searchParams.set('maxResults', '50');
+    url.searchParams.set('key', apiKey);
+    const res = await fetch(url.toString());
+    if (!res.ok) throw new Error(`YouTube videos.list failed: ${res.status} ${await res.text()}`);
+    const json = (await res.json()) as { items?: RawVideoItem[] };
+    for (const item of json.items ?? []) results.push(mapVideoItem(item));
+  }
+  return results;
+}
+
+export async function fetchMostPopularByCategory(params: {
+  apiKey: string;
+  categoryId: string;
+  regionCode?: string;
+  maxResults?: number;
+}): Promise<YouTubeVideoDetail[]> {
+  const { apiKey, categoryId, regionCode = 'US', maxResults = 50 } = params;
+  const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+  url.searchParams.set('part', 'snippet,statistics,contentDetails');
+  url.searchParams.set('chart', 'mostPopular');
+  url.searchParams.set('videoCategoryId', categoryId);
+  url.searchParams.set('regionCode', regionCode);
+  url.searchParams.set('maxResults', String(maxResults));
+  url.searchParams.set('key', apiKey);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`YouTube mostPopular failed: ${res.status} ${await res.text()}`);
+  const json = (await res.json()) as { items?: RawVideoItem[] };
+  return (json.items ?? []).map(mapVideoItem);
+}
