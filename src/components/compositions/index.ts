@@ -7,5 +7,7 @@ export * from "./niche-card";
 export * from "./outlier-badge";
 export * from "./production-fit-badge";
 export * from "./proven-band-badge";
+export * from "./review-scorecard";
+export * from "./review-suggestion-item";
 export * from "./tone-badge";
 export * from "./velocity-sparkline";
