@@ -9,6 +9,9 @@ describe("cosine", () => {
   it("returns 0 for a zero vector (no NaN)", () => {
     expect(cosine([0, 0], [1, 1])).toBe(0);
   });
+  it("returns 0 for mismatched dimensions", () => {
+    expect(cosine([1, 0, 0], [1, 0])).toBe(0);
+  });
 });
 
 describe("fuzzyMergeTopics", () => {
