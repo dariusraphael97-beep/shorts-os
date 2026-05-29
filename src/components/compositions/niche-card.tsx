@@ -31,9 +31,10 @@ function CardInner({
   discoveryState,
   productionFit,
   provenBand,
-}: Omit<NicheCardProps, "onOpen">) {
+  interactive,
+}: Omit<NicheCardProps, "onOpen"> & { interactive: boolean }) {
   return (
-    <Card className="cursor-pointer transition-colors">
+    <Card className={cn("transition-colors", interactive && "cursor-pointer")}>
       {/* Top row: title + ProvenBandBadge */}
       <CardHeader className="flex-row items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-lg font-semibold leading-snug text-[var(--text-primary)]">
@@ -106,7 +107,7 @@ export function NicheCard(props: NicheCardProps) {
           className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
         >
           <Tappable onClick={onOpen}>
-            <CardInner {...props} />
+            <CardInner {...props} interactive />
           </Tappable>
         </div>
       </HoverLift>
@@ -115,7 +116,7 @@ export function NicheCard(props: NicheCardProps) {
 
   return (
     <HoverLift>
-      <CardInner {...props} />
+      <CardInner {...props} interactive={false} />
     </HoverLift>
   );
 }
