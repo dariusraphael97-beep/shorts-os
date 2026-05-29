@@ -1573,6 +1573,27 @@ export type Database = {
         }
         Relationships: []
       }
+      topic_embeddings: {
+        Row: {
+          created_at: string
+          embedding: Json
+          model: string
+          topic_label: string
+        }
+        Insert: {
+          created_at?: string
+          embedding: Json
+          model: string
+          topic_label: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: Json
+          model?: string
+          topic_label?: string
+        }
+        Relationships: []
+      }
       topic_queue: {
         Row: {
           created_at: string

@@ -7,7 +7,9 @@ export type IngestionJob =
   | 'watch_list_sync'
   | 'reddit_topic_discovery'
   | 'google_trends'
-  | 'tiktok_creative_center';
+  | 'tiktok_creative_center'
+  | 'classify_observations'
+  | 'cluster_niches';
 
 export type IngestionStatus = 'success' | 'partial' | 'failed' | 'skipped';
 
