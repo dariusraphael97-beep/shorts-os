@@ -1,6 +1,7 @@
 export * from "./assistant-card";
 export * from "./assistant-status-dot";
 export * from "./discovery-state-badge";
+export * from "./empty-state";
 export * from "./keyboard-shortcut-hint";
 export * from "./mission-control-grid";
 export * from "./niche-card";

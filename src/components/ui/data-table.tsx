@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { EmptyState } from "@/components/compositions/empty-state"
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -72,11 +73,7 @@ export function DataTable<TData, TValue>({
         ) : (
           <TableRow>
             <TableCell colSpan={columns.length}>
-              {emptyState ?? (
-                <div className="py-12 text-center text-[var(--text-secondary)]">
-                  No rows yet.
-                </div>
-              )}
+              {emptyState ?? <EmptyState title="No rows yet" />}
             </TableCell>
           </TableRow>
         )}
