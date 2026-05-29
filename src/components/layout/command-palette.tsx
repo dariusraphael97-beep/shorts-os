@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Command,
@@ -67,7 +68,7 @@ export function CommandPalette({
               No results found.
             </CommandEmpty>
             {groups.map((group, groupIndex) => (
-              <span key={group.heading}>
+              <Fragment key={group.heading}>
                 {groupIndex > 0 && <CommandSeparator />}
                 <CommandGroup heading={group.heading}>
                   {group.items.map((item) => {
@@ -96,7 +97,7 @@ export function CommandPalette({
                     );
                   })}
                 </CommandGroup>
-              </span>
+              </Fragment>
             ))}
           </CommandList>
         </Command>
