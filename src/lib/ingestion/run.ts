@@ -38,14 +38,18 @@ export async function runWithIngestionLog(
       context: result.context,
     });
   } catch (e) {
-    await finishIngestionRun(supabase, {
-      id: run.id,
-      status: 'failed',
-      itemsIngested: 0,
-      itemsSkipped: 0,
-      quotaUnits: 0,
-      error: serializeError(e),
-    });
+    try {
+      await finishIngestionRun(supabase, {
+        id: run.id,
+        status: 'failed',
+        itemsIngested: 0,
+        itemsSkipped: 0,
+        quotaUnits: 0,
+        error: serializeError(e),
+      });
+    } catch {
+      // best-effort: never let a run-logging failure mask the original error
+    }
     throw e;
   }
 }

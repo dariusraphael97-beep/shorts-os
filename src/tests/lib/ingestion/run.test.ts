@@ -38,4 +38,9 @@ describe('runWithIngestionLog', () => {
     ).rejects.toThrow('boom');
     expect(finishIngestionRun).toHaveBeenCalledWith(fakeSupabase, expect.objectContaining({ status: 'failed', error: 'boom' }));
   });
+
+  it('forwards context from the adapter result', async () => {
+    await runWithIngestionLog(fakeSupabase, 'google_trends', async () => ({ ingested: 0, skipped: 0, quotaUnits: 0, context: { foo: 'bar' } }));
+    expect(finishIngestionRun).toHaveBeenCalledWith(fakeSupabase, expect.objectContaining({ context: { foo: 'bar' } }));
+  });
 });
