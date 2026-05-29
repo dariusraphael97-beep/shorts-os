@@ -70,12 +70,15 @@ export async function runWatchListSync(args: {
   let failures = 0;
 
   // Phase 1: velocity snapshots (recent uploads, last 7d) for active channels.
+  // Cache each channel's recent videos so Phase 2 can reuse them without re-fetching.
+  const recentVideosByChannel = new Map<string, YouTubeVideoDetail[]>();
   const sevenDaysAgo = now.getTime() - 7 * MS_PER_DAY;
   for (const ch of activeChannels) {
     if (!ch.uploads_playlist_id) { skipped++; continue; }
     try {
       const { videos, quota } = await channelRecentVideos(client, apiKey, ch.uploads_playlist_id);
       quotaUnits += quota;
+      recentVideosByChannel.set(ch.channel_id, videos);
       for (const v of videos) {
         const published = v.publishedAt ? new Date(v.publishedAt).getTime() : 0;
         if (published < sevenDaysAgo) continue;
@@ -91,7 +94,8 @@ export async function runWatchListSync(args: {
     } catch { failures++; }
   }
 
-  // Phase 2: channel-stat enrichment for active channels.
+  // Phase 2: channel-stat enrichment. Reuses Phase 1's cached recent videos for
+  // outlier-rate/cadence (no second playlist fetch).
   try {
     const channels = await client.fetchChannels({ apiKey, channelIds: activeChannels.map((c) => c.channel_id) });
     quotaUnits += Math.ceil(activeChannels.length / 50) * YOUTUBE_QUOTA_COST.channelsList;
@@ -102,14 +106,11 @@ export async function runWatchListSync(args: {
         const snap90 = await repo.getSnapshotNearestTo({ channelId: c.channelId, targetDate: new Date(now.getTime() - 90 * MS_PER_DAY) });
         let outlierRate60d: number | null = null;
         let cadence: number | null = null;
-        if (c.uploadsPlaylistId) {
-          try {
-            const { videos, quota } = await channelRecentVideos(client, apiKey, c.uploadsPlaylistId);
-            quotaUnits += quota;
-            const avg = computeAvgViews(videos.map((v) => v.views));
-            outlierRate60d = computeOutlierRate(videos.map((v) => v.views), avg, 3);
-            cadence = computeUploadCadencePerWeek(videos.map((v) => new Date(v.publishedAt)), 30, now);
-          } catch { failures++; }
+        const cached = recentVideosByChannel.get(c.channelId);
+        if (cached && cached.length > 0) {
+          const avg = computeAvgViews(cached.map((v) => v.views));
+          outlierRate60d = computeOutlierRate(cached.map((v) => v.views), avg, 3);
+          cadence = computeUploadCadencePerWeek(cached.map((v) => new Date(v.publishedAt)), 30, now);
         }
         await repo.updateWatchedChannelSnapshot({
           channelId: c.channelId, currentSubscriberCount: c.subscriberCount,

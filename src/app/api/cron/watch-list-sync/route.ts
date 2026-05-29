@@ -44,7 +44,8 @@ export async function GET(req: Request) {
             return Array.from(new Set((data ?? []).map((r: { channel_id: string }) => r.channel_id)));
           },
           isWatched: async (channelId) => {
-            const { data } = await supabase.from('watched_channels').select('channel_id').eq('channel_id', channelId).maybeSingle();
+            const { data, error } = await supabase.from('watched_channels').select('channel_id').eq('channel_id', channelId).maybeSingle();
+            if (error) throw new Error(`isWatched: ${error.message}`);
             return Boolean(data);
           },
           countActive: async () => {
