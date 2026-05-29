@@ -411,6 +411,30 @@ export type Database = {
           },
         ]
       }
+      channel_stat_snapshots: {
+        Row: {
+          channel_id: string
+          snapshot_at: string
+          subscriber_count: number
+          video_count: number | null
+          view_count: number | null
+        }
+        Insert: {
+          channel_id: string
+          snapshot_at?: string
+          subscriber_count: number
+          video_count?: number | null
+          view_count?: number | null
+        }
+        Update: {
+          channel_id?: string
+          snapshot_at?: string
+          subscriber_count?: number
+          video_count?: number | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       channels: {
         Row: {
           created_at: string
@@ -811,6 +835,45 @@ export type Database = {
           source_platform?: string
           source_url?: string
           stage_1_score?: number
+        }
+        Relationships: []
+      }
+      ingestion_runs: {
+        Row: {
+          context: Json
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_ingested: number
+          items_skipped: number
+          job: string
+          quota_units: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          context?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_ingested?: number
+          items_skipped?: number
+          job: string
+          quota_units?: number
+          started_at?: string
+          status: string
+        }
+        Update: {
+          context?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_ingested?: number
+          items_skipped?: number
+          job?: string
+          quota_units?: number
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
