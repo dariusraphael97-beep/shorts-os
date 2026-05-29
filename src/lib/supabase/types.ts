@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       agent_messages: {
@@ -167,6 +142,275 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_activity_log: {
+        Row: {
+          activity_type: string
+          assistant_id: string
+          created_at: string
+          id: string
+          payload: Json
+          summary: string
+        }
+        Insert: {
+          activity_type: string
+          assistant_id: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          summary: string
+        }
+        Update: {
+          activity_type?: string
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_activity_log_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_chat_threads: {
+        Row: {
+          assistant_id: string
+          id: string
+          last_message_at: string
+          started_at: string
+          title: string | null
+        }
+        Insert: {
+          assistant_id: string
+          id?: string
+          last_message_at?: string
+          started_at?: string
+          title?: string | null
+        }
+        Update: {
+          assistant_id?: string
+          id?: string
+          last_message_at?: string
+          started_at?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_chat_threads_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_memory: {
+        Row: {
+          assistant_id: string
+          confidence: number
+          editable_by_user: boolean
+          id: string
+          last_updated_at: string
+          memory_key: string
+          memory_value: Json
+        }
+        Insert: {
+          assistant_id: string
+          confidence?: number
+          editable_by_user?: boolean
+          id?: string
+          last_updated_at?: string
+          memory_key: string
+          memory_value: Json
+        }
+        Update: {
+          assistant_id?: string
+          confidence?: number
+          editable_by_user?: boolean
+          id?: string
+          last_updated_at?: string
+          memory_key?: string
+          memory_value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_memory_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_settings: {
+        Row: {
+          assistant_id: string
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          assistant_id: string
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          assistant_id?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_settings_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: true
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_status: {
+        Row: {
+          assistant_id: string
+          current_activity: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          assistant_id: string
+          current_activity?: string | null
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          assistant_id?: string
+          current_activity?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_status_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: true
+            referencedRelation: "assistants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistants: {
+        Row: {
+          accent_color_var: string
+          created_at: string
+          display_name: string
+          icon_name: string
+          id: string
+          is_enabled: boolean
+          role_description: string
+        }
+        Insert: {
+          accent_color_var?: string
+          created_at?: string
+          display_name: string
+          icon_name: string
+          id: string
+          is_enabled?: boolean
+          role_description: string
+        }
+        Update: {
+          accent_color_var?: string
+          created_at?: string
+          display_name?: string
+          icon_name?: string
+          id?: string
+          is_enabled?: boolean
+          role_description?: string
+        }
+        Relationships: []
+      }
+      channel_personas: {
+        Row: {
+          brand_watermark_url: string | null
+          caption_style: Json
+          channel_id: string
+          created_at: string
+          id: string
+          intro_template: Json
+          outro_template: Json
+          signature_phrases: string[]
+          updated_at: string
+          voice_profile: Json
+        }
+        Insert: {
+          brand_watermark_url?: string | null
+          caption_style?: Json
+          channel_id: string
+          created_at?: string
+          id?: string
+          intro_template?: Json
+          outro_template?: Json
+          signature_phrases?: string[]
+          updated_at?: string
+          voice_profile?: Json
+        }
+        Update: {
+          brand_watermark_url?: string | null
+          caption_style?: Json
+          channel_id?: string
+          created_at?: string
+          id?: string
+          intro_template?: Json
+          outro_template?: Json
+          signature_phrases?: string[]
+          updated_at?: string
+          voice_profile?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_personas_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           created_at: string
@@ -238,6 +482,53 @@ export type Database = {
           },
         ]
       }
+      classification_samples: {
+        Row: {
+          chosen_labels: Json
+          created_at: string
+          id: string
+          prompt_full: string
+          response_full: string
+          review_verdict: string | null
+          reviewed: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
+          video_id: string
+        }
+        Insert: {
+          chosen_labels: Json
+          created_at?: string
+          id?: string
+          prompt_full: string
+          response_full: string
+          review_verdict?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          video_id: string
+        }
+        Update: {
+          chosen_labels?: Json
+          created_at?: string
+          id?: string
+          prompt_full?: string
+          response_full?: string
+          review_verdict?: string | null
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classification_samples_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "shorts_observations"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
       clip_library: {
         Row: {
           added_at: string
@@ -293,6 +584,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      competitor_channels: {
+        Row: {
+          added_at: string
+          channel_handle: string | null
+          channel_id: string
+          channel_title: string | null
+          is_active: boolean
+        }
+        Insert: {
+          added_at?: string
+          channel_handle?: string | null
+          channel_id: string
+          channel_title?: string | null
+          is_active?: boolean
+        }
+        Update: {
+          added_at?: string
+          channel_handle?: string | null
+          channel_id?: string
+          channel_title?: string | null
+          is_active?: boolean
+        }
+        Relationships: []
       }
       compilation_drafts: {
         Row: {
@@ -569,6 +884,33 @@ export type Database = {
           },
         ]
       }
+      kill_criteria_log: {
+        Row: {
+          criterion: string
+          decision_text: string
+          evaluated_at: string
+          evidence: Json
+          id: string
+          verdict: string
+        }
+        Insert: {
+          criterion: string
+          decision_text: string
+          evaluated_at?: string
+          evidence?: Json
+          id?: string
+          verdict: string
+        }
+        Update: {
+          criterion?: string
+          decision_text?: string
+          evaluated_at?: string
+          evidence?: Json
+          id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       music_tracks: {
         Row: {
           added_at: string
@@ -610,6 +952,155 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      niche_actions: {
+        Row: {
+          action: string
+          actor: string | null
+          created_at: string
+          id: string
+          niche_cluster_id: string
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          created_at?: string
+          id?: string
+          niche_cluster_id: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          created_at?: string
+          id?: string
+          niche_cluster_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "niche_actions_niche_cluster_id_fkey"
+            columns: ["niche_cluster_id"]
+            isOneToOne: false
+            referencedRelation: "niche_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      niche_clusters: {
+        Row: {
+          audience_signal: string | null
+          avg_velocity_24h: number | null
+          avg_views: number | null
+          canonical_topic: string
+          channel_count: number
+          created_at: string
+          digest_rank: number | null
+          discovery_state: string | null
+          example_video_ids: Json
+          explainability_top_signals: Json
+          first_mover_score: number | null
+          first_seen_at: string | null
+          format_label: string
+          id: string
+          niche_score: number | null
+          outlier_density: number | null
+          production_fit: string | null
+          proven_score: number | null
+          week_start: string
+        }
+        Insert: {
+          audience_signal?: string | null
+          avg_velocity_24h?: number | null
+          avg_views?: number | null
+          canonical_topic: string
+          channel_count?: number
+          created_at?: string
+          digest_rank?: number | null
+          discovery_state?: string | null
+          example_video_ids?: Json
+          explainability_top_signals?: Json
+          first_mover_score?: number | null
+          first_seen_at?: string | null
+          format_label: string
+          id?: string
+          niche_score?: number | null
+          outlier_density?: number | null
+          production_fit?: string | null
+          proven_score?: number | null
+          week_start: string
+        }
+        Update: {
+          audience_signal?: string | null
+          avg_velocity_24h?: number | null
+          avg_views?: number | null
+          canonical_topic?: string
+          channel_count?: number
+          created_at?: string
+          digest_rank?: number | null
+          discovery_state?: string | null
+          example_video_ids?: Json
+          explainability_top_signals?: Json
+          first_mover_score?: number | null
+          first_seen_at?: string | null
+          format_label?: string
+          id?: string
+          niche_score?: number | null
+          outlier_density?: number | null
+          production_fit?: string | null
+          proven_score?: number | null
+          week_start?: string
+        }
+        Relationships: []
+      }
+      niche_predictions: {
+        Row: {
+          accuracy_verdict: string | null
+          actual_video_id: string | null
+          actual_views_7d: number | null
+          closed_at: string | null
+          id: string
+          niche_cluster_id: string
+          predicted_at: string
+          predicted_views_7d_lower: number
+          predicted_views_7d_upper: number
+        }
+        Insert: {
+          accuracy_verdict?: string | null
+          actual_video_id?: string | null
+          actual_views_7d?: number | null
+          closed_at?: string | null
+          id?: string
+          niche_cluster_id: string
+          predicted_at?: string
+          predicted_views_7d_lower: number
+          predicted_views_7d_upper: number
+        }
+        Update: {
+          accuracy_verdict?: string | null
+          actual_video_id?: string | null
+          actual_views_7d?: number | null
+          closed_at?: string | null
+          id?: string
+          niche_cluster_id?: string
+          predicted_at?: string
+          predicted_views_7d_lower?: number
+          predicted_views_7d_upper?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "niche_predictions_actual_video_id_fkey"
+            columns: ["actual_video_id"]
+            isOneToOne: false
+            referencedRelation: "your_videos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "niche_predictions_niche_cluster_id_fkey"
+            columns: ["niche_cluster_id"]
+            isOneToOne: false
+            referencedRelation: "niche_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       niches: {
         Row: {
@@ -918,6 +1409,107 @@ export type Database = {
           },
         ]
       }
+      shorts_classifications: {
+        Row: {
+          audience_signal: string | null
+          classified_at: string
+          confidence: number
+          format_label: string
+          model: string
+          prompt_version: string
+          topic_label: string
+          transcript_used: boolean
+          video_id: string
+          vision_used: boolean
+        }
+        Insert: {
+          audience_signal?: string | null
+          classified_at?: string
+          confidence: number
+          format_label: string
+          model: string
+          prompt_version: string
+          topic_label: string
+          transcript_used?: boolean
+          video_id: string
+          vision_used?: boolean
+        }
+        Update: {
+          audience_signal?: string | null
+          classified_at?: string
+          confidence?: number
+          format_label?: string
+          model?: string
+          prompt_version?: string
+          topic_label?: string
+          transcript_used?: boolean
+          video_id?: string
+          vision_used?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorts_classifications_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "shorts_observations"
+            referencedColumns: ["video_id"]
+          },
+        ]
+      }
+      shorts_observations: {
+        Row: {
+          channel_id: string | null
+          channel_subscriber_count: number | null
+          comment_count: number | null
+          description: string | null
+          duration_seconds: number | null
+          last_refreshed_at: string
+          like_count: number | null
+          observed_at: string
+          published_at: string | null
+          source: string
+          tags: Json | null
+          thumbnail_url: string | null
+          title: string
+          video_id: string
+          view_count: number | null
+        }
+        Insert: {
+          channel_id?: string | null
+          channel_subscriber_count?: number | null
+          comment_count?: number | null
+          description?: string | null
+          duration_seconds?: number | null
+          last_refreshed_at?: string
+          like_count?: number | null
+          observed_at?: string
+          published_at?: string | null
+          source: string
+          tags?: Json | null
+          thumbnail_url?: string | null
+          title: string
+          video_id: string
+          view_count?: number | null
+        }
+        Update: {
+          channel_id?: string | null
+          channel_subscriber_count?: number | null
+          comment_count?: number | null
+          description?: string | null
+          duration_seconds?: number | null
+          last_refreshed_at?: string
+          like_count?: number | null
+          observed_at?: string
+          published_at?: string | null
+          source?: string
+          tags?: Json | null
+          thumbnail_url?: string | null
+          title?: string
+          video_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       topic_queue: {
         Row: {
           created_at: string
@@ -1036,6 +1628,181 @@ export type Database = {
           },
         ]
       }
+      video_review_feedback: {
+        Row: {
+          action_taken: string
+          id: string
+          recorded_at: string
+          suggestion_index: number
+          video_review_id: string
+        }
+        Insert: {
+          action_taken: string
+          id?: string
+          recorded_at?: string
+          suggestion_index: number
+          video_review_id: string
+        }
+        Update: {
+          action_taken?: string
+          id?: string
+          recorded_at?: string
+          suggestion_index?: number
+          video_review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_review_feedback_video_review_id_fkey"
+            columns: ["video_review_id"]
+            isOneToOne: false
+            referencedRelation: "video_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_reviews: {
+        Row: {
+          audio_score: number | null
+          audio_verdict: string | null
+          description_seo_score: number | null
+          description_seo_verdict: string | null
+          hook_score: number | null
+          hook_verdict: string | null
+          id: string
+          model: string
+          overall_verdict: string
+          pacing_score: number | null
+          pacing_verdict: string | null
+          prompt_version: string
+          reviewed_at: string
+          strengths: Json
+          suggestions: Json
+          thumbnail_score: number | null
+          thumbnail_verdict: string | null
+          title_score: number | null
+          title_verdict: string | null
+          visual_score: number | null
+          visual_verdict: string | null
+          your_video_id: string
+        }
+        Insert: {
+          audio_score?: number | null
+          audio_verdict?: string | null
+          description_seo_score?: number | null
+          description_seo_verdict?: string | null
+          hook_score?: number | null
+          hook_verdict?: string | null
+          id?: string
+          model: string
+          overall_verdict: string
+          pacing_score?: number | null
+          pacing_verdict?: string | null
+          prompt_version: string
+          reviewed_at?: string
+          strengths?: Json
+          suggestions?: Json
+          thumbnail_score?: number | null
+          thumbnail_verdict?: string | null
+          title_score?: number | null
+          title_verdict?: string | null
+          visual_score?: number | null
+          visual_verdict?: string | null
+          your_video_id: string
+        }
+        Update: {
+          audio_score?: number | null
+          audio_verdict?: string | null
+          description_seo_score?: number | null
+          description_seo_verdict?: string | null
+          hook_score?: number | null
+          hook_verdict?: string | null
+          id?: string
+          model?: string
+          overall_verdict?: string
+          pacing_score?: number | null
+          pacing_verdict?: string | null
+          prompt_version?: string
+          reviewed_at?: string
+          strengths?: Json
+          suggestions?: Json
+          thumbnail_score?: number | null
+          thumbnail_verdict?: string | null
+          title_score?: number | null
+          title_verdict?: string | null
+          visual_score?: number | null
+          visual_verdict?: string | null
+          your_video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_reviews_your_video_id_fkey"
+            columns: ["your_video_id"]
+            isOneToOne: false
+            referencedRelation: "your_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_velocity_snapshots: {
+        Row: {
+          comment_count: number
+          like_count: number
+          snapshot_at: string
+          video_id: string
+          view_count: number
+        }
+        Insert: {
+          comment_count?: number
+          like_count?: number
+          snapshot_at?: string
+          video_id: string
+          view_count: number
+        }
+        Update: {
+          comment_count?: number
+          like_count?: number
+          snapshot_at?: string
+          video_id?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
+      vidiq_appearances: {
+        Row: {
+          canonical_topic: string
+          created_at: string
+          first_surfaced_by_1of10_at: string | null
+          first_surfaced_by_exploding_topics_at: string | null
+          first_surfaced_by_shorts_os_at: string
+          first_surfaced_by_vidiq_at: string | null
+          format_label: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          canonical_topic: string
+          created_at?: string
+          first_surfaced_by_1of10_at?: string | null
+          first_surfaced_by_exploding_topics_at?: string | null
+          first_surfaced_by_shorts_os_at: string
+          first_surfaced_by_vidiq_at?: string | null
+          format_label: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          canonical_topic?: string
+          created_at?: string
+          first_surfaced_by_1of10_at?: string | null
+          first_surfaced_by_exploding_topics_at?: string | null
+          first_surfaced_by_shorts_os_at?: string
+          first_surfaced_by_vidiq_at?: string | null
+          format_label?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       viral_observations: {
         Row: {
           channel_id: string | null
@@ -1104,20 +1871,77 @@ export type Database = {
           },
         ]
       }
+      watched_channels: {
+        Row: {
+          added_at: string
+          channel_handle: string | null
+          channel_id: string
+          channel_thumbnail_url: string | null
+          channel_title: string | null
+          current_subscriber_count: number
+          discovery_source: string
+          is_active: boolean
+          last_snapshotted_at: string | null
+          outlier_rate_60d: number | null
+          subscriber_count_at_add: number
+          subscriber_growth_30d: number | null
+          subscriber_growth_90d: number | null
+          upload_cadence_per_week: number | null
+        }
+        Insert: {
+          added_at?: string
+          channel_handle?: string | null
+          channel_id: string
+          channel_thumbnail_url?: string | null
+          channel_title?: string | null
+          current_subscriber_count: number
+          discovery_source: string
+          is_active?: boolean
+          last_snapshotted_at?: string | null
+          outlier_rate_60d?: number | null
+          subscriber_count_at_add: number
+          subscriber_growth_30d?: number | null
+          subscriber_growth_90d?: number | null
+          upload_cadence_per_week?: number | null
+        }
+        Update: {
+          added_at?: string
+          channel_handle?: string | null
+          channel_id?: string
+          channel_thumbnail_url?: string | null
+          channel_title?: string | null
+          current_subscriber_count?: number
+          discovery_source?: string
+          is_active?: boolean
+          last_snapshotted_at?: string | null
+          outlier_rate_60d?: number | null
+          subscriber_count_at_add?: number
+          subscriber_growth_30d?: number | null
+          subscriber_growth_90d?: number | null
+          upload_cadence_per_week?: number | null
+        }
+        Relationships: []
+      }
       your_videos: {
         Row: {
+          caption_props: Json | null
           channel_id: string
           created_at: string
           description: string | null
           duration_seconds: number | null
+          editor_session_id: string | null
           external_video_id: string | null
           id: string
           posted_at: string | null
           posted_dow_local: number | null
           posted_hour_local: number | null
           render_artifact_url: string | null
+          review_id: string | null
           scheduled_for: string | null
-          script: string
+          script: string | null
+          script_brief: Json | null
+          source_compilation_draft_id: string | null
+          source_niche_cluster_id: string | null
           status: string
           title: string
           topic_queue_id: string | null
@@ -1128,18 +1952,24 @@ export type Database = {
           voice_provider: string | null
         }
         Insert: {
+          caption_props?: Json | null
           channel_id: string
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
+          editor_session_id?: string | null
           external_video_id?: string | null
           id?: string
           posted_at?: string | null
           posted_dow_local?: number | null
           posted_hour_local?: number | null
           render_artifact_url?: string | null
+          review_id?: string | null
           scheduled_for?: string | null
-          script: string
+          script?: string | null
+          script_brief?: Json | null
+          source_compilation_draft_id?: string | null
+          source_niche_cluster_id?: string | null
           status?: string
           title: string
           topic_queue_id?: string | null
@@ -1150,18 +1980,24 @@ export type Database = {
           voice_provider?: string | null
         }
         Update: {
+          caption_props?: Json | null
           channel_id?: string
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
+          editor_session_id?: string | null
           external_video_id?: string | null
           id?: string
           posted_at?: string | null
           posted_dow_local?: number | null
           posted_hour_local?: number | null
           render_artifact_url?: string | null
+          review_id?: string | null
           scheduled_for?: string | null
-          script?: string
+          script?: string | null
+          script_brief?: Json | null
+          source_compilation_draft_id?: string | null
+          source_niche_cluster_id?: string | null
           status?: string
           title?: string
           topic_queue_id?: string | null
@@ -1177,6 +2013,27 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "your_videos_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "video_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "your_videos_source_compilation_draft_id_fkey"
+            columns: ["source_compilation_draft_id"]
+            isOneToOne: false
+            referencedRelation: "compilation_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "your_videos_source_niche_cluster_id_fkey"
+            columns: ["source_niche_cluster_id"]
+            isOneToOne: false
+            referencedRelation: "niche_clusters"
             referencedColumns: ["id"]
           },
           {
@@ -1219,7 +2076,63 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_due_scheduled_uploads: {
+        Args: { p_limit: number; p_now: string }
+        Returns: {
+          channel_id: string
+          id: string
+        }[]
+      }
+      claim_render_jobs: {
+        Args: { p_limit: number }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          clip_library_id: string | null
+          compilation_draft_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          payload: Json
+          sandbox_invocation_id: string | null
+          started_at: string | null
+          status: string
+          your_video_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "render_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      reset_stuck_render_jobs: {
+        Args: never
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          clip_library_id: string | null
+          compilation_draft_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          payload: Json
+          sandbox_invocation_id: string | null
+          started_at: string | null
+          status: string
+          your_video_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "render_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1348,9 +2261,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
