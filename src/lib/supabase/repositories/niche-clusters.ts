@@ -92,6 +92,13 @@ export async function listDigestRankedClusters(
   return (data ?? []) as NicheCluster[];
 }
 
+export async function getLatestWeekStart(supabase: SupabaseClient): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('niche_clusters').select('week_start').order('week_start', { ascending: false }).limit(1).maybeSingle();
+  if (error && (error as { code?: string }).code !== 'PGRST116') throw new Error(`getLatestWeekStart: ${error.message}`);
+  return (data as { week_start: string } | null)?.week_start ?? null;
+}
+
 export async function getClusterById(
   supabase: SupabaseClient,
   id: string,
