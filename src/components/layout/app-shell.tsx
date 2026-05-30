@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { AppCommandPalette } from "@/components/layout/app-command-palette"
 
 export interface AppShellProps {
   sidebar: ReactNode
@@ -12,6 +13,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
       <main className="flex-1 min-w-0">
         <div className="mx-auto max-w-[1280px] px-8 py-8">{children}</div>
       </main>
+      <AppCommandPalette />
     </div>
   )
 }
