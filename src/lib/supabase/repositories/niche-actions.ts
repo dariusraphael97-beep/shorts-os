@@ -11,7 +11,7 @@ export async function recordNicheAction(
     niche_cluster_id: params.nicheClusterId,
     action: params.action,
     actor: params.actor ?? "darius",
-  } as unknown as Record<string, unknown>);
+  });
   if (error) throw new Error(`recordNicheAction: ${error.message}`);
 }
 
