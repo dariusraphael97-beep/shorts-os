@@ -781,6 +781,39 @@ export type Database = {
           },
         ]
       }
+      digest_runs: {
+        Row: {
+          cluster_ids: Json
+          error: string | null
+          html: string | null
+          id: string
+          recipient: string | null
+          sent_at: string
+          status: string
+          week_start: string
+        }
+        Insert: {
+          cluster_ids?: Json
+          error?: string | null
+          html?: string | null
+          id?: string
+          recipient?: string | null
+          sent_at?: string
+          status: string
+          week_start: string
+        }
+        Update: {
+          cluster_ids?: Json
+          error?: string | null
+          html?: string | null
+          id?: string
+          recipient?: string | null
+          sent_at?: string
+          status?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       ingest_blocklist: {
         Row: {
           added_at: string
