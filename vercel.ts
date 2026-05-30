@@ -39,6 +39,9 @@ export const config: VercelConfig = {
     { path: '/api/cron/reddit-topic-discovery',  schedule: '0 9 * * *'    }, // daily 09:00 UTC
     { path: '/api/cron/google-trends',           schedule: '30 9 * * *'   }, // daily 09:30 UTC
     { path: '/api/cron/tiktok-creative-center',  schedule: '0 22 * * 0'   }, // weekly Sun 22:00 UTC (disabled stub)
+    // --- Plan #5 Phase 1 Sub-phase D (niche-finder brain) ---
+    { path: '/api/cron/classify-observations',   schedule: '15 */6 * * *' }, // every 6h, offset after ingestion
+    { path: '/api/cron/cluster-niches',          schedule: '0 23 * * 0'   }, // weekly Sun 23:00 UTC
   ],
 };
 
