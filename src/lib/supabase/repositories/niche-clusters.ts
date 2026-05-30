@@ -114,6 +114,34 @@ export async function getClusterById(
   return (data as NicheCluster | null) ?? null;
 }
 
+/**
+ * Sibling clusters in the same week that share either the canonical topic or the
+ * format label — used to power the "related niches" strip on the detail page.
+ * Excludes the source cluster itself.
+ */
+export async function listRelatedClusters(
+  supabase: SupabaseClient,
+  params: {
+    weekStart: string;
+    canonicalTopic: string;
+    formatLabel: FormatLabel;
+    excludeId: string;
+    limit: number;
+  },
+): Promise<NicheCluster[]> {
+  const { data, error } = await supabase
+    .from('niche_clusters')
+    .select()
+    .eq('week_start', params.weekStart)
+    .neq('id', params.excludeId)
+    .or(
+      `canonical_topic.eq.${params.canonicalTopic},format_label.eq.${params.formatLabel}`,
+    )
+    .limit(params.limit);
+  if (error) throw new Error(`listRelatedClusters: ${error.message}`);
+  return (data ?? []) as NicheCluster[];
+}
+
 export interface NicheClusterInsert {
   weekStart: string; // 'YYYY-MM-DD'
   canonicalTopic: string;
