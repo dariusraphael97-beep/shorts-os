@@ -190,11 +190,6 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const hasFiredViewedRef = useRef(false);
 
-  // All card ids in render order (for j/k navigation)
-  const allIds = [...proven, ...unproven]
-    .filter((c) => !dismissedIds.has(c.id))
-    .map((c) => c.id);
-
   // Fire "viewed" once per mount for all visible cards
   useEffect(() => {
     if (hasFiredViewedRef.current) return;
