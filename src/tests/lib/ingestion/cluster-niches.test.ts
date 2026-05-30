@@ -30,12 +30,14 @@ it("clusters, scores, selects a digest, and persists one week", async () => {
   expect(embed).toHaveBeenCalledOnce();
 });
 
-it("returns ingested=0 when there is nothing to cluster", async () => {
+it("returns ingested=0 without embedding when there is nothing to cluster", async () => {
+  const embed = vi.fn(async () => []);
   const result = await runClustering({
     since: new Date(), weekStart: "2026-05-25", minConfidence: 0.5, mergeThreshold: 0.85,
     fetchRows: async () => [], getCachedEmbeddings: async () => new Map(),
-    embed: vi.fn(async () => []), saveEmbeddings: async () => {},
+    embed, saveEmbeddings: async () => {},
     replaceWeek: async () => 0, now: new Date(),
   });
   expect(result.ingested).toBe(0);
+  expect(embed).not.toHaveBeenCalled();
 });
