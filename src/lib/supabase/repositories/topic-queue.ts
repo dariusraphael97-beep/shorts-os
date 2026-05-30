@@ -56,6 +56,26 @@ export async function listReviewedTopics(
   return (data ?? []) as QueuedTopic[];
 }
 
+export async function insertManualTopic(
+  supabase: SupabaseClient,
+  params: { title: string; summary: string; rawPayload: unknown; state?: TopicState },
+): Promise<QueuedTopic> {
+  const { data, error } = await supabase
+    .from("topic_queue")
+    .insert({
+      source: "manual",
+      niche_id: null,
+      title: params.title,
+      summary: params.summary,
+      raw_payload: params.rawPayload,
+      state: params.state ?? "reviewed",
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(`insertManualTopic: ${error.message}`);
+  return data as QueuedTopic;
+}
+
 export async function getTopicById(supabase: SupabaseClient, id: string): Promise<QueuedTopic> {
   const { data, error } = await supabase
     .from("topic_queue")
