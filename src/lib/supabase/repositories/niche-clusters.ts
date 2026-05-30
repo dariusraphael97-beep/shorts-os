@@ -106,3 +106,57 @@ export async function getClusterById(
   }
   return (data as NicheCluster | null) ?? null;
 }
+
+export interface NicheClusterInsert {
+  weekStart: string; // 'YYYY-MM-DD'
+  canonicalTopic: string;
+  formatLabel: FormatLabel;
+  exampleVideoIds: string[];
+  channelCount: number;
+  avgViews: number | null;
+  avgVelocity24h: number | null;
+  outlierDensity: number | null;
+  firstSeenAt: string | null;
+  firstMoverScore: number | null;
+  provenScore: number | null;
+  nicheScore: number | null;
+  discoveryState: DiscoveryState;
+  productionFit: ProductionFit;
+  audienceSignal: string | null;
+  digestRank: number | null;
+  // Nested explainability (signal values + per-component contributions) stored as jsonb.
+  explainabilityTopSignals: Record<string, unknown>;
+}
+
+/** Idempotent weekly write: delete this week's rows, then insert the fresh set. */
+export async function replaceWeek(
+  supabase: SupabaseClient,
+  weekStart: string,
+  rows: NicheClusterInsert[],
+): Promise<number> {
+  const del = await supabase.from('niche_clusters').delete().eq('week_start', weekStart);
+  if (del.error) throw new Error(`replaceWeek(delete): ${del.error.message}`);
+  if (rows.length === 0) return 0;
+  const payload = rows.map((r) => ({
+    week_start: r.weekStart,
+    canonical_topic: r.canonicalTopic,
+    format_label: r.formatLabel,
+    example_video_ids: r.exampleVideoIds,
+    channel_count: r.channelCount,
+    avg_views: r.avgViews,
+    avg_velocity_24h: r.avgVelocity24h,
+    outlier_density: r.outlierDensity,
+    first_seen_at: r.firstSeenAt,
+    first_mover_score: r.firstMoverScore,
+    proven_score: r.provenScore,
+    niche_score: r.nicheScore,
+    discovery_state: r.discoveryState,
+    production_fit: r.productionFit,
+    audience_signal: r.audienceSignal,
+    digest_rank: r.digestRank,
+    explainability_top_signals: r.explainabilityTopSignals,
+  }));
+  const { error } = await supabase.from('niche_clusters').insert(payload);
+  if (error) throw new Error(`replaceWeek(insert): ${error.message}`);
+  return rows.length;
+}
