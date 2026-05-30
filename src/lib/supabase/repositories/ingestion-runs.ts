@@ -7,7 +7,9 @@ export type IngestionJob =
   | 'watch_list_sync'
   | 'reddit_topic_discovery'
   | 'google_trends'
-  | 'tiktok_creative_center';
+  | 'tiktok_creative_center'
+  | 'classify_observations'
+  | 'cluster_niches';
 
 export type IngestionStatus = 'success' | 'partial' | 'failed' | 'skipped';
 
@@ -78,5 +80,29 @@ export async function listRecentRunsByJob(
     .order('started_at', { ascending: false })
     .limit(params.limit);
   if (error) throw new Error(`listRecentRunsByJob: ${error.message}`);
+  return (data ?? []) as IngestionRunRow[];
+}
+
+/** Most-recent run per job (one row per job, newest). */
+export async function listLatestRunPerJob(supabase: SupabaseClient): Promise<IngestionRunRow[]> {
+  const { data, error } = await supabase
+    .from('ingestion_runs')
+    .select()
+    .order('started_at', { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`listLatestRunPerJob: ${error.message}`);
+  const seen = new Map<string, IngestionRunRow>();
+  for (const row of (data ?? []) as IngestionRunRow[]) if (!seen.has(row.job)) seen.set(row.job, row);
+  return [...seen.values()];
+}
+
+/** Recent runs across all jobs (for per-job sparklines), newest first. */
+export async function listRecentRuns(supabase: SupabaseClient, limit: number): Promise<IngestionRunRow[]> {
+  const { data, error } = await supabase
+    .from('ingestion_runs')
+    .select()
+    .order('started_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentRuns: ${error.message}`);
   return (data ?? []) as IngestionRunRow[];
 }
