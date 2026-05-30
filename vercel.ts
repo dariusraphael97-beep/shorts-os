@@ -42,6 +42,9 @@ export const config: VercelConfig = {
     // --- Plan #5 Phase 1 Sub-phase D (niche-finder brain) ---
     { path: '/api/cron/classify-observations',   schedule: '15 */6 * * *' }, // every 6h, offset after ingestion
     { path: '/api/cron/cluster-niches',          schedule: '0 23 * * 0'   }, // weekly Sun 23:00 UTC
+    // --- Plan #5 Phase 1 Sub-phase E (niche UI + digest + predictions) ---
+    { path: '/api/cron/digest-send',      schedule: '0 12 * * 1' }, // Monday 12:00 UTC (after cluster-niches)
+    { path: '/api/cron/prediction-close', schedule: '0 13 * * *' }, // daily 13:00 UTC
   ],
 };
 

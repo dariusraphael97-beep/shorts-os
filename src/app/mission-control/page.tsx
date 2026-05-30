@@ -1,3 +1,7 @@
+// The legacy cockpit reads Supabase at render time; defer to request time so the
+// build doesn't try to prerender it with blank secrets (same pattern as the new surfaces).
+export const dynamic = "force-dynamic";
+
 import { CockpitShell } from "@/components/cockpit/cockpit-shell";
 import { TopicQueuePanel } from "@/components/cockpit/topic-queue-panel";
 import { TrendingPanel } from "@/components/cockpit/trending-panel";
