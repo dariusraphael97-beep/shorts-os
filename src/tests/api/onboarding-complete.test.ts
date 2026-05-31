@@ -36,6 +36,12 @@ describe("POST /api/onboarding/complete", () => {
     expect(markOnboardingComplete).toHaveBeenCalledWith(expect.anything(), "ch-1");
     expect(triggerIngestion).toHaveBeenCalled();
   });
+  it("accepts a body with no creatorGoals (goals are optional now)", async () => {
+    const res = await POST(req({ interests: ["ai"] }));
+    expect(res.status).toBe(200);
+    expect(saveOnboarding).toHaveBeenCalled();
+    expect(markOnboardingComplete).toHaveBeenCalledWith(expect.anything(), "ch-1");
+  });
   it("still returns 200 when the scan enqueue fails (fire-and-forget)", async () => {
     triggerIngestion.mockRejectedValueOnce(new Error("network"));
     const res = await POST(req({ creatorGoals: "other", interests: [] }));

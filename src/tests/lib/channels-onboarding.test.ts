@@ -37,6 +37,13 @@ describe("channels onboarding repo", () => {
     expect(calls.eq).toEqual(["id", "ch-1"]);
   });
 
+  it("saveOnboarding writes creator_goals: null when no goal is provided", async () => {
+    const { client, calls } = mockClient();
+    await saveOnboarding(client as never, { channelId: "ch-1", interests: ["ai"] });
+    expect(calls.payload).toMatchObject({ creator_goals: null, interests: ["ai"] });
+    expect(calls.eq).toEqual(["id", "ch-1"]);
+  });
+
   it("markOnboardingComplete stamps onboarding_completed_at on the channel id", async () => {
     const { client, calls } = mockClient();
     await markOnboardingComplete(client as never, "ch-2");

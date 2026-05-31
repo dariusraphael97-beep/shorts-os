@@ -113,11 +113,13 @@ export type CreatorGoal = "monetize" | "grow_subscribers" | "test_niche" | "othe
 
 export async function saveOnboarding(
   supabase: SupabaseClient,
-  params: { channelId: string; creatorGoals: CreatorGoal; interests: string[] },
+  params: { channelId: string; creatorGoals?: CreatorGoal | null; interests: string[] },
 ): Promise<void> {
   const { error } = await supabase
     .from("channels")
-    .update({ creator_goals: params.creatorGoals, interests: params.interests })
+    // Omitting creatorGoals writes null — the redesigned setup screen no longer
+    // collects a goal, and a null is a valid "not set" rather than a failure.
+    .update({ creator_goals: params.creatorGoals ?? null, interests: params.interests })
     .eq("id", params.channelId);
   if (error) throw new Error(`saveOnboarding: ${error.message}`);
 }

@@ -8,7 +8,9 @@ import { loadEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
-  creatorGoals: z.enum(["monetize", "grow_subscribers", "test_niche", "other"]),
+  // Optional: the redesigned setup screen no longer asks for goals. A provided
+  // value is still validated (an invalid enum 400s); absence is accepted.
+  creatorGoals: z.enum(["monetize", "grow_subscribers", "test_niche", "other"]).optional(),
   interests: z.array(z.string()).default([]),
 });
 
@@ -20,6 +22,7 @@ export async function POST(req: Request): Promise<Response> {
   const supabase = getServiceClient();
   const channel = await getDefaultChannel(supabase);
   await saveOnboarding(supabase, { channelId: channel.id, creatorGoals: body.creatorGoals, interests: body.interests });
+  // ^ creatorGoals may be undefined here; saveOnboarding writes null when omitted.
   await markOnboardingComplete(supabase, channel.id);
 
   // Fire-and-forget small scan; never let an enqueue failure block completion.
