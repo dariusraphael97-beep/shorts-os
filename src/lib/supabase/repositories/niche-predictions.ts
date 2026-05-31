@@ -150,3 +150,14 @@ export async function listCloseablePredictions(
   }
   return out;
 }
+
+/** Closed predictions (outcome attached) — powers the accuracy aggregate. */
+export async function listClosedPredictions(supabase: SupabaseClient): Promise<NichePrediction[]> {
+  const { data, error } = await supabase
+    .from("niche_predictions")
+    .select()
+    .not("closed_at", "is", null)
+    .order("closed_at", { ascending: false });
+  if (error) throw new Error(`listClosedPredictions: ${error.message}`);
+  return (data ?? []) as NichePrediction[];
+}
