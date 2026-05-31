@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/layout/app-shell";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from '@/components/layout/app-shell';
+import { AppSidebar } from '@/components/layout/app-sidebar';
 import { getServiceClient } from '@/lib/supabase/server';
 import { getDefaultChannel, isYouTubeConnected } from '@/lib/supabase/repositories/channels';
 import { ConnectYouTubeButton } from '@/components/settings/connect-youtube-button';
