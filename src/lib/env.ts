@@ -29,6 +29,10 @@ const envSchema = z.object({
 
   // Phase 4 — yt-dlp cookies (base64-encoded Netscape cookies.txt) for IP-block unblock
   YTDLP_COOKIES_B64: z.string().optional(),
+
+  // Plan #5 Sub-phase E — weekly digest email (optional; digest-send skips+logs when unset)
+  RESEND_API_KEY: z.string().min(1).optional(),
+  DIGEST_RECIPIENT: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -411,19 +411,46 @@ export type Database = {
           },
         ]
       }
+      channel_stat_snapshots: {
+        Row: {
+          channel_id: string
+          snapshot_at: string
+          subscriber_count: number
+          video_count: number | null
+          view_count: number | null
+        }
+        Insert: {
+          channel_id: string
+          snapshot_at?: string
+          subscriber_count: number
+          video_count?: number | null
+          view_count?: number | null
+        }
+        Update: {
+          channel_id?: string
+          snapshot_at?: string
+          subscriber_count?: number
+          video_count?: number | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       channels: {
         Row: {
           created_at: string
+          creator_goals: string | null
           default_tts_provider: string | null
           default_voice_id: string | null
           display_name: string
           external_channel_id: string | null
           id: string
+          interests: string[]
           is_active: boolean
           max_clip_ingest_per_day: number
           max_uploads_per_day: number
           niche_id: string | null
           oauth_refresh_token_encrypted: string | null
+          onboarding_completed_at: string | null
           persona: Json
           platform: string
           posting_schedule: Json
@@ -434,16 +461,19 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creator_goals?: string | null
           default_tts_provider?: string | null
           default_voice_id?: string | null
           display_name: string
           external_channel_id?: string | null
           id?: string
+          interests?: string[]
           is_active?: boolean
           max_clip_ingest_per_day?: number
           max_uploads_per_day?: number
           niche_id?: string | null
           oauth_refresh_token_encrypted?: string | null
+          onboarding_completed_at?: string | null
           persona?: Json
           platform: string
           posting_schedule?: Json
@@ -454,16 +484,19 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creator_goals?: string | null
           default_tts_provider?: string | null
           default_voice_id?: string | null
           display_name?: string
           external_channel_id?: string | null
           id?: string
+          interests?: string[]
           is_active?: boolean
           max_clip_ingest_per_day?: number
           max_uploads_per_day?: number
           niche_id?: string | null
           oauth_refresh_token_encrypted?: string | null
+          onboarding_completed_at?: string | null
           persona?: Json
           platform?: string
           posting_schedule?: Json
@@ -757,6 +790,39 @@ export type Database = {
           },
         ]
       }
+      digest_runs: {
+        Row: {
+          cluster_ids: Json
+          error: string | null
+          html: string | null
+          id: string
+          recipient: string | null
+          sent_at: string
+          status: string
+          week_start: string
+        }
+        Insert: {
+          cluster_ids?: Json
+          error?: string | null
+          html?: string | null
+          id?: string
+          recipient?: string | null
+          sent_at?: string
+          status: string
+          week_start: string
+        }
+        Update: {
+          cluster_ids?: Json
+          error?: string | null
+          html?: string | null
+          id?: string
+          recipient?: string | null
+          sent_at?: string
+          status?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       ingest_blocklist: {
         Row: {
           added_at: string
@@ -811,6 +877,45 @@ export type Database = {
           source_platform?: string
           source_url?: string
           stage_1_score?: number
+        }
+        Relationships: []
+      }
+      ingestion_runs: {
+        Row: {
+          context: Json
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_ingested: number
+          items_skipped: number
+          job: string
+          quota_units: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          context?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_ingested?: number
+          items_skipped?: number
+          job: string
+          quota_units?: number
+          started_at?: string
+          status: string
+        }
+        Update: {
+          context?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_ingested?: number
+          items_skipped?: number
+          job?: string
+          quota_units?: number
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -1507,6 +1612,27 @@ export type Database = {
           title?: string
           video_id?: string
           view_count?: number | null
+        }
+        Relationships: []
+      }
+      topic_embeddings: {
+        Row: {
+          created_at: string
+          embedding: Json
+          model: string
+          topic_label: string
+        }
+        Insert: {
+          created_at?: string
+          embedding: Json
+          model: string
+          topic_label: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: Json
+          model?: string
+          topic_label?: string
         }
         Relationships: []
       }

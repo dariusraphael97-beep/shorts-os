@@ -60,6 +60,8 @@ describe("your-videos repository", () => {
         animation_speed: 1.0,
         font_scale: 1.0,
       },
+      source_niche_cluster_id: null,
+      script_brief: null,
       status: "draft",
     });
     expect(result).toEqual(row);
