@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
@@ -10,7 +11,10 @@ import {
   DollarSign,
   Eye,
   LineChart,
+  Loader2,
   MonitorPlay,
+  PartyPopper,
+  Rocket,
   Sparkles,
   Swords,
   TrendingUp,
@@ -68,6 +72,7 @@ const GOAL_OPTIONS: ReadonlyArray<{
 ];
 
 export function OnboardingWizard() {
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const [state, setState] = useState<WizardState>({
     step: 0,
@@ -76,6 +81,69 @@ export function OnboardingWizard() {
     admiredUrls: [],
     alsoCompetitor: {},
   });
+  const [finishing, setFinishing] = useState(false);
+  // Count of admired channels we couldn't add (best-effort, non-blocking).
+  const [failedAdds, setFailedAdds] = useState(0);
+  const [finishError, setFinishError] = useState<string | null>(null);
+
+  const handleFinish = useCallback(async () => {
+    if (finishing) return;
+    setFinishing(true);
+    setFinishError(null);
+    setFailedAdds(0);
+
+    // 1) Seed the watch-list (and competitors where flagged) from admired channels.
+    //    Per-URL failures are tolerated — one bad handle must not block completion.
+    let failures = 0;
+    for (const url of state.admiredUrls) {
+      const payload = JSON.stringify({ urlOrHandle: url });
+      try {
+        const res = await fetch("/api/watch-list/channels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+        });
+        if (!res.ok) failures += 1;
+        if (state.alsoCompetitor[url]) {
+          try {
+            await fetch("/api/watch-list/competitors", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: payload,
+            });
+          } catch {
+            /* competitor flag is additive; ignore its failure */
+          }
+        }
+      } catch {
+        failures += 1;
+      }
+    }
+    if (failures > 0) setFailedAdds(failures);
+
+    // 2) Persist goals/interests, mark onboarding complete, kick the first scan.
+    //    creatorGoals is gated by step 1, but TS-narrow it defensively here.
+    const creatorGoals: CreatorGoal = state.creatorGoals ?? "other";
+    try {
+      const res = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creatorGoals, interests: state.interests }),
+      });
+      if (!res.ok) {
+        setFinishError("Couldn't finish setup. Please try again.");
+        setFinishing(false);
+        return;
+      }
+    } catch {
+      setFinishError("Couldn't reach the server. Please try again.");
+      setFinishing(false);
+      return;
+    }
+
+    // 3) Land on Mission Control with the welcome callout.
+    router.push("/mission-control?onboarded=1");
+  }, [finishing, router, state.admiredUrls, state.alsoCompetitor, state.creatorGoals, state.interests]);
 
   const goNext = useCallback(() => {
     setState((s) => ({ ...s, step: Math.min(s.step + 1, TOTAL_STEPS - 1) }));
@@ -166,7 +234,15 @@ export function OnboardingWizard() {
               />
             )}
             {state.step === 4 && <ConnectStep onSkip={goNext} />}
-            {state.step === 5 && <PlaceholderStep />}
+            {state.step === 5 && (
+              <DoneStep
+                channelCount={state.admiredUrls.length}
+                finishing={finishing}
+                failedAdds={failedAdds}
+                error={finishError}
+                onFinish={() => void handleFinish()}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -175,6 +251,7 @@ export function OnboardingWizard() {
         <Footer
           step={state.step}
           state={state}
+          finishing={finishing}
           onBack={goBack}
           onNext={goNext}
         />
@@ -616,16 +693,118 @@ function ConnectStep({ onSkip }: { onSkip: () => void }) {
   );
 }
 
-function PlaceholderStep() {
+const DONE_HIGHLIGHTS: ReadonlyArray<{
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}> = [
+  {
+    icon: TrendingUp,
+    title: "Scanning for proven niches",
+    description:
+      "We kick off your first niche scan now — early signal lands within minutes.",
+  },
+  {
+    icon: Eye,
+    title: "Watching the channels you admire",
+    description:
+      "Trending formats from your favorites flow straight into your queue.",
+  },
+  {
+    icon: LineChart,
+    title: "First digest by Monday",
+    description:
+      "A ranked shortlist of niches arrives in your weekly digest.",
+  },
+];
+
+function DoneStep({
+  channelCount,
+  finishing,
+  failedAdds,
+  error,
+  onFinish,
+}: {
+  channelCount: number;
+  finishing: boolean;
+  failedAdds: number;
+  error: string | null;
+  onFinish: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center gap-3 py-10 text-center">
-      <h1 className="text-xl font-semibold text-[var(--text-primary)]">
-        More steps coming
-      </h1>
-      <p className="max-w-sm text-sm leading-relaxed text-[var(--text-secondary)]">
-        Admired channels and connecting your account land next. Use Back to
-        revisit your goals and interests.
-      </p>
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <span className="relative flex h-16 w-16 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--accent-muted)]">
+          <span className="absolute inset-0 rounded-[var(--radius-lg)] bg-[var(--accent)]/10 blur-md" />
+          <PartyPopper className="relative h-8 w-8 text-[var(--accent)]" strokeWidth={1.5} />
+        </span>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-balance text-3xl font-semibold leading-tight text-[var(--text-primary)]">
+            You&apos;re all set
+          </h1>
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-[var(--text-secondary)]">
+            {channelCount > 0
+              ? `We'll start watching your ${channelCount} channel${channelCount === 1 ? "" : "s"} and hunting niches tuned to your goals.`
+              : "Your co-pilot is tuned to your goals and ready to start hunting niches."}
+          </p>
+        </div>
+      </div>
+
+      <ul className="flex flex-col gap-3">
+        {DONE_HIGHLIGHTS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li
+              key={item.title}
+              className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5"
+            >
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--surface-1)] text-[var(--accent)]">
+                <Icon className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  {item.title}
+                </span>
+                <span className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                  {item.description}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="flex flex-col items-center gap-3">
+        <Button
+          size="lg"
+          onClick={onFinish}
+          disabled={finishing}
+          autoFocus
+          className="px-6"
+        >
+          {finishing ? (
+            <>
+              <Loader2 className="animate-spin" strokeWidth={1.5} />
+              Setting things up…
+            </>
+          ) : (
+            <>
+              <Rocket strokeWidth={1.5} />
+              Finish &amp; open Mission Control
+            </>
+          )}
+        </Button>
+
+        <div aria-live="polite" className="min-h-4 text-center">
+          {failedAdds > 0 && !error && (
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Couldn&apos;t add {failedAdds} channel{failedAdds === 1 ? "" : "s"} — you can
+              add {failedAdds === 1 ? "it" : "them"} later from your watch-list.
+            </p>
+          )}
+          {error && <p className="text-xs text-[var(--accent-red)]">{error}</p>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -633,11 +812,13 @@ function PlaceholderStep() {
 function Footer({
   step,
   state,
+  finishing,
   onBack,
   onNext,
 }: {
   step: number;
   state: WizardState;
+  finishing: boolean;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -649,13 +830,13 @@ function Footer({
   const showSkip =
     (step === 2 && state.interests.length === 0) ||
     (step === 3 && state.admiredUrls.length === 0);
-  // Step 4 (Connect) owns its own forward action in the step body, so the
-  // footer here renders Back only.
-  const showContinue = step !== 4;
+  // Step 4 (Connect) and step 5 (Done) own their own forward/finish action in
+  // the step body, so the footer renders Back only for those.
+  const showContinue = step !== 4 && step !== 5;
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <Button variant="ghost" size="lg" onClick={onBack}>
+      <Button variant="ghost" size="lg" onClick={onBack} disabled={finishing}>
         <ArrowLeft strokeWidth={1.5} />
         Back
       </Button>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Mail, Clock, Cpu, RotateCw, Loader2 } from "lucide-react";
+import { Mail, Clock, Cpu, RotateCw, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -155,6 +156,18 @@ export function SettingsClient({ config }: { config: NicheFinderConfig }) {
             {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
             {resetting ? "Running…" : "Reset this week"}
           </Button>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-4 border-t border-[var(--border-subtle)] pt-3">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Re-run setup — revisit your goals, interests, and watched channels.
+          </p>
+          <Link
+            href="/onboarding"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] underline-offset-4 outline-none transition-colors hover:text-[var(--text-primary)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:rounded-sm"
+          >
+            <Wand2 className="h-4 w-4" strokeWidth={1.75} />
+            Re-run setup
+          </Link>
         </div>
       </Section>
     </div>
