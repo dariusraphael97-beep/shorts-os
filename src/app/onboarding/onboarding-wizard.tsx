@@ -5,9 +5,14 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   Check,
   DollarSign,
+  Eye,
+  LineChart,
+  MonitorPlay,
   Sparkles,
+  Swords,
   TrendingUp,
   Users,
   X,
@@ -15,7 +20,9 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { CreatorGoal } from "@/lib/supabase/repositories/channels";
 import { Button } from "@/components/ui/button";
+import { ConnectYouTubeButton } from "@/components/settings/connect-youtube-button";
 import { fadeRise } from "@/lib/motion";
+import { parseChannelUrls } from "@/lib/onboarding/parse-channel-urls";
 import { cn } from "@/lib/utils";
 
 type WizardState = {
@@ -94,6 +101,34 @@ export function OnboardingWizard() {
     setState((s) => ({ ...s, interests: s.interests.filter((t) => t !== tag) }));
   }, []);
 
+  const setAdmiredUrls = useCallback((raw: string) => {
+    const parsed = parseChannelUrls(raw);
+    setState((s) => {
+      // Drop alsoCompetitor flags for URLs no longer present.
+      const next: Record<string, boolean> = {};
+      for (const url of parsed) {
+        if (s.alsoCompetitor[url]) next[url] = true;
+      }
+      return { ...s, admiredUrls: parsed, alsoCompetitor: next };
+    });
+  }, []);
+  const removeAdmiredUrl = useCallback((url: string) => {
+    setState((s) => {
+      const { [url]: _removed, ...rest } = s.alsoCompetitor;
+      return {
+        ...s,
+        admiredUrls: s.admiredUrls.filter((u) => u !== url),
+        alsoCompetitor: rest,
+      };
+    });
+  }, []);
+  const toggleCompetitor = useCallback((url: string) => {
+    setState((s) => ({
+      ...s,
+      alsoCompetitor: { ...s.alsoCompetitor, [url]: !s.alsoCompetitor[url] },
+    }));
+  }, []);
+
   const motionProps = prefersReducedMotion
     ? {}
     : {
@@ -121,7 +156,17 @@ export function OnboardingWizard() {
                 onRemove={removeInterest}
               />
             )}
-            {state.step >= 3 && <PlaceholderStep />}
+            {state.step === 3 && (
+              <AdmiredChannelsStep
+                urls={state.admiredUrls}
+                alsoCompetitor={state.alsoCompetitor}
+                onChange={setAdmiredUrls}
+                onRemove={removeAdmiredUrl}
+                onToggleCompetitor={toggleCompetitor}
+              />
+            )}
+            {state.step === 4 && <ConnectStep onSkip={goNext} />}
+            {state.step === 5 && <PlaceholderStep />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -376,6 +421,201 @@ function InterestsStep({
   );
 }
 
+function AdmiredChannelsStep({
+  urls,
+  alsoCompetitor,
+  onChange,
+  onRemove,
+  onToggleCompetitor,
+}: {
+  urls: string[];
+  alsoCompetitor: Record<string, boolean>;
+  onChange: (raw: string) => void;
+  onRemove: (url: string) => void;
+  onToggleCompetitor: (url: string) => void;
+}) {
+  const [draft, setDraft] = useState(() => urls.join("\n"));
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setDraft(e.target.value);
+      onChange(e.target.value);
+    },
+    [onChange],
+  );
+
+  // Removing a chip must also rewrite the textarea draft, otherwise the dropped
+  // line resurfaces on the next keystroke (textarea is the editing surface).
+  const handleRemove = useCallback(
+    (url: string) => {
+      setDraft(urls.filter((u) => u !== url).join("\n"));
+      onRemove(url);
+    },
+    [urls, onRemove],
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <StepHeading
+        eyebrow="Step 4 of 6"
+        title="Whose work do you admire?"
+        subhead="Paste a few channels you respect. We'll watch them for trending formats — and you can flag any you're directly competing with."
+      />
+      <div className="flex flex-col gap-2">
+        <label
+          htmlFor="admired-channels"
+          className="text-sm font-medium text-[var(--text-primary)]"
+        >
+          Paste 5–10 channel URLs you respect (one per line)
+        </label>
+        <textarea
+          id="admired-channels"
+          value={draft}
+          onChange={handleChange}
+          rows={4}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          placeholder={
+            "https://youtube.com/@channel\nhttps://youtube.com/@another\n@handle, @handle…"
+          }
+          className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent)]"
+        />
+        <p className="text-xs text-[var(--text-tertiary)]">
+          Separate with new lines or commas. We&apos;ll add these when you
+          finish.
+        </p>
+      </div>
+
+      {urls.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+            {urls.length} channel{urls.length === 1 ? "" : "s"} ready
+          </span>
+          <ul className="flex flex-col gap-2">
+            <AnimatePresence initial={false}>
+              {urls.map((url) => {
+                const isCompetitor = Boolean(alsoCompetitor[url]);
+                return (
+                  <motion.li
+                    key={url}
+                    layout
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-2)] py-1.5 pl-3 pr-1.5"
+                  >
+                    <Eye
+                      className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]"
+                      strokeWidth={1.5}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-primary)]">
+                      {url}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleCompetitor(url)}
+                      aria-pressed={isCompetitor}
+                      aria-label={
+                        isCompetitor
+                          ? `Stop tracking ${url} as a competitor`
+                          : `Also track ${url} as a competitor`
+                      }
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] px-2 py-1 text-xs font-medium transition-colors outline-none",
+                        "focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-2)]",
+                        isCompetitor
+                          ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                          : "bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                      )}
+                    >
+                      <Swords className="h-3 w-3" strokeWidth={1.5} />
+                      Competitor
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${url}`}
+                      onClick={() => handleRemove(url)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] transition-colors outline-none hover:bg-[var(--surface-1)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                    >
+                      <X className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                  </motion.li>
+                );
+              })}
+            </AnimatePresence>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CONNECT_BENEFITS: ReadonlyArray<{
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}> = [
+  {
+    icon: LineChart,
+    title: "Close the niche loop",
+    description: "Your real analytics tell us which niches actually convert.",
+  },
+  {
+    icon: BarChart3,
+    title: "Sharper recommendations",
+    description: "We compare your performance against the formats you admire.",
+  },
+];
+
+function ConnectStep({ onSkip }: { onSkip: () => void }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--accent-muted)]">
+          <MonitorPlay className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.5} />
+        </span>
+        <StepHeading
+          title="Connect your YouTube channel"
+          subhead="Optional, but it's what makes your co-pilot actually smart about your audience."
+        />
+      </div>
+
+      <ul className="flex flex-col gap-3">
+        {CONNECT_BENEFITS.map((benefit) => {
+          const Icon = benefit.icon;
+          return (
+            <li
+              key={benefit.title}
+              className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3.5"
+            >
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--surface-1)] text-[var(--accent)]">
+                <Icon className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  {benefit.title}
+                </span>
+                <span className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                  {benefit.description}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="flex flex-col items-center gap-3">
+        <ConnectYouTubeButton connected={false} />
+        <Button variant="ghost" size="lg" onClick={onSkip}>
+          Skip for now — I&apos;ll connect later
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderStep() {
   return (
     <div className="flex flex-col items-center gap-3 py-10 text-center">
@@ -404,8 +644,14 @@ function Footer({
   const canContinue =
     step === 1 ? state.creatorGoals !== null :
     step === 2 ? state.interests.length > 0 :
+    step === 3 ? true :
     true;
-  const showSkip = step === 2 && state.interests.length === 0;
+  const showSkip =
+    (step === 2 && state.interests.length === 0) ||
+    (step === 3 && state.admiredUrls.length === 0);
+  // Step 4 (Connect) owns its own forward action in the step body, so the
+  // footer here renders Back only.
+  const showContinue = step !== 4;
 
   return (
     <div className="flex items-center justify-between gap-3">
@@ -419,15 +665,17 @@ function Footer({
             Skip for now
           </Button>
         )}
-        <Button
-          size="lg"
-          onClick={onNext}
-          disabled={!canContinue}
-          className="px-5"
-        >
-          Continue
-          <ArrowRight strokeWidth={1.5} />
-        </Button>
+        {showContinue && (
+          <Button
+            size="lg"
+            onClick={onNext}
+            disabled={!canContinue}
+            className="px-5"
+          >
+            Continue
+            <ArrowRight strokeWidth={1.5} />
+          </Button>
+        )}
       </div>
     </div>
   );
