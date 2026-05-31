@@ -1,14 +1,9 @@
-import type { FormatLabel, AudienceSignal } from "@/lib/supabase/repositories/shorts-classifications";
+import type { AudienceSignal } from "@/lib/supabase/repositories/shorts-classifications";
+import type { FormatLabel } from "@/lib/classifier/format-labels";
+
+export { FORMAT_LABELS } from "@/lib/classifier/format-labels";
 
 export type ProductionFit = "native" | "needs_manual_recording" | "needs_manual_editing" | "manual_only";
-
-export const FORMAT_LABELS: readonly FormatLabel[] = [
-  "narrated_storytelling", "talking_head_facts", "talking_head_advice",
-  "compilation_montage", "transformation_reveal", "ranking_list", "before_after",
-  "tutorial_quick", "pov_skit", "screen_record_walkthrough", "ai_voiceover_facts",
-  "reaction", "interview_clip", "news_recap", "product_review", "meme_format",
-  "live_capture", "other",
-] as const;
 
 export const AUDIENCE_SIGNALS: readonly AudienceSignal[] = [
   "seniors", "gen_z", "millennials", "kids", "professionals", "hobbyists", "general",
