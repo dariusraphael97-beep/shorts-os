@@ -1,12 +1,24 @@
 'use client';
 
+import { MonitorPlay, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 export function ConnectYouTubeButton({ connected }: { connected: boolean }) {
+  // Behavior preserved exactly: a link that starts the YouTube OAuth flow.
+  // `connected` only changes the label/icon between Connect and Reconnect.
   return (
-    <a
-      href="/api/youtube/oauth/start"
-      className="inline-block px-4 py-2 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90"
+    <Button
+      render={<a href="/api/youtube/oauth/start" />}
+      variant={connected ? 'outline' : 'default'}
+      size="sm"
+      className="gap-1.5"
     >
+      {connected ? (
+        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+      ) : (
+        <MonitorPlay className="h-3.5 w-3.5" aria-hidden />
+      )}
       {connected ? 'Reconnect YouTube' : 'Connect YouTube'}
-    </a>
+    </Button>
   );
 }
