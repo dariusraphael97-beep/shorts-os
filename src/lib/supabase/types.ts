@@ -438,16 +438,19 @@ export type Database = {
       channels: {
         Row: {
           created_at: string
+          creator_goals: string | null
           default_tts_provider: string | null
           default_voice_id: string | null
           display_name: string
           external_channel_id: string | null
           id: string
+          interests: string[]
           is_active: boolean
           max_clip_ingest_per_day: number
           max_uploads_per_day: number
           niche_id: string | null
           oauth_refresh_token_encrypted: string | null
+          onboarding_completed_at: string | null
           persona: Json
           platform: string
           posting_schedule: Json
@@ -458,16 +461,19 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creator_goals?: string | null
           default_tts_provider?: string | null
           default_voice_id?: string | null
           display_name: string
           external_channel_id?: string | null
           id?: string
+          interests?: string[]
           is_active?: boolean
           max_clip_ingest_per_day?: number
           max_uploads_per_day?: number
           niche_id?: string | null
           oauth_refresh_token_encrypted?: string | null
+          onboarding_completed_at?: string | null
           persona?: Json
           platform: string
           posting_schedule?: Json
@@ -478,16 +484,19 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creator_goals?: string | null
           default_tts_provider?: string | null
           default_voice_id?: string | null
           display_name?: string
           external_channel_id?: string | null
           id?: string
+          interests?: string[]
           is_active?: boolean
           max_clip_ingest_per_day?: number
           max_uploads_per_day?: number
           niche_id?: string | null
           oauth_refresh_token_encrypted?: string | null
+          onboarding_completed_at?: string | null
           persona?: Json
           platform?: string
           posting_schedule?: Json
