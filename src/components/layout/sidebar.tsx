@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { resolveActiveHref } from "@/components/layout/sidebar-active"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -52,6 +53,7 @@ export function Sidebar({ items, activeHref, footer }: SidebarProps) {
   // Until mounted we use server-rendered collapsed=false; suppress any
   // width transition until after mount so we don't flash.
   const width = !mounted ? 260 : collapsed ? 64 : 260
+  const resolvedActive = resolveActiveHref(activeHref ?? "", items.map((i) => i.href))
 
   return (
     <aside
@@ -110,7 +112,7 @@ export function Sidebar({ items, activeHref, footer }: SidebarProps) {
       <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto overflow-x-hidden">
         {items.map((item) => {
           const Icon = item.icon
-          const isActive = item.href === activeHref
+          const isActive = item.href === resolvedActive
 
           const rowContent = (
             <Link
