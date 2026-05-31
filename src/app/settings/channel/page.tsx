@@ -1,4 +1,5 @@
-import { CockpitShell } from '@/components/cockpit/cockpit-shell';
+import { AppShell } from "@/components/layout/app-shell";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getServiceClient } from '@/lib/supabase/server';
 import { getDefaultChannel, isYouTubeConnected } from '@/lib/supabase/repositories/channels';
 import { ConnectYouTubeButton } from '@/components/settings/connect-youtube-button';
@@ -16,7 +17,7 @@ export default async function SettingsChannelPage({
   const ytConnected = await isYouTubeConnected(supabase, channel.id);
 
   return (
-    <CockpitShell>
+    <AppShell bare sidebar={<AppSidebar />}>
       <div className="p-6 space-y-6 max-w-2xl mx-auto">
         <header>
           <h1 className="text-2xl font-semibold text-text-primary">Channel settings</h1>
@@ -48,6 +49,6 @@ export default async function SettingsChannelPage({
           <ConnectYouTubeButton connected={ytConnected} />
         </section>
       </div>
-    </CockpitShell>
+    </AppShell>
   );
 }
