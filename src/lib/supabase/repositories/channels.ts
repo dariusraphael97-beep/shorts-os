@@ -28,6 +28,9 @@ export type Channel = {
   target_format_mix: FormatMix;
   timezone: string;
   posting_schedule: PostingSchedule;
+  creator_goals: string | null;
+  interests: string[];
+  onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -104,4 +107,28 @@ export async function isYouTubeConnected(
     .single();
   if (error) throw new Error(`isYouTubeConnected: ${error.message}`);
   return (data as { oauth_refresh_token_encrypted: string | null }).oauth_refresh_token_encrypted != null;
+}
+
+export type CreatorGoal = "monetize" | "grow_subscribers" | "test_niche" | "other";
+
+export async function saveOnboarding(
+  supabase: SupabaseClient,
+  params: { channelId: string; creatorGoals: CreatorGoal; interests: string[] },
+): Promise<void> {
+  const { error } = await supabase
+    .from("channels")
+    .update({ creator_goals: params.creatorGoals, interests: params.interests })
+    .eq("id", params.channelId);
+  if (error) throw new Error(`saveOnboarding: ${error.message}`);
+}
+
+export async function markOnboardingComplete(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("channels")
+    .update({ onboarding_completed_at: new Date().toISOString() })
+    .eq("id", channelId);
+  if (error) throw new Error(`markOnboardingComplete: ${error.message}`);
 }

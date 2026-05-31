@@ -92,6 +92,13 @@ export async function listDigestRankedClusters(
   return (data ?? []) as NicheCluster[];
 }
 
+export async function getLatestWeekStart(supabase: SupabaseClient): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('niche_clusters').select('week_start').order('week_start', { ascending: false }).limit(1).maybeSingle();
+  if (error && (error as { code?: string }).code !== 'PGRST116') throw new Error(`getLatestWeekStart: ${error.message}`);
+  return (data as { week_start: string } | null)?.week_start ?? null;
+}
+
 export async function getClusterById(
   supabase: SupabaseClient,
   id: string,
@@ -105,6 +112,34 @@ export async function getClusterById(
     throw new Error(`getClusterById: ${error.message}`);
   }
   return (data as NicheCluster | null) ?? null;
+}
+
+/**
+ * Sibling clusters in the same week that share either the canonical topic or the
+ * format label — used to power the "related niches" strip on the detail page.
+ * Excludes the source cluster itself.
+ */
+export async function listRelatedClusters(
+  supabase: SupabaseClient,
+  params: {
+    weekStart: string;
+    canonicalTopic: string;
+    formatLabel: FormatLabel;
+    excludeId: string;
+    limit: number;
+  },
+): Promise<NicheCluster[]> {
+  const { data, error } = await supabase
+    .from('niche_clusters')
+    .select()
+    .eq('week_start', params.weekStart)
+    .neq('id', params.excludeId)
+    .or(
+      `canonical_topic.eq.${params.canonicalTopic},format_label.eq.${params.formatLabel}`,
+    )
+    .limit(params.limit);
+  if (error) throw new Error(`listRelatedClusters: ${error.message}`);
+  return (data ?? []) as NicheCluster[];
 }
 
 export interface NicheClusterInsert {

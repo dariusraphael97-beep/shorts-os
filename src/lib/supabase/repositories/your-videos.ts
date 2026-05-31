@@ -45,6 +45,8 @@ export async function createVideoDraft(
     visualTreatment: string;
     durationSeconds: number;
     captionProps: Record<string, unknown>;
+    sourceNicheClusterId?: string | null;
+    scriptBrief?: Record<string, unknown> | null;
   },
 ): Promise<YourVideo> {
   const { data, error } = await supabase
@@ -59,6 +61,8 @@ export async function createVideoDraft(
       visual_treatment: args.visualTreatment,
       duration_seconds: args.durationSeconds,
       caption_props: args.captionProps,
+      source_niche_cluster_id: args.sourceNicheClusterId ?? null,
+      script_brief: args.scriptBrief ?? null,
       status: "draft",
     })
     .select("*")

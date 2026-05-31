@@ -1,12 +1,14 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type FormatLabel =
-  | 'narrated_storytelling' | 'talking_head_facts' | 'talking_head_advice'
-  | 'compilation_montage' | 'transformation_reveal' | 'ranking_list' | 'before_after'
-  | 'tutorial_quick' | 'pov_skit' | 'screen_record_walkthrough' | 'ai_voiceover_facts'
-  | 'reaction' | 'interview_clip' | 'news_recap' | 'product_review' | 'meme_format'
-  | 'live_capture' | 'other';
+export const FORMAT_LABELS = [
+  'narrated_storytelling', 'talking_head_facts', 'talking_head_advice',
+  'compilation_montage', 'transformation_reveal', 'ranking_list', 'before_after',
+  'tutorial_quick', 'pov_skit', 'screen_record_walkthrough', 'ai_voiceover_facts',
+  'reaction', 'interview_clip', 'news_recap', 'product_review', 'meme_format',
+  'live_capture', 'other',
+] as const;
+export type FormatLabel = (typeof FORMAT_LABELS)[number];
 
 export type AudienceSignal =
   | 'seniors' | 'gen_z' | 'millennials' | 'kids' | 'professionals' | 'hobbyists' | 'general';

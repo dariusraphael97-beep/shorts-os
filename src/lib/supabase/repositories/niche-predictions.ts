@@ -83,3 +83,81 @@ export async function listPredictionsByCluster(
   if (error) throw new Error(`listPredictionsByCluster: ${error.message}`);
   return (data ?? []) as NichePrediction[];
 }
+
+/** Predictions that have not yet been closed (no actual outcome attached). */
+export async function listOpenPredictions(supabase: SupabaseClient): Promise<NichePrediction[]> {
+  const { data, error } = await supabase
+    .from('niche_predictions')
+    .select()
+    .is('closed_at', null)
+    .order('predicted_at', { ascending: true });
+  if (error) throw new Error(`listOpenPredictions: ${error.message}`);
+  return (data ?? []) as NichePrediction[];
+}
+
+export interface CloseablePredictionRow {
+  predictionId: string;
+  actualVideoId: string;
+  actualViews7d: number;
+}
+
+/**
+ * Open predictions whose cluster produced a posted video (≥7 days ago) that has a
+ * `video_analytics` views snapshot — i.e. ready to close. Spans niche_predictions →
+ * your_videos (source_niche_cluster_id) → video_analytics.
+ *
+ * Cold-start note: returns [] until a generated niche video has posted AND accrued an
+ * analytics snapshot. "7-day views" is approximated by the latest analytics snapshot for
+ * a video posted at least 7 days ago (no dedicated 7-day column exists; snapshots accrue
+ * over time). Best-effort and auditable via actual_video_id on the closed prediction.
+ */
+export async function listCloseablePredictions(
+  supabase: SupabaseClient,
+  now: Date = new Date(),
+): Promise<CloseablePredictionRow[]> {
+  const open = await listOpenPredictions(supabase);
+  if (open.length === 0) return [];
+
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const out: CloseablePredictionRow[] = [];
+
+  for (const pred of open) {
+    const { data: vids, error: vidErr } = await supabase
+      .from('your_videos')
+      .select('id, posted_at')
+      .eq('source_niche_cluster_id', pred.niche_cluster_id)
+      .eq('status', 'posted')
+      .not('posted_at', 'is', null)
+      .lte('posted_at', sevenDaysAgo)
+      .order('posted_at', { ascending: true })
+      .limit(1);
+    if (vidErr) throw new Error(`listCloseablePredictions(videos): ${vidErr.message}`);
+    const vid = ((vids ?? []) as Array<{ id: string; posted_at: string }>)[0];
+    if (!vid) continue;
+
+    const { data: snaps, error: snapErr } = await supabase
+      .from('video_analytics')
+      .select('views')
+      .eq('your_video_id', vid.id)
+      .not('views', 'is', null)
+      .order('snapshot_at', { ascending: false })
+      .limit(1);
+    if (snapErr) throw new Error(`listCloseablePredictions(analytics): ${snapErr.message}`);
+    const snap = ((snaps ?? []) as Array<{ views: number | null }>)[0];
+    if (!snap || snap.views === null) continue;
+
+    out.push({ predictionId: pred.id, actualVideoId: vid.id, actualViews7d: Number(snap.views) });
+  }
+  return out;
+}
+
+/** Closed predictions (outcome attached) — powers the accuracy aggregate. */
+export async function listClosedPredictions(supabase: SupabaseClient): Promise<NichePrediction[]> {
+  const { data, error } = await supabase
+    .from("niche_predictions")
+    .select()
+    .not("closed_at", "is", null)
+    .order("closed_at", { ascending: false });
+  if (error) throw new Error(`listClosedPredictions: ${error.message}`);
+  return (data ?? []) as NichePrediction[];
+}
