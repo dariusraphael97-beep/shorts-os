@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function DispatchButton({ topicId }: { topicId: string }) {
@@ -34,7 +35,7 @@ export function DispatchButton({ topicId }: { topicId: string }) {
   }, []);
 
   const disabled = busy || activeElsewhere;
-  const label = busy ? "Dispatching…" : activeElsewhere ? "Run in progress" : "Dispatch";
+  const label = busy ? "Dispatching" : activeElsewhere ? "Run in progress" : "Dispatch";
 
   async function handleClick() {
     if (disabled) return;
@@ -48,10 +49,17 @@ export function DispatchButton({ topicId }: { topicId: string }) {
     <Button
       onClick={handleClick}
       disabled={disabled}
-      className="bg-accent-electric text-app font-medium hover:opacity-90 disabled:opacity-40"
+      size="sm"
+      className="gap-1.5"
       title={activeElsewhere ? "A run is already in progress" : ""}
     >
-      {label} ▶
+      {busy ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      ) : null}
+      {label}
+      {!busy && !activeElsewhere ? (
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+      ) : null}
     </Button>
   );
 }

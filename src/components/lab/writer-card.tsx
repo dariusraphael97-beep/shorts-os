@@ -8,6 +8,7 @@
 
 import type { WriterOutput } from "@/lib/agents/writer";
 import type { AgentChipState } from "./pipeline-strip";
+import { AgentCardShell, FieldLabel } from "./agent-card-shell";
 
 export function WriterCard({
   state,
@@ -23,39 +24,34 @@ export function WriterCard({
   const estDuration = output ? output.estimated_duration_seconds : wordCount / 2.5;
 
   return (
-    <article className="rounded-lg border border-subtle bg-surface p-4">
-      <header className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-text-primary">✍️ Writer</h3>
-        <StateBadge state={state} />
-      </header>
-
+    <AgentCardShell agent="writer" state={state}>
+      <FieldLabel>Script</FieldLabel>
       <div
-        className="text-text-primary text-[15px] leading-relaxed font-sans whitespace-pre-wrap min-h-[120px]"
+        className="mt-2 min-h-[120px] whitespace-pre-wrap rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)]/60 p-3 text-[15px] leading-relaxed text-[var(--text-primary)]"
         data-testid="writer-script-area"
       >
-        {displayed || <span className="text-text-muted italic">waiting for Strategist…</span>}
-        {state === "working" && <span className="inline-block ml-0.5 w-2 h-4 align-text-bottom bg-accent-electric animate-pulse" />}
+        {displayed || (
+          <span className="text-sm italic text-[var(--text-tertiary)]">
+            Waiting for the Strategist&hellip;
+          </span>
+        )}
+        {state === "working" && (
+          <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-[var(--accent)] align-text-bottom" />
+        )}
       </div>
 
       {wordCount > 0 && (
-        <footer className="mt-3 flex items-center gap-4 text-xs font-mono text-text-muted">
+        <footer className="mt-3 flex items-center gap-4 font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">
           <span>
-            <span className="text-accent-electric">{wordCount}</span> words
+            <span className="text-[var(--accent)]">{wordCount}</span> words
           </span>
           <span>est ~{estDuration.toFixed(0)}s</span>
         </footer>
       )}
-    </article>
+    </AgentCardShell>
   );
 }
 
 function countWords(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
-}
-
-function StateBadge({ state }: { state: AgentChipState }) {
-  const txt: Record<AgentChipState, string> = {
-    idle: "waiting", thinking: "thinking…", working: "streaming…", done: "✓ done", failed: "✗ failed",
-  };
-  return <span className="text-xs font-mono text-text-muted">{txt[state]}</span>;
 }

@@ -2,6 +2,11 @@
 
 import type { DirectorOutput } from "@/lib/agents/director";
 import type { AgentChipState } from "./pipeline-strip";
+import {
+  AgentCardShell,
+  CardSkeleton,
+  FieldLabel,
+} from "./agent-card-shell";
 
 export function DirectorCard({
   state,
@@ -11,35 +16,40 @@ export function DirectorCard({
   output: DirectorOutput | null;
 }) {
   return (
-    <article className="rounded-lg border border-subtle bg-surface p-4">
-      <header className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-text-primary">🎬 Director</h3>
-        <StateBadge state={state} />
-      </header>
+    <AgentCardShell agent="director" state={state}>
       {output ? (
-        <div className="space-y-3 text-sm text-text-secondary">
-          <p>
-            <span className="text-text-muted text-xs uppercase tracking-wide">Treatment:</span>{" "}
-            <span className="text-text-primary font-mono">{output.visual_treatment}</span>{" "}
-            <span className="text-text-muted text-xs">· music: {output.music_mood}</span>
-          </p>
-          <div className="rounded border border-subtle overflow-hidden">
+        <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[11px]">
+              <FieldLabel>treatment</FieldLabel>
+              <span className="text-[var(--text-primary)]">{output.visual_treatment}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[11px]">
+              <FieldLabel>music</FieldLabel>
+              <span className="text-[var(--text-primary)]">{output.music_mood}</span>
+            </span>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-[var(--border-subtle)]">
             <table className="w-full text-xs">
-              <thead className="bg-elevated text-text-muted">
+              <thead className="bg-[var(--surface-2)] text-[var(--text-tertiary)]">
                 <tr>
-                  <th className="text-left px-2 py-1 font-mono">#</th>
-                  <th className="text-left px-2 py-1 font-mono">b-roll query</th>
-                  <th className="text-left px-2 py-1 font-mono">dur</th>
-                  <th className="text-left px-2 py-1 font-mono">segment</th>
+                  <th className="px-2.5 py-1.5 text-left font-mono text-[10px] font-medium uppercase tracking-wider">#</th>
+                  <th className="px-2.5 py-1.5 text-left font-mono text-[10px] font-medium uppercase tracking-wider">b-roll query</th>
+                  <th className="px-2.5 py-1.5 text-left font-mono text-[10px] font-medium uppercase tracking-wider">dur</th>
+                  <th className="px-2.5 py-1.5 text-left font-mono text-[10px] font-medium uppercase tracking-wider">segment</th>
                 </tr>
               </thead>
               <tbody>
                 {output.shot_list.map((shot, i) => (
-                  <tr key={i} className="border-t border-subtle">
-                    <td className="px-2 py-1 font-mono text-text-muted">{i + 1}</td>
-                    <td className="px-2 py-1 font-mono text-accent-electric">{shot.broll_search_query}</td>
-                    <td className="px-2 py-1 font-mono text-text-muted">{shot.duration_seconds}s</td>
-                    <td className="px-2 py-1 text-text-primary truncate max-w-xs" title={shot.segment_text}>
+                  <tr key={i} className="border-t border-[var(--border-subtle)]">
+                    <td className="px-2.5 py-1.5 font-mono tabular-nums text-[var(--text-tertiary)]">{i + 1}</td>
+                    <td className="px-2.5 py-1.5 font-mono text-[var(--accent)]">{shot.broll_search_query}</td>
+                    <td className="px-2.5 py-1.5 font-mono tabular-nums text-[var(--text-tertiary)]">{shot.duration_seconds}s</td>
+                    <td
+                      className="max-w-xs truncate px-2.5 py-1.5 text-[var(--text-primary)]"
+                      title={shot.segment_text}
+                    >
                       {shot.segment_text}
                     </td>
                   </tr>
@@ -47,27 +57,14 @@ export function DirectorCard({
               </tbody>
             </table>
           </div>
-          <p className="text-text-muted italic text-xs">{output.rationale}</p>
+
+          <p className="border-t border-[var(--border-subtle)] pt-3 text-xs italic text-[var(--text-tertiary)]">
+            {output.rationale}
+          </p>
         </div>
       ) : (
-        <Skeleton />
+        <CardSkeleton lines={3} />
       )}
-    </article>
-  );
-}
-
-function StateBadge({ state }: { state: AgentChipState }) {
-  const txt: Record<AgentChipState, string> = {
-    idle: "waiting", thinking: "thinking…", working: "working…", done: "✓ done", failed: "✗ failed",
-  };
-  return <span className="text-xs font-mono text-text-muted">{txt[state]}</span>;
-}
-
-function Skeleton() {
-  return (
-    <div className="space-y-2">
-      <div className="h-3 w-1/2 rounded bg-elevated animate-pulse" />
-      <div className="h-20 w-full rounded bg-elevated animate-pulse" />
-    </div>
+    </AgentCardShell>
   );
 }

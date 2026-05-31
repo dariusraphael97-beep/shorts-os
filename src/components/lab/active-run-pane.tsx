@@ -21,15 +21,19 @@ import type { WriterOutput } from "@/lib/agents/writer";
 import type { VoiceCoachOutput } from "@/lib/agents/voice-coach";
 import type { DirectorOutput } from "@/lib/agents/director";
 import type { ComposerOutput } from "@/lib/agents/composer";
+import { AlertTriangle, RotateCw } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   PipelineStrip,
   deriveChipState,
   type AgentChipState,
 } from "./pipeline-strip";
+import { AGENT_LABEL } from "./agent-icons";
 import { StrategistCard } from "./strategist-card";
 import { WriterCard } from "./writer-card";
 import { VoiceCoachCard } from "./voice-coach-card";
 import { DirectorCard } from "./director-card";
+import { Button } from "@/components/ui/button";
 
 type AgentSlotBase = { state: AgentState | null; durationMs?: number };
 type RunState = {
@@ -60,6 +64,7 @@ const INITIAL: RunState = {
 
 export function ActiveRunPane() {
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const [run, setRun] = useState<RunState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -164,10 +169,44 @@ export function ActiveRunPane() {
     ),
   };
 
+  const statusLabel = run.failure
+    ? "Run failed"
+    : run.completed
+      ? "Draft assembled"
+      : "Assembling draft";
+
   return (
-    <section className="space-y-4">
+    <motion.section
+      aria-label="Active pipeline run"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: [0, 0, 0.2, 1] }}
+      className="mb-10 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-overlay)] p-4 shadow-[var(--elev-2)] backdrop-blur-[var(--glass-blur)]"
+    >
+      <header className="mb-4 flex items-center gap-2.5">
+        <span className="relative flex h-2 w-2" aria-hidden>
+          {run.active && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-60" />
+          )}
+          <span
+            className={`relative inline-flex h-2 w-2 rounded-full ${
+              run.failure
+                ? "bg-[var(--danger)]"
+                : run.completed
+                  ? "bg-[var(--success)]"
+                  : "bg-[var(--accent)]"
+            }`}
+          />
+        </span>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">{statusLabel}</h2>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--text-tertiary)]">
+          live pipeline
+        </span>
+      </header>
+
       <PipelineStrip states={states} />
-      <div className="space-y-3">
+
+      <div className="mt-4 space-y-3">
         <StrategistCard state={states.strategist} output={run.strategist.output} />
         <WriterCard
           state={states.writer}
@@ -178,21 +217,34 @@ export function ActiveRunPane() {
         <DirectorCard state={states.director} output={run.director.output} />
       </div>
 
-      {run.failure && (
-        <div className="rounded-lg border border-accent-red/60 bg-accent-red/5 p-4">
-          <p className="text-sm text-accent-red font-medium">
-            ✗ {run.failure.agent} failed
-          </p>
-          <p className="text-xs font-mono text-text-secondary mt-1">{run.failure.error}</p>
-          <button
-            className="mt-3 px-3 py-1.5 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90"
-            onClick={() => run.topicId && startRun(run.topicId)}
+      <AnimatePresence>
+        {run.failure && (
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="mt-4 rounded-xl border border-[var(--danger)]/40 bg-[var(--danger)]/5 p-4"
           >
-            Re-dispatch
-          </button>
-        </div>
-      )}
-    </section>
+            <p className="flex items-center gap-2 text-sm font-medium text-[var(--danger)]">
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              {AGENT_LABEL[run.failure.agent]} failed
+            </p>
+            <p className="mt-1.5 break-words font-mono text-xs text-[var(--text-secondary)]">
+              {run.failure.error}
+            </p>
+            <Button
+              size="sm"
+              className="mt-3 gap-1.5"
+              onClick={() => run.topicId && startRun(run.topicId)}
+            >
+              <RotateCw className="h-3.5 w-3.5" aria-hidden />
+              Re-dispatch
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.section>
   );
 }
 

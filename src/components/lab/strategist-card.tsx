@@ -2,6 +2,11 @@
 
 import type { StrategistOutput } from "@/lib/agents/strategist";
 import type { AgentChipState } from "./pipeline-strip";
+import {
+  AgentCardShell,
+  CardSkeleton,
+  FieldLabel,
+} from "./agent-card-shell";
 
 export function StrategistCard({
   state,
@@ -11,53 +16,33 @@ export function StrategistCard({
   output: StrategistOutput | null;
 }) {
   return (
-    <article className="rounded-lg border border-subtle bg-surface p-4">
-      <header className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-text-primary">🧭 Strategist</h3>
-        <StateBadge state={state} />
-      </header>
+    <AgentCardShell agent="strategist" state={state}>
       {output ? (
-        <div className="space-y-2 text-sm text-text-secondary">
-          <p>
-            <span className="text-text-muted text-xs uppercase tracking-wide">Dispatch:</span>{" "}
-            <span className="text-text-primary">{output.dispatch_directive}</span>
+        <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+          <div className="space-y-1">
+            <FieldLabel>Dispatch</FieldLabel>
+            <p className="text-[var(--text-primary)]">{output.dispatch_directive}</p>
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Format hints</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {output.format_hints.map((h, i) => (
+                <span
+                  key={i}
+                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]"
+                >
+                  {h}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="border-t border-[var(--border-subtle)] pt-3 text-xs italic text-[var(--text-tertiary)]">
+            {output.rationale}
           </p>
-          <p>
-            <span className="text-text-muted text-xs uppercase tracking-wide">Hints:</span>{" "}
-            {output.format_hints.map((h, i) => (
-              <span
-                key={i}
-                className="inline-block mr-1 px-2 py-0.5 rounded bg-elevated text-xs font-mono"
-              >
-                {h}
-              </span>
-            ))}
-          </p>
-          <p className="text-text-muted italic text-xs">{output.rationale}</p>
         </div>
       ) : (
-        <Skeleton />
+        <CardSkeleton lines={2} />
       )}
-    </article>
-  );
-}
-
-function StateBadge({ state }: { state: AgentChipState }) {
-  const txt: Record<AgentChipState, string> = {
-    idle: "waiting",
-    thinking: "thinking…",
-    working: "working…",
-    done: "✓ done",
-    failed: "✗ failed",
-  };
-  return <span className="text-xs font-mono text-text-muted">{txt[state]}</span>;
-}
-
-function Skeleton() {
-  return (
-    <div className="space-y-2">
-      <div className="h-3 w-3/4 rounded bg-elevated animate-pulse" />
-      <div className="h-3 w-1/2 rounded bg-elevated animate-pulse" />
-    </div>
+    </AgentCardShell>
   );
 }

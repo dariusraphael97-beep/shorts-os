@@ -8,6 +8,7 @@
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { PageHeader } from "@/components/layout/page-header";
 import { ReadyToDispatchPane } from "@/components/lab/ready-to-dispatch-pane";
 import { ActiveRunPane } from "@/components/lab/active-run-pane";
 import { RecentDraftsPane } from "@/components/lab/recent-drafts-pane";
@@ -16,21 +17,21 @@ export const dynamic = "force-dynamic";
 
 export default async function LabPage() {
   return (
-    <AppShell bare sidebar={<AppSidebar />}>
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
-        <header>
-          <h1 className="text-2xl font-semibold text-text-primary">The Lab</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Dispatch a reviewed topic and watch the 4 agents assemble a video draft.
-          </p>
-        </header>
+    <AppShell bare sidebar={<AppSidebar activeHref="/lab" />}>
+      <div className="mx-auto max-w-[1080px] px-8 py-8">
+        <PageHeader
+          title="The Lab"
+          description="Dispatch a reviewed topic and watch the four agents assemble a video draft."
+        />
 
-        {/* Active run lives between dispatcher + drafts; renders nothing when idle. */}
+        {/* Active run lives at the top while live — it's the one primary thing
+            when a pipeline is running. Renders nothing when idle. */}
         <ActiveRunPane />
 
-        <ReadyToDispatchPane />
-
-        <RecentDraftsPane />
+        <div className="space-y-10">
+          <ReadyToDispatchPane />
+          <RecentDraftsPane />
+        </div>
       </div>
     </AppShell>
   );
