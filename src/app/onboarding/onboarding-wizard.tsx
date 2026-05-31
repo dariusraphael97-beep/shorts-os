@@ -402,7 +402,9 @@ function Footer({
   onNext: () => void;
 }) {
   const canContinue =
-    step === 1 ? state.creatorGoals !== null : true;
+    step === 1 ? state.creatorGoals !== null :
+    step === 2 ? state.interests.length > 0 :
+    true;
   const showSkip = step === 2 && state.interests.length === 0;
 
   return (
