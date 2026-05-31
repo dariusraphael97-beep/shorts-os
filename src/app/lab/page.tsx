@@ -6,7 +6,8 @@
 //   2. ActiveRunPane (client) — live pipeline view, only mounts during a run.
 //   3. RecentDraftsPane (server) — last 10 your_videos drafts.
 
-import { CockpitShell } from "@/components/cockpit/cockpit-shell";
+import { AppShell } from "@/components/layout/app-shell";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ReadyToDispatchPane } from "@/components/lab/ready-to-dispatch-pane";
 import { ActiveRunPane } from "@/components/lab/active-run-pane";
 import { RecentDraftsPane } from "@/components/lab/recent-drafts-pane";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LabPage() {
   return (
-    <CockpitShell>
+    <AppShell bare sidebar={<AppSidebar />}>
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
         <header>
           <h1 className="text-2xl font-semibold text-text-primary">The Lab</h1>
@@ -31,6 +32,6 @@ export default async function LabPage() {
 
         <RecentDraftsPane />
       </div>
-    </CockpitShell>
+    </AppShell>
   );
 }

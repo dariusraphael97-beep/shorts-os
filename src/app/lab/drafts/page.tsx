@@ -1,5 +1,6 @@
 // src/app/lab/drafts/page.tsx
-import { CockpitShell } from "@/components/cockpit/cockpit-shell";
+import { AppShell } from "@/components/layout/app-shell";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getServiceClient } from "@/lib/supabase/server";
 import { listVideosByStatus } from "@/lib/supabase/repositories/your-videos";
 import type { VideoStatus } from "@/lib/supabase/repositories/your-videos";
@@ -30,7 +31,7 @@ export default async function LabDraftsPage({
   const videos = await listVideosByStatus(supabase, statusFor[active], 20);
 
   return (
-    <CockpitShell>
+    <AppShell bare sidebar={<AppSidebar />}>
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
         <header>
           <h1 className="text-2xl font-semibold text-text-primary">Drafts</h1>
@@ -61,6 +62,6 @@ export default async function LabDraftsPage({
           )}
         </section>
       </div>
-    </CockpitShell>
+    </AppShell>
   );
 }

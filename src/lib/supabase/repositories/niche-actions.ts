@@ -26,3 +26,17 @@ export async function countActionsByCluster(
   for (const r of (data ?? []) as Array<{ action: NicheActionType }>) out[r.action]++;
   return out;
 }
+
+/** Recent raw actions across clusters (for admin correlation; aggregate in pure code). */
+export async function listRecentNicheActions(
+  supabase: SupabaseClient,
+  limit = 1000,
+): Promise<Array<{ niche_cluster_id: string; action: NicheActionType }>> {
+  const { data, error } = await supabase
+    .from("niche_actions")
+    .select("niche_cluster_id, action")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentNicheActions: ${error.message}`);
+  return (data ?? []) as Array<{ niche_cluster_id: string; action: NicheActionType }>;
+}
