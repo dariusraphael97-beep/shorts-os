@@ -1,10 +1,22 @@
+// src/components/lab/scheduled-row.tsx
+//
+// Client component. A scheduled (or actively uploading) video. Leads with
+// the countdown / scheduled time; "Post now" and "Cancel" are subordinate.
+// Both handlers (POST /api/lab/upload, /api/lab/cancel-schedule), the
+// uploading-state lockout, and the countdown math are preserved exactly.
+
 'use client';
 
 import { useState } from 'react';
+import { CalendarClock, Loader2, Send, X } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import type { YourVideo } from '@/lib/supabase/repositories/your-videos';
+import { Button } from '@/components/ui/button';
+import { fadeRise } from '@/lib/motion';
 
 export function ScheduledRow({ video }: { video: YourVideo }) {
   const [busy, setBusy] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   async function cancel() {
     if (!confirm('Cancel this scheduled post? It returns to Rendered.')) return;
@@ -46,26 +58,51 @@ export function ScheduledRow({ video }: { video: YourVideo }) {
   const isUploading = video.status === 'uploading';
 
   return (
-    <li className="px-4 py-3 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm text-text-primary truncate">{video.title}</p>
-        {isUploading ? (
-          <p className="text-xs font-mono text-accent-electric">uploading…</p>
-        ) : (
-          <p className="text-xs font-mono text-text-muted">
-            posts in {hours}h {minutes}m
-            {scheduledFor && ` · ${scheduledFor.toLocaleString()}`}
-          </p>
-        )}
+    <motion.li
+      variants={prefersReducedMotion ? undefined : fadeRise}
+      className="border-t border-[var(--border-subtle)] first:border-t-0"
+    >
+      <div className="flex items-center gap-4 px-4 py-3.5">
+        <div
+          className={
+            isUploading
+              ? 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-muted)] text-[var(--accent)]'
+              : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-secondary)]'
+          }
+          aria-hidden
+        >
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <CalendarClock className="h-4 w-4" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-[var(--text-primary)]">{video.title}</p>
+          {isUploading ? (
+            <p className="mt-0.5 font-mono text-[11px] text-[var(--accent)]">uploading…</p>
+          ) : (
+            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">
+              posts in {hours}h {minutes}m
+              {scheduledFor && (
+                <span className="text-[var(--text-tertiary)]"> · {scheduledFor.toLocaleString()}</span>
+              )}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 gap-2">
+          <Button onClick={postNow} disabled={busy || isUploading} variant="outline" size="sm" className="gap-1.5">
+            <Send className="h-3.5 w-3.5" aria-hidden />
+            Post now
+          </Button>
+          <Button onClick={cancel} disabled={busy || isUploading} variant="destructive" size="sm" className="gap-1.5">
+            <X className="h-3.5 w-3.5" aria-hidden />
+            Cancel
+          </Button>
+        </div>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button onClick={postNow} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-elevated text-text-primary text-xs font-medium hover:bg-hover border border-subtle disabled:opacity-50">
-          Post now
-        </button>
-        <button onClick={cancel} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-elevated text-accent-red text-xs font-medium hover:bg-hover border border-accent-red/40 disabled:opacity-50">
-          Cancel
-        </button>
-      </div>
-    </li>
+    </motion.li>
   );
 }
