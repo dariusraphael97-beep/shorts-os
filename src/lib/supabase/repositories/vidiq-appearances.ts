@@ -49,3 +49,12 @@ export function computeLagDays(shortsOsAt: Date, externalAt: Date): number {
   const ms = externalAt.getTime() - shortsOsAt.getTime();
   return Math.round(ms / (1000 * 60 * 60 * 24));
 }
+
+export async function listVidiqAppearances(supabase: SupabaseClient): Promise<VidiqAppearance[]> {
+  const { data, error } = await supabase
+    .from('vidiq_appearances')
+    .select()
+    .order('first_surfaced_by_shorts_os_at', { ascending: false });
+  if (error) throw new Error(`listVidiqAppearances: ${error.message}`);
+  return (data ?? []) as VidiqAppearance[];
+}
