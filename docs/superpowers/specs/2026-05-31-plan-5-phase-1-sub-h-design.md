@@ -118,9 +118,20 @@ export async function drainPipeline(args: {
 ```
 - `for await (const ev of runPipeline({ topicId, supabase, sourceNicheClusterId, scriptBrief }))`
   — drains the generator, capturing the `job_completed.videoId`.
-- On `job_completed`: atomically transition that draft `draft → rendering` (mirror `/api/lab/render`
-  guard: update `.eq('status','draft')` with `count: 'exact'`; skip enqueue if `!count`) and
-  `enqueueRenderJob({ jobType: 'render_f1', yourVideoId: videoId, payload: { your_video_id: videoId } })`.
+- **The orchestrator has two success branches** and `job_completed.videoId` is ambiguous:
+  - **Explainer branch** (Strategist→Writer→Voice→Director) → `createVideoDraft` → a `your_videos`
+    row (render_f1 path). This is the auto-render target.
+  - **Compilation branch** (Strategist→Composer) → `runComposer`→`insertCompilationDraft` → a
+    `compilation_drafts` row (render_f2 + /clips promotion path). NOT a `your_videos` row.
+  The strategist picks `selected_format: 'explainer' | 'compilation'` from the channel's
+  `target_format_mix`, so a native-niche Generate CAN reach either branch.
+- On `job_completed`: **branch on what was produced** by looking up `your_videos` by the returned id
+  (`getYourVideoById`):
+  - **Found (your_videos, status `draft`)** → atomically transition `draft → rendering` (mirror
+    `/api/lab/render` guard: update `.eq('status','draft')` with `count: 'exact'`; skip enqueue if
+    `!count`) and `enqueueRenderJob({ jobType: 'render_f1', yourVideoId: id, payload: { your_video_id: id } })`.
+  - **Not found (it was a `compilation_drafts` id)** → **skip auto-render**; the compilation draft
+    lands in `/clips` → Candidates for the operator (render_f2 + promotion happen there). Log + return.
 - On `job_failed` (or no `job_completed`): do nothing further (the orchestrator already marked the
   produce_video job + generator assistant `errored`). Everything here is non-fatal / swallowed —
   `after()` runs even on error and must never throw unhandled.
@@ -128,9 +139,12 @@ export async function drainPipeline(args: {
 **(b) Thread cluster linkage through the orchestrator — `src/lib/agents/orchestrator.ts`**
 - Add optional `sourceNicheClusterId?: string | null` and `scriptBrief?: Record<string, unknown> | null`
   to `runPipeline` args.
-- Pass them into BOTH `createVideoDraft` call sites (the normal Director-branch draft AND the
-  Composer branch's draft — `runComposer` creates its own draft, so it must accept + forward them
-  too). Result: the real draft carries `source_niche_cluster_id` + `script_brief`.
+- Pass them into the **explainer-branch `createVideoDraft` call ONLY** (orchestrator.ts ~line 257),
+  so the `your_videos` draft carries `source_niche_cluster_id` + `script_brief` (`createVideoDraft`
+  already accepts both optional args — just forward them). The **compilation branch is out of scope**
+  for cluster-linked auto-dispatch: `compilation_drafts` has no `source_niche_cluster_id` column, and
+  the cluster→outcome link would have to survive promotion to `your_videos` — deferred (consistent
+  with "cut by capability boundary, not stripped quality"). Do NOT modify `runComposer`.
 - Manual Lab dispatch passes neither (stays `null`) — unchanged behavior for that path.
 
 **(c) Refactor `POST /api/niches/[id]/generate`**
@@ -144,12 +158,22 @@ export async function drainPipeline(args: {
 - Return `200 { ok: true, dispatched: true, topicId }`.
 - Keep the 422 non-native guard and 404 cluster-not-found.
 
-**(d) Extend `GET /api/lab/jobs/active`** to return progress fields needed for polling:
-`{ activeJob: { id, status, current_agent, progress_pct, your_video_id | null, topic_id } | null }`.
-(`your_video_id` is null until the draft is created near the end of the run; the UI uses it to deep-
-link to `/lab/[videoId]/review` once present.) Verify these columns exist on the produce_video job /
-draft; if `your_video_id` is not derivable from the job row, the poll falls back to "latest draft for
-this topic_id".
+**(d) New topic-keyed status endpoint — `GET /api/niches/[id]/generation?topicId=<id>`**
+The `jobs` row has NO `your_video_id` column (it has `topic_queue_id`, `current_agent`,
+`progress_pct`, `status`, `metadata`). So the poll is **keyed by topicId** and resolves the produced
+output across both tables:
+```
+{
+  job: { status, currentAgent, progressPct } | null,   // latest produce_video job WHERE topic_queue_id = topicId
+  result:                                                // only when job.status === 'succeeded'
+    | { kind: 'your_video', videoId }                    // your_videos WHERE topic_queue_id = topicId (latest)
+    | { kind: 'compilation', draftId }                   // else compilation_drafts WHERE topic_queue_id = topicId (latest)
+    | null
+}
+```
+Needs two small repo reads: `getProduceVideoJobByTopic(supabase, topicId)` and resolvers over
+`your_videos` / `compilation_drafts` by `topic_queue_id`. No schema change. (`GET /api/lab/jobs/active`
+stays as-is for the global concurrency gate / DispatchButton.)
 
 **(e) Niche UI — Generate becomes a live state**
 Both existing consumers today only read `{ ok, error }` and toast "Seeded a draft — finish it in the
@@ -158,14 +182,18 @@ handling:
 - `src/app/niches/niches-feed.tsx` (`handleGenerate`, the `/niches` card CTA).
 - `src/app/niches/[id]/detail-actions.tsx` (`handleGenerate`, the `/niches/[id]` action panel).
 
-- On click: POST, then enter a **Generating…** state. Poll `GET /api/lab/jobs/active` (~2–3s) and
-  render a compact pipeline-progress strip reusing the Lab's `pipeline-strip` vocabulary
+- On click: POST, then enter a **Generating…** state. Poll
+  `GET /api/niches/[id]/generation?topicId=<id>` (~2–3s, using the `topicId` from the POST response)
+  and render a compact pipeline-progress strip reusing the Lab's `pipeline-strip` vocabulary
   (Strategist → Writer → Voice → Director, current agent highlighted, % bar).
 - 409 `generation_in_progress` → toast "A generation is already running — finish it first" (Sonner,
   deduped) and keep the button enabled.
-- When the run completes (job gone / `your_video_id` present) → success toast + the card CTA becomes
-  **"Review →"** deep-linking to `/lab/[videoId]/review`.
-- Respect reduced-motion. Designed error state if the run fails (toast + "Try again").
+- When the run completes (`job.status === 'succeeded'` + `result` present) → success toast + the CTA
+  becomes the right deep-link for the produced kind:
+  - `result.kind === 'your_video'` → **"Review →"** to `/lab/${result.videoId}/review` (the review
+    page already polls while render+review run — G's `review-in-progress`).
+  - `result.kind === 'compilation'` → **"Open Clips →"** to `/clips` (Candidates tab).
+- `job.status === 'failed'` → error toast + "Try again" (re-enable). Respect reduced-motion.
 
 ### 2.5 Concurrency, idempotency, failure
 
@@ -177,14 +205,20 @@ handling:
 
 ### 2.6 Tests (TDD where pure)
 
-- `drainPipeline` outcome mapping: given a fake `runPipeline` async-iterable yielding
-  `job_completed` → asserts the draft transition + `render_f1` enqueue; yielding `job_failed` →
-  asserts NO enqueue; mid-run throw → swallowed. Use the repo's fake-supabase-client convention
-  (cast `as never`, as in `video-reviews.test.ts`), not env-gated live DB.
-- orchestrator: assert `createVideoDraft` receives `source_niche_cluster_id` + `script_brief` when
-  passed (both branches), and `null` when omitted.
-- generate route: 409 when a job is active; 200 `{ dispatched: true }` + `after` scheduled when not;
-  422 non-native; 404 missing cluster; no stub draft created.
+- `drainPipeline` outcome mapping (inject a fake `runPipeline` async-iterable + fake supabase):
+  - yields `job_completed` whose id IS a `your_videos` draft → asserts `draft → rendering` transition
+    + `render_f1` enqueue.
+  - yields `job_completed` whose id is NOT in `your_videos` (a compilation draft) → asserts NO
+    `render_f1` enqueue (skip → /clips).
+  - yields `job_failed` → asserts NO enqueue. Mid-run throw → swallowed (no rethrow).
+  - Use the repo's fake-supabase-client convention (cast `as never`, as in `video-reviews.test.ts`),
+    not env-gated live DB.
+- orchestrator: assert the **explainer-branch** `createVideoDraft` receives `source_niche_cluster_id`
+  + `script_brief` when passed, and `null` when omitted. (Composer branch unchanged.)
+- generate route: 409 when a job is active; 200 `{ dispatched: true, topicId }` + `after` scheduled
+  when not; 422 non-native; 404 missing cluster; no stub draft created.
+- `generation` status endpoint resolver: succeeded job + your_videos row → `{ kind: 'your_video' }`;
+  succeeded + only compilation_drafts row → `{ kind: 'compilation' }`; running job → `result: null`.
 
 ---
 
