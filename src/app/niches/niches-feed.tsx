@@ -173,7 +173,7 @@ function CardGrid({
             exampleThumbnails={cluster.exampleThumbnails}
             stats={cluster.stats}
             explainability={cluster.explainability}
-            canGenerate={cluster.canGenerate}
+            canGenerate={cluster.canGenerate && genState.phase !== "generating"}
             onOpen={() => onOpen(cluster.id)}
             onInvestigate={() => onInvestigate(cluster.id)}
             onGenerate={() => onGenerate(cluster.id)}
@@ -224,12 +224,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
     [router],
   );
 
-  const handleGenerate = useCallback(
-    (id: string) => {
-      void gen.start(id);
-    },
-    [gen],
-  );
+  const handleGenerate = useCallback((id: string) => { void gen.start(id); }, [gen.start]);
 
   const handleDismiss = useCallback((id: string) => {
     post("dismissed", id).catch(() => {});

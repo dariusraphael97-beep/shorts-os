@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { GenerationResult } from "@/lib/agents/generation-status";
 import type { JobStatus } from "@/lib/supabase/repositories/jobs";
@@ -18,6 +19,7 @@ export interface GenerateState {
 const IDLE: GenerateState = { phase: "idle", clusterId: null, currentAgent: null, status: null, result: null };
 
 export function useGeneratePipeline() {
+  const router = useRouter();
   const [state, setState] = useState<GenerateState>(IDLE);
   const topicRef = useRef<string | null>(null);
   const clusterRef = useRef<string | null>(null);
@@ -42,15 +44,23 @@ export function useGeneratePipeline() {
       if (body.job.status === "succeeded") {
         stop();
         setState({ phase: "done", clusterId, currentAgent: body.job.currentAgent, status: "succeeded", result: body.result });
-      } else if (body.job.status === "failed") {
+        const r = body.result;
+        if (r?.kind === "your_video") {
+          toast.success("Your draft is ready", { action: { label: "Review", onClick: () => router.push(`/lab/${r.videoId}/review`) } });
+        } else if (r?.kind === "compilation") {
+          toast.success("Your clip draft is ready", { action: { label: "Open Clips", onClick: () => router.push("/clips") } });
+        } else {
+          toast.success("Your draft is ready");
+        }
+      } else if (body.job.status === "failed" || body.job.status === "cancelled") {
         stop();
-        setState({ phase: "error", clusterId, currentAgent: body.job.currentAgent, status: "failed", result: null });
-        toast.error("Generation failed — try again");
+        setState({ phase: "error", clusterId, currentAgent: body.job.currentAgent, status: body.job.status, result: null });
+        toast.error("Generation didn't finish — try again");
       } else {
         setState({ phase: "generating", clusterId, currentAgent: body.job.currentAgent, status: body.job.status, result: null });
       }
     } catch { /* transient; next tick retries */ }
-  }, [stop]);
+  }, [stop, router]);
 
   const start = useCallback(async (clusterId: string) => {
     if (state.phase === "generating") return;

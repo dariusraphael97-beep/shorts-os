@@ -14,6 +14,9 @@ export function GenerationProgress({ state, clusterId }: { state: GenerateState;
       {state.phase === "generating" && (
         <p className="text-xs text-[var(--text-tertiary)]">Generating your draft…</p>
       )}
+      {state.phase === "error" && (
+        <p className="text-xs text-[var(--danger)]">Generation failed — try again</p>
+      )}
       {state.phase === "done" && state.result?.kind === "your_video" && (
         <Link href={`/lab/${state.result.videoId}/review`} className="text-xs font-medium text-[var(--accent)] hover:underline">
           Review →
