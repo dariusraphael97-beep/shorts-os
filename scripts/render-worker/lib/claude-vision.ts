@@ -59,3 +59,85 @@ export async function describeClipFromFrames(args: {
   });
   return result.object;
 }
+
+// ---------------------------------------------------------------------------
+// assessFramesForReview (Plan 5 sub-phase G — Video Reviewer)
+// ---------------------------------------------------------------------------
+//
+// A pre-publish QA vision pass over a rendered vertical short. Judges three
+// dimensions on a 0–1 scale and returns a short note for each. Best-effort:
+// returns null on ANY failure (missing key, model error, validation miss) so
+// the review handler can fall back to neutral component scores.
+
+const ReviewVisionSchema = z.object({
+  thumbnail: z.object({
+    score: z.number().min(0).max(1),
+    note: z.string().min(1).max(280),
+  }),
+  hook: z.object({
+    score: z.number().min(0).max(1),
+    note: z.string().min(1).max(280),
+  }),
+  visual: z.object({
+    score: z.number().min(0).max(1),
+    note: z.string().min(1).max(280),
+  }),
+});
+export type ReviewVisionAssessment = z.infer<typeof ReviewVisionSchema>;
+
+export async function assessFramesForReview(args: {
+  framePaths: string[];
+  thumbnailPath: string;
+  transcript: string | null;
+}): Promise<ReviewVisionAssessment | null> {
+  try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return null;
+    const anthropic = createAnthropic({ apiKey });
+    const model = anthropic('claude-haiku-4-5');
+
+    const thumbBuf = await readFile(args.thumbnailPath);
+    const frameBuffers = await Promise.all(args.framePaths.map((p) => readFile(p)));
+
+    const result = await generateObject({
+      model,
+      schema: ReviewVisionSchema,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: [
+                `You are a pre-publish QA reviewer for a vertical (9:16) short-form video.`,
+                ``,
+                `The FIRST image is the proposed thumbnail. The remaining images are`,
+                `frames sampled across the video in order — treat them as a storyboard.`,
+                args.transcript
+                  ? `Spoken transcript (for hook context):\n${args.transcript.slice(0, 2000)}`
+                  : `Transcript: (none available)`,
+                ``,
+                `Score each dimension from 0 (terrible) to 1 (excellent) and give a`,
+                `one-sentence note:`,
+                `- thumbnail: stopping power — would this make a viewer stop scrolling?`,
+                `  Consider clarity, contrast, focal subject, emotional/curiosity pull.`,
+                `- hook: strength of the opening (the earliest frames + first words of`,
+                `  the transcript). Does it create an immediate curiosity gap?`,
+                `- visual: overall production/visual quality across the short —`,
+                `  composition, legibility, consistency, polish for a vertical short.`,
+              ].join('\n'),
+            },
+            { type: 'image' as const, image: thumbBuf },
+            ...frameBuffers.map((buf) => ({
+              type: 'image' as const,
+              image: buf,
+            })),
+          ],
+        },
+      ],
+    });
+    return result.object;
+  } catch {
+    return null;
+  }
+}
