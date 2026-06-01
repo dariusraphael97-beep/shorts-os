@@ -2057,6 +2057,7 @@ export type Database = {
           duration_seconds: number | null
           editor_session_id: string | null
           external_video_id: string | null
+          generator_edits: Json | null
           id: string
           posted_at: string | null
           posted_dow_local: number | null
@@ -2085,6 +2086,7 @@ export type Database = {
           duration_seconds?: number | null
           editor_session_id?: string | null
           external_video_id?: string | null
+          generator_edits?: Json | null
           id?: string
           posted_at?: string | null
           posted_dow_local?: number | null
@@ -2113,6 +2115,7 @@ export type Database = {
           duration_seconds?: number | null
           editor_session_id?: string | null
           external_video_id?: string | null
+          generator_edits?: Json | null
           id?: string
           posted_at?: string | null
           posted_dow_local?: number | null
@@ -2391,3 +2394,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
