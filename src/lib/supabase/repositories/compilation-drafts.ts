@@ -180,6 +180,21 @@ export async function setPromotedYourVideoId(
   if (error) throw new Error(`setPromotedYourVideoId: ${error.message}`);
 }
 
+export async function getLatestCompilationDraftByTopic(
+  supabase: SupabaseClient,
+  topicId: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from("compilation_drafts")
+    .select("id")
+    .eq("topic_queue_id", topicId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getLatestCompilationDraftByTopic: ${error.message}`);
+  return (data ?? null) as { id: string } | null;
+}
+
 export async function listRecentPatterns(
   supabase: SupabaseClient,
   args: { channelId: string; limit?: number },

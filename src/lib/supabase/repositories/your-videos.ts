@@ -98,6 +98,21 @@ export async function getYourVideoById(
   return data as YourVideo | null;
 }
 
+export async function getLatestYourVideoByTopic(
+  supabase: SupabaseClient,
+  topicId: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("id")
+    .eq("topic_queue_id", topicId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getLatestYourVideoByTopic: ${error.message}`);
+  return (data ?? null) as { id: string } | null;
+}
+
 export async function discardDraft(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.from("your_videos").update({ status: "failed" }).eq("id", id);
   if (error) throw new Error(`discardDraft: ${error.message}`);
