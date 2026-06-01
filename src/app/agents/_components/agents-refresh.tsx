@@ -42,25 +42,21 @@ export function AgentsRefresh({ initial }: { initial: AgentCardVM[] }) {
   }, []);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {vms.map((vm, idx) =>
-        prefersReducedMotion ? (
-          <div key={vm.id} className="h-full">
-            <AgentCard vm={vm} />
-          </div>
-        ) : (
-          <motion.div
-            key={vm.id}
-            className="h-full"
-            variants={fadeRise}
-            initial="initial"
-            animate="animate"
-            transition={{ delay: idx * 0.05 }}
-          >
-            <AgentCard vm={vm} />
-          </motion.div>
-        ),
-      )}
-    </div>
+    <motion.div
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      initial="initial"
+      animate="animate"
+      transition={prefersReducedMotion ? undefined : { staggerChildren: 0.05 }}
+    >
+      {vms.map((vm) => (
+        <motion.div
+          key={vm.id}
+          className="h-full"
+          variants={prefersReducedMotion ? undefined : fadeRise}
+        >
+          <AgentCard vm={vm} />
+        </motion.div>
+      ))}
+    </motion.div>
   );
 }

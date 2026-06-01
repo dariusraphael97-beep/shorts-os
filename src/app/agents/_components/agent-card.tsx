@@ -60,7 +60,7 @@ function CardBody({ vm, disabled }: { vm: AgentCardVM; disabled: boolean }) {
   return (
     <div
       className="flex h-full flex-col gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5"
-      style={disabled ? { boxShadow: "var(--elev-1)" } : { boxShadow: "var(--elev-1)" }}
+      style={disabled ? { boxShadow: "var(--elev-1)" } : undefined}
       data-disabled={disabled ? "true" : undefined}
     >
       {/* Header row: icon tile + name/role, status corner */}
@@ -152,7 +152,7 @@ export function AgentCard({ vm }: { vm: AgentCardVM }) {
   }
 
   return (
-    <HoverLift className="h-full">
+    <HoverLift className="h-full rounded-xl">
       <Link
         href={`/agents/${vm.id}`}
         className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
