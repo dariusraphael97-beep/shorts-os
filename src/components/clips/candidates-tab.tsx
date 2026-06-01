@@ -4,6 +4,7 @@
 // the clip_library + music_tracks details that each draft references, and hands
 // everything to the per-card client component for render + button interactions.
 
+import { Layers } from "lucide-react";
 import { getServiceClient } from "@/lib/supabase/server";
 import { listProposedDrafts } from "@/lib/supabase/repositories/compilation-drafts";
 import { CandidateCard } from "@/components/clips/candidate-card";
@@ -37,27 +38,55 @@ export async function CandidatesTab() {
   ]);
 
   const clipMap = Object.fromEntries(
-    ((clips ?? []) as Array<{ id: string; local_path: string; description: string | null; duration_seconds: number }>).map(
-      (c) => [c.id, c],
-    ),
+    (
+      (clips ?? []) as Array<{
+        id: string;
+        local_path: string;
+        description: string | null;
+        duration_seconds: number;
+      }>
+    ).map((c) => [c.id, c]),
   );
   const musicMap = Object.fromEntries(
-    ((music ?? []) as Array<{ id: string; title: string; local_path: string }>).map(
-      (m) => [m.id, m],
-    ),
+    (
+      (music ?? []) as Array<{
+        id: string;
+        title: string;
+        local_path: string;
+      }>
+    ).map((m) => [m.id, m]),
   );
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-medium">Candidates ({drafts.length})</h2>
-      {drafts.length === 0 ? (
-        <p className="text-text-secondary text-sm border border-dashed border-border rounded p-6 text-center">
-          No proposed compilations yet. Dispatch a topic that Strategist routes to compilation.
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-xs text-[var(--text-tertiary)] uppercase tracking-widest">
+          {drafts.length} candidate{drafts.length !== 1 ? "s" : ""}
         </p>
+      </div>
+
+      {drafts.length === 0 ? (
+        /* Designed empty state */
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)]/40 px-6 py-16 text-center">
+          <Layers className="h-10 w-10 text-[var(--text-tertiary)]" aria-hidden />
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
+            No proposed compilations yet
+          </p>
+          <p className="max-w-xs text-xs text-[var(--text-tertiary)] leading-relaxed">
+            Dispatch a topic that Strategist routes to compilation to generate candidates here.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {drafts.map((d) => (
-            <CandidateCard key={d.id} draft={d} clipMap={clipMap} musicMap={musicMap} />
+          {drafts.map((d, i) => (
+            <CandidateCard
+              key={d.id}
+              draft={d}
+              clipMap={clipMap}
+              musicMap={musicMap}
+              index={i}
+            />
           ))}
         </div>
       )}

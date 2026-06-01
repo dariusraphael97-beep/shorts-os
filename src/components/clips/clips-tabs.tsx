@@ -1,13 +1,20 @@
 "use client";
 // src/components/clips/clips-tabs.tsx
 //
-// Plan #4 Phase 4: client-side tab switcher for /clips. Wraps Inbox /
-// Candidates / Rendered server-component children. Local state only — no URL
-// sync because the three tabs are mostly browse-and-act, not deep-link targets.
+// Premium client-side tab switcher for /clips. Token-driven active-tab
+// treatment matching the design system. Wraps Inbox / Candidates / Rendered
+// server-component children. Local state only — no URL sync.
 
 import { useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 type Tab = "inbox" | "candidates" | "rendered";
+
+const LABELS: Record<Tab, string> = {
+  inbox: "Inbox",
+  candidates: "Candidates",
+  rendered: "Rendered",
+};
 
 export function ClipsTabs(props: {
   inbox: ReactNode;
@@ -15,32 +22,51 @@ export function ClipsTabs(props: {
   rendered: ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("inbox");
-  const labels: Record<Tab, string> = {
-    inbox: "Inbox",
-    candidates: "Candidates",
-    rendered: "Rendered",
-  };
+
   return (
     <div>
-      <nav className="flex gap-4 border-b border-border mb-4">
-        {(Object.keys(labels) as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`pb-2 px-1 text-sm transition-colors ${
-              tab === t
-                ? "text-text-primary border-b-2 border-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            {labels[t]}
-          </button>
-        ))}
+      {/* Tab bar */}
+      <nav
+        className="flex gap-0.5 border-b border-[var(--border-subtle)] mb-6"
+        role="tablist"
+        aria-label="Clips sections"
+      >
+        {(Object.keys(LABELS) as Tab[]).map((t) => {
+          const active = tab === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t)}
+              className={cn(
+                "relative px-4 pb-3 pt-0.5 text-sm font-medium transition-colors duration-150",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-t-sm",
+                active
+                  ? "text-[var(--text-primary)]"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]",
+              )}
+            >
+              {LABELS[t]}
+              {/* Active indicator bar */}
+              {active && (
+                <span
+                  aria-hidden
+                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[var(--accent)]"
+                />
+              )}
+            </button>
+          );
+        })}
       </nav>
-      {tab === "inbox" && props.inbox}
-      {tab === "candidates" && props.candidates}
-      {tab === "rendered" && props.rendered}
+
+      {/* Tab panels */}
+      <div role="tabpanel">
+        {tab === "inbox" && props.inbox}
+        {tab === "candidates" && props.candidates}
+        {tab === "rendered" && props.rendered}
+      </div>
     </div>
   );
 }

@@ -2,18 +2,22 @@
 // src/components/clips/ingest-url-input.tsx
 //
 // Single-input form for the operator to drop a URL into the ingest queue
-// without waiting for the cron. POSTs to /api/clips/ingest-url.
+// without waiting for the cron. POSTs to /api/clips/ingest-url (preserved).
+
 import { useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export function IngestUrlInput() {
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    setMsg(null);
     try {
       const res = await fetch("/api/clips/ingest-url", {
         method: "POST",
@@ -21,34 +25,40 @@ export function IngestUrlInput() {
         body: JSON.stringify({ url: url.trim() }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
-      setMsg(`Enqueued (job ${j.jobId})`);
+      if (!res.ok) throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
+      toast.success(`Enqueued (job ${(j as { jobId?: string }).jobId ?? "queued"})`);
       setUrl("");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "enqueue failed");
+      toast.error(e instanceof Error ? e.message : "Enqueue failed");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2">
-      <input
+    <form onSubmit={submit} className={cn("flex items-center gap-2")}>
+      <Input
         type="url"
         required
-        placeholder="Ingest URL manually"
+        placeholder="Ingest URL manually…"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        className="bg-surface-2 border border-border rounded px-3 py-1.5 text-sm w-80"
+        className="h-8 w-72 text-sm"
+        aria-label="URL to ingest"
       />
-      <button
+      <Button
         type="submit"
-        disabled={submitting || !url}
-        className="text-xs border border-border rounded px-3 py-1.5 hover:bg-surface-2 disabled:opacity-50"
+        size="sm"
+        disabled={submitting || !url.trim()}
+        className="h-8 gap-1.5 px-3 text-[11px]"
       >
-        {submitting ? "…" : "Ingest"}
-      </button>
-      {msg && <span className="text-xs text-text-secondary">{msg}</span>}
+        {submitting ? (
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        ) : (
+          <Plus className="h-3 w-3" aria-hidden />
+        )}
+        Ingest
+      </Button>
     </form>
   );
 }
