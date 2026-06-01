@@ -8,10 +8,12 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, Film, Loader2, Send, X } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, Film, Loader2, Send, ShieldCheck, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { YourVideo } from "@/lib/supabase/repositories/your-videos";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { fadeRise } from "@/lib/motion";
 
 export function RenderedRow({ video }: { video: YourVideo }) {
@@ -110,8 +112,15 @@ export function RenderedRow({ video }: { video: YourVideo }) {
             </span>
           </div>
 
-          {/* Actions — primary CTA leads, secondaries subordinate */}
+          {/* Actions — Review leads, primary CTA next, secondaries subordinate */}
           <div className="mt-auto flex flex-wrap items-center gap-2">
+            <Link
+              href={`/lab/${video.id}/review`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              Review
+            </Link>
             <Button onClick={approveAndSchedule} disabled={busy} size="sm" className="gap-1.5">
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />

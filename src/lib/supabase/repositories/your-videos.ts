@@ -85,6 +85,19 @@ export async function listRecentDrafts(
   return (data ?? []) as YourVideo[];
 }
 
+export async function getYourVideoById(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<YourVideo | null> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`getYourVideoById: ${error.message}`);
+  return data as YourVideo | null;
+}
+
 export async function discardDraft(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.from("your_videos").update({ status: "failed" }).eq("id", id);
   if (error) throw new Error(`discardDraft: ${error.message}`);
