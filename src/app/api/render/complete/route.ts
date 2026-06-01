@@ -12,8 +12,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServiceClient } from '@/lib/supabase/server';
 import { verifyCallbackToken, CallbackTokenError } from '@/lib/render/callback-token';
-import { markJobSucceeded, markJobFailed } from '@/lib/supabase/repositories/render-jobs';
+import { markJobSucceeded, markJobFailed, enqueueRenderJob } from '@/lib/supabase/repositories/render-jobs';
 import { markPosted } from '@/lib/supabase/repositories/your-videos';
+import { getVideoReviewByVideoId, insertVideoReview, type InsertVideoReviewParams } from '@/lib/supabase/repositories/video-reviews';
+import { updateAssistantStatus, recordAssistantActivity } from '@/lib/supabase/repositories/assistants';
 
 const CompleteBody = z.object({
   job_id: z.string().uuid(),
@@ -83,6 +85,18 @@ export async function POST(req: Request) {
             .from('your_videos')
             .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
             .eq('id', jobRow.your_video_id);
+          // Pre-publish QA: enqueue a review pass on the freshly rendered MP4 (idempotent).
+          const existingReview = await getVideoReviewByVideoId(supabase, jobRow.your_video_id);
+          if (!existingReview) {
+            await enqueueRenderJob(supabase, {
+              jobType: 'review',
+              payload: { your_video_id: jobRow.your_video_id },
+              yourVideoId: jobRow.your_video_id,
+            });
+            try {
+              await updateAssistantStatus(supabase, 'video_reviewer', 'working', 'Reviewing a freshly rendered video…');
+            } catch (e) { console.error('video_reviewer status (non-fatal):', e); }
+          }
         }
       }
 
@@ -161,6 +175,33 @@ export async function POST(req: Request) {
         }
       }
 
+      // review side-effect — persist the worker's review object + link it on your_videos.
+      if ('review' in out) {
+        const { data: reviewJobRow } = await supabase
+          .from('render_jobs')
+          .select('your_video_id, job_type')
+          .eq('id', body.job_id)
+          .single();
+        if (reviewJobRow?.job_type === 'review') {
+          const review = await insertVideoReview(supabase, out.review as InsertVideoReviewParams);
+          if (reviewJobRow.your_video_id) {
+            await supabase
+              .from('your_videos')
+              .update({ review_id: review.id, updated_at: new Date().toISOString() })
+              .eq('id', reviewJobRow.your_video_id);
+          }
+          try {
+            await updateAssistantStatus(supabase, 'video_reviewer', 'idle', null);
+            await recordAssistantActivity(supabase, {
+              assistantId: 'video_reviewer',
+              activityType: 'review',
+              summary: `Reviewed video → ${review.overall_verdict}`,
+              payload: { videoId: reviewJobRow.your_video_id, verdict: review.overall_verdict },
+            });
+          } catch (e) { console.error('video_reviewer report failed (non-fatal):', e); }
+        }
+      }
+
       if (traceText) {
         await supabase
           .from('render_jobs')
@@ -213,6 +254,11 @@ export async function POST(req: Request) {
           });
         }
       }
+    }
+    if (jobRow?.job_type === 'review') {
+      try {
+        await updateAssistantStatus(supabase, 'video_reviewer', 'errored', body.result.error.slice(0, 160));
+      } catch (e) { console.error('video_reviewer errored-status (non-fatal):', e); }
     }
   }
   return NextResponse.json({ ok: true });
