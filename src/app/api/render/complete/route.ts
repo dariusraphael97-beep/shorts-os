@@ -86,17 +86,19 @@ export async function POST(req: Request) {
             .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
             .eq('id', jobRow.your_video_id);
           // Pre-publish QA: enqueue a review pass on the freshly rendered MP4 (idempotent).
-          const existingReview = await getVideoReviewByVideoId(supabase, jobRow.your_video_id);
-          if (!existingReview) {
-            await enqueueRenderJob(supabase, {
-              jobType: 'review',
-              payload: { your_video_id: jobRow.your_video_id },
-              yourVideoId: jobRow.your_video_id,
-            });
-            try {
+          // Non-fatal — the render genuinely succeeded and is already marked 'rendered';
+          // a blip enqueuing the secondary QA pass must not fail (or retry) the callback.
+          try {
+            const existingReview = await getVideoReviewByVideoId(supabase, jobRow.your_video_id);
+            if (!existingReview) {
+              await enqueueRenderJob(supabase, {
+                jobType: 'review',
+                payload: { your_video_id: jobRow.your_video_id },
+                yourVideoId: jobRow.your_video_id,
+              });
               await updateAssistantStatus(supabase, 'video_reviewer', 'working', 'Reviewing a freshly rendered video…');
-            } catch (e) { console.error('video_reviewer status (non-fatal):', e); }
-          }
+            }
+          } catch (e) { console.error('review enqueue (non-fatal):', e); }
         }
       }
 
