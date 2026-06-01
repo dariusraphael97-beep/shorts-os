@@ -382,6 +382,77 @@ export async function listRecentVideosWithReview(
   }));
 }
 
+/**
+ * Like listRecentVideosWithReview but filtered to specific status(es) and
+ * including scheduled_for so the row VM can render countdowns.
+ */
+export interface VideoWithVerdictAndSchedule {
+  id: string;
+  title: string;
+  status: VideoStatus;
+  render_artifact_url: string | null;
+  review_id: string | null;
+  scheduled_for: string | null;
+  created_at: string;
+  overall_verdict: "ship" | "revise" | "block" | null;
+}
+
+export async function listVideosByStatusWithVerdict(
+  supabase: SupabaseClient,
+  status: VideoStatus | VideoStatus[],
+  limit = 20,
+): Promise<VideoWithVerdictAndSchedule[]> {
+  const statuses = Array.isArray(status) ? status : [status];
+  const { data: rows, error } = await supabase
+    .from("your_videos")
+    .select("id, title, status, render_artifact_url, review_id, scheduled_for, created_at")
+    .in("status", statuses)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listVideosByStatusWithVerdict: ${error.message}`);
+  if (!rows || rows.length === 0) return [];
+
+  const reviewIds = [...new Set(
+    (rows as { review_id: string | null }[])
+      .map((r) => r.review_id)
+      .filter((id): id is string => id !== null),
+  )];
+
+  const verdictMap = new Map<string, "ship" | "revise" | "block">();
+  if (reviewIds.length > 0) {
+    const { data: reviews, error: revErr } = await supabase
+      .from("video_reviews")
+      .select("id, overall_verdict")
+      .in("id", reviewIds);
+    if (revErr) throw new Error(`listVideosByStatusWithVerdict (reviews): ${revErr.message}`);
+    for (const rv of reviews ?? []) {
+      const v = rv.overall_verdict;
+      if (v === "ship" || v === "revise" || v === "block") {
+        verdictMap.set(rv.id, v);
+      }
+    }
+  }
+
+  return (rows as {
+    id: string;
+    title: string;
+    status: VideoStatus;
+    render_artifact_url: string | null;
+    review_id: string | null;
+    scheduled_for: string | null;
+    created_at: string;
+  }[]).map((r) => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    render_artifact_url: r.render_artifact_url,
+    review_id: r.review_id,
+    scheduled_for: r.scheduled_for,
+    created_at: r.created_at,
+    overall_verdict: r.review_id ? (verdictMap.get(r.review_id) ?? null) : null,
+  }));
+}
+
 export async function claimDueScheduled(
   supabase: SupabaseClient,
   args: { now: Date; limit: number },

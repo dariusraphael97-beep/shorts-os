@@ -1,8 +1,8 @@
 // src/app/lab/drafts/page.tsx
 //
 // Draft pipeline review. Tabs (Draft / Rendered / Scheduled / Posted) are
-// driven by ?tab=<key>. Data fetching (listVideosByStatus) and the server/
-// client boundary are preserved exactly — presentation only is rebuilt.
+// driven by ?tab=<key>. All tabs render through the premium DraftRow component
+// for consistent verdict badges, status pills, and status-appropriate actions.
 
 import { FileText, Film, CalendarClock, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -10,15 +10,14 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { getServiceClient } from "@/lib/supabase/server";
-import { listVideosByStatus } from "@/lib/supabase/repositories/your-videos";
+import {
+  listVideosByStatusWithVerdict,
+} from "@/lib/supabase/repositories/your-videos";
 import type { VideoStatus } from "@/lib/supabase/repositories/your-videos";
 import { DraftsTabs, type DraftsTab } from "@/components/lab/drafts-tabs";
 import { DraftsList } from "@/components/lab/drafts-list";
 import { DraftRow } from "@/components/lab/draft-row";
 import { toDraftRow } from "@/lib/lab/drafts-view";
-import { RenderedRow } from "@/components/lab/rendered-row";
-import { ScheduledRow } from "@/components/lab/scheduled-row";
-import { PostedRow } from "@/components/lab/posted-row";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +60,18 @@ export default async function LabDraftsPage({
     scheduled: ["scheduled", "uploading"],
     posted: "posted",
   };
-  const videos = await listVideosByStatus(supabase, statusFor[active], 20);
+  const videos = await listVideosByStatusWithVerdict(supabase, statusFor[active], 20);
+
+  const rows = videos.map((v) =>
+    toDraftRow({
+      id: v.id,
+      title: v.title,
+      status: v.status,
+      review_verdict: v.overall_verdict,
+      thumbnail_url: v.render_artifact_url,
+      scheduled_for: v.scheduled_for,
+    }),
+  );
 
   const empty = EMPTY[active];
 
@@ -77,39 +87,22 @@ export default async function LabDraftsPage({
           <DraftsTabs active={active} />
         </div>
 
-        {videos.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
             icon={empty.icon}
             title={empty.title}
             body={empty.body}
           />
-        ) : active === "posted" ? (
-          // Posted rows are server components — render in a static styled list.
-          <ul className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--elev-1)]">
-            {videos.map((v) => (
-              <PostedRow key={v.id} video={v} />
-            ))}
-          </ul>
         ) : (
           <DraftsList>
-            {videos.map((v, i) => {
-              if (active === "draft")
-                return (
-                  <DraftRow
-                    key={v.id}
-                    row={toDraftRow({
-                      id: v.id,
-                      title: v.title,
-                      status: v.status,
-                      review_verdict: null, // drafts are pre-render; verdicts only exist on rendered+ videos
-                      thumbnail_url: v.render_artifact_url,
-                    })}
-                    index={i}
-                  />
-                );
-              if (active === "rendered") return <RenderedRow key={v.id} video={v} />;
-              return <ScheduledRow key={v.id} video={v} />;
-            })}
+            {rows.map((row, i) => (
+              <DraftRow
+                key={row.id}
+                row={row}
+                index={i}
+                orchestrated
+              />
+            ))}
           </DraftsList>
         )}
       </div>

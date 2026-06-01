@@ -3,8 +3,13 @@
 // Client component. Renders a single DraftRowVM as a premium table row with:
 //   • thumbnail tile (render_artifact_url or placeholder)
 //   • title + status pill + verdict badge
-//   • status-appropriate action buttons (Render / Review / Upload)
+//   • status-appropriate action buttons (Render / Review / Schedule / Upload / Cancel)
 // Mutations POST to existing API routes then call router.refresh().
+//
+// Stagger: when `orchestrated` is true, this row participates in the PARENT's
+// staggerChildren animation (e.g. DraftsList) and omits its own per-index delay
+// to avoid double-staggering. Default (false) = self-stagger by `index`, used
+// in RecentDraftsPane which has no motion orchestrator parent.
 
 "use client";
 
@@ -17,6 +22,8 @@ import {
   ShieldCheck,
   Send,
   Clapperboard,
+  CalendarClock,
+  X,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
@@ -123,15 +130,35 @@ function ThumbnailTile({ url }: { url: string | null }) {
   );
 }
 
+// ─── Scheduled countdown ──────────────────────────────────────────────────────
+
+function ScheduledMeta({ scheduledFor }: { scheduledFor: string }) {
+  const date = new Date(scheduledFor);
+  const countdown = Math.max(0, date.getTime() - Date.now());
+  const hours = Math.floor(countdown / 3_600_000);
+  const minutes = Math.floor((countdown % 3_600_000) / 60_000);
+  return (
+    <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">
+      posts in {hours}h {minutes}m · {date.toLocaleString()}
+    </span>
+  );
+}
+
 // ─── DraftRow (public) ────────────────────────────────────────────────────────
 
 interface DraftRowProps {
   row: DraftRowVM;
-  /** Stagger index for fadeRise entrance */
+  /** Stagger index used when `orchestrated` is false (self-stagger mode). */
   index: number;
+  /**
+   * When true, this row is inside a motion orchestrator (DraftsList) that
+   * already applies staggerChildren. The row participates via `variants` only —
+   * no additional per-index delay is added. Default: false.
+   */
+  orchestrated?: boolean;
 }
 
-export function DraftRow({ row, index }: DraftRowProps) {
+export function DraftRow({ row, index, orchestrated = false }: DraftRowProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const [busy, setBusy] = useState(false);
@@ -166,6 +193,16 @@ export function DraftRow({ row, index }: DraftRowProps) {
     }
   }
 
+  async function handleConfirmMutation(
+    path: string,
+    body: Record<string, string>,
+    label: string,
+    confirmMessage: string,
+  ) {
+    if (!confirm(confirmMessage)) return;
+    await postMutation(path, body, label);
+  }
+
   function handleRender() {
     void postMutation("/api/lab/render", { draftId: row.id }, "Render");
   }
@@ -174,19 +211,40 @@ export function DraftRow({ row, index }: DraftRowProps) {
     void postMutation("/api/lab/upload", { videoId: row.id }, "Upload");
   }
 
-  // ── Stagger delay ──────────────────────────────────────────────────────────
+  function handleSchedule() {
+    void postMutation("/api/lab/schedule", { videoId: row.id }, "Schedule");
+  }
 
-  // NOTE: when this row is hosted inside DraftsList (/lab/drafts), the parent also staggers — dedupe in the /lab/drafts rebuild task
-  const staggerDelay = prefersReducedMotion ? 0 : Math.min(index * 0.04, 0.24);
+  function handleCancel() {
+    void handleConfirmMutation(
+      "/api/lab/cancel-schedule",
+      { videoId: row.id },
+      "Cancel",
+      "Cancel this scheduled post? It returns to Rendered.",
+    );
+  }
+
+  // ── Motion props ──────────────────────────────────────────────────────────
+  // When `orchestrated` = true: participate in parent staggerChildren via
+  // variants only (no custom transition — the parent controls timing).
+  // When `orchestrated` = false: self-stagger by index (used in RecentDraftsPane).
 
   const motionProps = prefersReducedMotion
     ? {}
+    : orchestrated
+    ? { variants: fadeRise }
     : {
         variants: fadeRise,
         initial: "initial",
         animate: "animate",
-        transition: { delay: staggerDelay, duration: 0.32, ease: [0, 0, 0.2, 1] as [number, number, number, number] },
+        transition: {
+          delay: Math.min(index * 0.04, 0.24),
+          duration: 0.32,
+          ease: [0, 0, 0.2, 1] as [number, number, number, number],
+        },
       };
+
+  const isUploading = row.status === "uploading";
 
   return (
     <motion.li
@@ -213,7 +271,7 @@ export function DraftRow({ row, index }: DraftRowProps) {
                 pill.className,
               )}
             >
-              {row.status === "rendering" && (
+              {(row.status === "rendering" || isUploading) && (
                 <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden />
               )}
               {pill.label}
@@ -232,14 +290,22 @@ export function DraftRow({ row, index }: DraftRowProps) {
                 {verdictBadge.label}
               </span>
             )}
+
+            {/* Scheduled countdown */}
+            {row.status === "scheduled" && row.scheduledFor && (
+              <ScheduledMeta scheduledFor={row.scheduledFor} />
+            )}
+
+            {/* Uploading indicator */}
+            {isUploading && (
+              <span className="font-mono text-[11px] text-[var(--accent)]">uploading…</span>
+            )}
           </div>
         </div>
 
         {/* Row actions */}
         {row.actions.length > 0 && (
-          <div
-            className="flex shrink-0 items-center gap-1.5"
-          >
+          <div className="flex shrink-0 items-center gap-1.5">
             {row.actions.includes("render") && (
               <Button
                 onClick={handleRender}
@@ -271,21 +337,52 @@ export function DraftRow({ row, index }: DraftRowProps) {
               </Link>
             )}
 
+            {row.actions.includes("schedule") && (
+              <Button
+                onClick={handleSchedule}
+                disabled={busy}
+                size="sm"
+                className="h-7 gap-1.5 px-2.5 text-[11px]"
+                aria-label="Approve and schedule this video"
+              >
+                {busy ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                ) : (
+                  <CalendarClock className="h-3 w-3" aria-hidden />
+                )}
+                Schedule
+              </Button>
+            )}
+
             {row.actions.includes("upload") && (
               <Button
                 onClick={handleUpload}
-                disabled={busy}
+                disabled={busy || isUploading}
                 variant="outline"
                 size="sm"
                 className="h-7 gap-1.5 px-2.5 text-[11px]"
-                aria-label="Upload this video"
+                aria-label="Upload this video now"
               >
                 {busy ? (
                   <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
                 ) : (
                   <Send className="h-3 w-3" aria-hidden />
                 )}
-                Upload
+                Post now
+              </Button>
+            )}
+
+            {row.actions.includes("cancel") && (
+              <Button
+                onClick={handleCancel}
+                disabled={busy || isUploading}
+                variant="destructive"
+                size="sm"
+                className="h-7 gap-1.5 px-2.5 text-[11px]"
+                aria-label="Cancel scheduled post"
+              >
+                <X className="h-3 w-3" aria-hidden />
+                Cancel
               </Button>
             )}
           </div>

@@ -13,7 +13,8 @@ export type DraftStatus =
   | "failed";
 
 export type ReviewVerdict = "ship" | "revise" | "block";
-export type DraftAction = "render" | "review" | "upload";
+/** All row-level actions. "schedule" → POST /api/lab/schedule; "cancel" → POST /api/lab/cancel-schedule. */
+export type DraftAction = "render" | "review" | "upload" | "schedule" | "cancel";
 
 const STATUS_LABEL: Record<DraftStatus, string> = {
   draft: "Draft",
@@ -32,6 +33,8 @@ export interface DraftRowVM {
   statusLabel: string;
   verdict: ReviewVerdict | null;
   thumbnailUrl: string | null;
+  /** ISO string — only set when status is scheduled/uploading */
+  scheduledFor: string | null;
   actions: DraftAction[];
 }
 
@@ -41,14 +44,23 @@ export function toDraftRow(input: {
   status: DraftStatus;
   review_verdict: ReviewVerdict | null;
   thumbnail_url: string | null;
+  scheduled_for?: string | null;
 }): DraftRowVM {
   const actions: DraftAction[] = [];
 
   if (input.status === "draft") {
     actions.push("render");
   }
-  if (input.status === "rendered" || input.status === "scheduled") {
-    actions.push("review", "upload");
+  if (input.status === "rendered") {
+    // Review leads; schedule is the primary CTA; post-now is secondary
+    actions.push("review", "schedule", "upload");
+  }
+  if (input.status === "scheduled" || input.status === "uploading") {
+    // Review still available; post-now shortcut; cancel to revert
+    actions.push("review", "upload", "cancel");
+  }
+  if (input.status === "posted") {
+    // No mutations — row is terminal
   }
 
   return {
@@ -58,6 +70,7 @@ export function toDraftRow(input: {
     statusLabel: STATUS_LABEL[input.status],
     verdict: input.review_verdict ?? null,
     thumbnailUrl: input.thumbnail_url,
+    scheduledFor: input.scheduled_for ?? null,
     actions,
   };
 }
