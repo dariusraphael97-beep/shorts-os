@@ -15,6 +15,7 @@ import type { VideoStatus } from "@/lib/supabase/repositories/your-videos";
 import { DraftsTabs, type DraftsTab } from "@/components/lab/drafts-tabs";
 import { DraftsList } from "@/components/lab/drafts-list";
 import { DraftRow } from "@/components/lab/draft-row";
+import { toDraftRow } from "@/lib/lab/drafts-view";
 import { RenderedRow } from "@/components/lab/rendered-row";
 import { ScheduledRow } from "@/components/lab/scheduled-row";
 import { PostedRow } from "@/components/lab/posted-row";
@@ -91,8 +92,21 @@ export default async function LabDraftsPage({
           </ul>
         ) : (
           <DraftsList>
-            {videos.map((v) => {
-              if (active === "draft") return <DraftRow key={v.id} draft={v} />;
+            {videos.map((v, i) => {
+              if (active === "draft")
+                return (
+                  <DraftRow
+                    key={v.id}
+                    row={toDraftRow({
+                      id: v.id,
+                      title: v.title,
+                      status: v.status,
+                      review_verdict: null,
+                      thumbnail_url: v.render_artifact_url,
+                    })}
+                    index={i}
+                  />
+                );
               if (active === "rendered") return <RenderedRow key={v.id} video={v} />;
               return <ScheduledRow key={v.id} video={v} />;
             })}

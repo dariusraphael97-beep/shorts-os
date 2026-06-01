@@ -309,6 +309,76 @@ export interface ClaimedRow {
   channel_id: string;
 }
 
+// ─── Recent videos with review verdict ───────────────────────────────────────
+
+export interface VideoWithVerdict {
+  id: string;
+  title: string;
+  status: VideoStatus;
+  render_artifact_url: string | null;
+  review_id: string | null;
+  created_at: string;
+  /** Populated by a second fetch keyed by review_id — null when no review exists */
+  overall_verdict: "ship" | "revise" | "block" | null;
+}
+
+/**
+ * Returns up to `limit` your_videos rows across ALL statuses, newest first,
+ * each decorated with the review's overall_verdict (via a two-step fetch on
+ * the existing review_id FK).  The two-step approach is used instead of an
+ * embedded select because the JS client requires the FK constraint hint name
+ * which may differ across environments.
+ */
+export async function listRecentVideosWithReview(
+  supabase: SupabaseClient,
+  limit = 10,
+): Promise<VideoWithVerdict[]> {
+  // Step 1 — fetch the base rows
+  const { data: rows, error } = await supabase
+    .from("your_videos")
+    .select("id, title, status, render_artifact_url, review_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentVideosWithReview: ${error.message}`);
+  if (!rows || rows.length === 0) return [];
+
+  // Step 2 — collect distinct review_ids and fetch their verdicts
+  const reviewIds = [...new Set(
+    (rows as { review_id: string | null }[])
+      .map((r) => r.review_id)
+      .filter((id): id is string => id !== null),
+  )];
+
+  let verdictMap = new Map<string, "ship" | "revise" | "block">();
+  if (reviewIds.length > 0) {
+    const { data: reviews, error: revErr } = await supabase
+      .from("video_reviews")
+      .select("id, overall_verdict")
+      .in("id", reviewIds);
+    if (revErr) throw new Error(`listRecentVideosWithReview (reviews): ${revErr.message}`);
+    for (const rv of (reviews ?? []) as { id: string; overall_verdict: "ship" | "revise" | "block" }[]) {
+      verdictMap.set(rv.id, rv.overall_verdict);
+    }
+  }
+
+  return (rows as {
+    id: string;
+    title: string;
+    status: VideoStatus;
+    render_artifact_url: string | null;
+    review_id: string | null;
+    created_at: string;
+  }[]).map((r) => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    render_artifact_url: r.render_artifact_url,
+    review_id: r.review_id,
+    created_at: r.created_at,
+    overall_verdict: r.review_id ? (verdictMap.get(r.review_id) ?? null) : null,
+  }));
+}
+
 export async function claimDueScheduled(
   supabase: SupabaseClient,
   args: { now: Date; limit: number },
