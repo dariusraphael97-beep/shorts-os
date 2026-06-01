@@ -200,6 +200,26 @@ describe("runPipeline — success path", () => {
     }
     expect(finishJobSuccess).toHaveBeenCalledWith(expect.anything(), "job-uuid");
   });
+
+  it("threads sourceNicheClusterId + scriptBrief into the explainer-branch draft", async () => {
+    for await (const _ev of runPipeline({
+      topicId: "topic-uuid",
+      supabase: {} as any,
+      sourceNicheClusterId: "cluster-9",
+      scriptBrief: { topic: "Vienna", audience: "history buffs" },
+    })) { /* drain */ }
+
+    const args = vi.mocked(createVideoDraft).mock.calls[0][1];
+    expect(args.sourceNicheClusterId).toBe("cluster-9");
+    expect(args.scriptBrief).toEqual({ topic: "Vienna", audience: "history buffs" });
+  });
+
+  it("passes null linkage when none supplied (manual Lab dispatch)", async () => {
+    for await (const _ev of runPipeline({ topicId: "topic-uuid", supabase: {} as any })) { /* drain */ }
+    const args = vi.mocked(createVideoDraft).mock.calls[0][1];
+    expect(args.sourceNicheClusterId ?? null).toBeNull();
+    expect(args.scriptBrief ?? null).toBeNull();
+  });
 });
 
 describe("runPipeline — concurrency", () => {
