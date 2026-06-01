@@ -101,7 +101,7 @@ export default async function LabDraftsPage({
                       id: v.id,
                       title: v.title,
                       status: v.status,
-                      review_verdict: null,
+                      review_verdict: null, // drafts are pre-render; verdicts only exist on rendered+ videos
                       thumbnail_url: v.render_artifact_url,
                     })}
                     index={i}

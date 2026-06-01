@@ -176,6 +176,7 @@ export function DraftRow({ row, index }: DraftRowProps) {
 
   // ── Stagger delay ──────────────────────────────────────────────────────────
 
+  // NOTE: when this row is hosted inside DraftsList (/lab/drafts), the parent also staggers — dedupe in the /lab/drafts rebuild task
   const staggerDelay = prefersReducedMotion ? 0 : Math.min(index * 0.04, 0.24);
 
   const motionProps = prefersReducedMotion
@@ -191,7 +192,6 @@ export function DraftRow({ row, index }: DraftRowProps) {
     <motion.li
       {...motionProps}
       className="border-t border-[var(--border-subtle)] first:border-t-0"
-      role="listitem"
     >
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Thumbnail */}
@@ -239,7 +239,6 @@ export function DraftRow({ row, index }: DraftRowProps) {
         {row.actions.length > 0 && (
           <div
             className="flex shrink-0 items-center gap-1.5"
-            onClick={(e) => e.stopPropagation()}
           >
             {row.actions.includes("render") && (
               <Button

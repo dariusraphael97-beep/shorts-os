@@ -349,15 +349,18 @@ export async function listRecentVideosWithReview(
       .filter((id): id is string => id !== null),
   )];
 
-  let verdictMap = new Map<string, "ship" | "revise" | "block">();
+  const verdictMap = new Map<string, "ship" | "revise" | "block">();
   if (reviewIds.length > 0) {
     const { data: reviews, error: revErr } = await supabase
       .from("video_reviews")
       .select("id, overall_verdict")
       .in("id", reviewIds);
     if (revErr) throw new Error(`listRecentVideosWithReview (reviews): ${revErr.message}`);
-    for (const rv of (reviews ?? []) as { id: string; overall_verdict: "ship" | "revise" | "block" }[]) {
-      verdictMap.set(rv.id, rv.overall_verdict);
+    for (const rv of reviews ?? []) {
+      const v = rv.overall_verdict;
+      if (v === "ship" || v === "revise" || v === "block") {
+        verdictMap.set(rv.id, v);
+      }
     }
   }
 
