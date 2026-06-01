@@ -146,3 +146,73 @@ export async function listAssistantMemory(
   if (error) throw new Error(`listAssistantMemory: ${error.message}`);
   return (data ?? []) as AssistantMemory[];
 }
+
+export interface AssistantActivity {
+  id: string;
+  assistant_id: string;
+  activity_type: string;
+  summary: string;
+  payload: unknown;
+  created_at: string;
+}
+
+export async function recordAssistantActivity(
+  supabase: SupabaseClient,
+  params: { assistantId: string; activityType: string; summary: string; payload?: unknown },
+): Promise<void> {
+  const { error } = await supabase.from('assistant_activity_log').insert({
+    assistant_id: params.assistantId,
+    activity_type: params.activityType,
+    summary: params.summary,
+    payload: (params.payload ?? {}) as never,
+  });
+  if (error) throw new Error(`recordAssistantActivity: ${error.message}`);
+}
+
+export async function listAssistantActivity(
+  supabase: SupabaseClient,
+  params: { assistantId?: string; activityType?: string; limit?: number; offset?: number },
+): Promise<AssistantActivity[]> {
+  let q = supabase.from('assistant_activity_log').select('*').order('created_at', { ascending: false });
+  if (params.assistantId) q = q.eq('assistant_id', params.assistantId);
+  if (params.activityType) q = q.eq('activity_type', params.activityType);
+  q = q.range(params.offset ?? 0, (params.offset ?? 0) + (params.limit ?? 50) - 1);
+  const { data, error } = await q;
+  if (error) throw new Error(`listAssistantActivity: ${error.message}`);
+  return (data ?? []) as AssistantActivity[];
+}
+
+export async function listAssistantStatuses(
+  supabase: SupabaseClient,
+): Promise<AssistantStatus[]> {
+  const { data, error } = await supabase.from('assistant_status').select('*');
+  if (error) throw new Error(`listAssistantStatuses: ${error.message}`);
+  return (data ?? []) as AssistantStatus[];
+}
+
+export interface AssistantSettings { assistant_id: string; settings: Record<string, unknown>; updated_at: string }
+
+export async function getAssistantSettings(
+  supabase: SupabaseClient, assistantId: string,
+): Promise<AssistantSettings | null> {
+  const { data, error } = await supabase.from('assistant_settings').select('*').eq('assistant_id', assistantId).maybeSingle();
+  if (error) throw new Error(`getAssistantSettings: ${error.message}`);
+  return data as AssistantSettings | null;
+}
+
+export async function updateAssistantSettings(
+  supabase: SupabaseClient, assistantId: string, settings: Record<string, unknown>,
+): Promise<AssistantSettings> {
+  const { data, error } = await supabase.from('assistant_settings')
+    .upsert({ assistant_id: assistantId, settings: settings as never, updated_at: new Date().toISOString() })
+    .select().single();
+  if (error) throw new Error(`updateAssistantSettings: ${error.message}`);
+  return data as AssistantSettings;
+}
+
+export async function deleteAssistantMemory(
+  supabase: SupabaseClient, id: string,
+): Promise<void> {
+  const { error } = await supabase.from('assistant_memory').delete().eq('id', id);
+  if (error) throw new Error(`deleteAssistantMemory: ${error.message}`);
+}
