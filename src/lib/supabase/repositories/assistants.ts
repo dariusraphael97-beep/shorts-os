@@ -173,7 +173,7 @@ export async function listAssistantActivity(
   supabase: SupabaseClient,
   params: { assistantId?: string; activityType?: string; limit?: number; offset?: number },
 ): Promise<AssistantActivity[]> {
-  let q = supabase.from('assistant_activity_log').select('*').order('created_at', { ascending: false });
+  let q = supabase.from('assistant_activity_log').select().order('created_at', { ascending: false });
   if (params.assistantId) q = q.eq('assistant_id', params.assistantId);
   if (params.activityType) q = q.eq('activity_type', params.activityType);
   q = q.range(params.offset ?? 0, (params.offset ?? 0) + (params.limit ?? 50) - 1);
@@ -185,23 +185,37 @@ export async function listAssistantActivity(
 export async function listAssistantStatuses(
   supabase: SupabaseClient,
 ): Promise<AssistantStatus[]> {
-  const { data, error } = await supabase.from('assistant_status').select('*');
+  const { data, error } = await supabase
+    .from('assistant_status')
+    .select()
+    .order('assistant_id', { ascending: true });
   if (error) throw new Error(`listAssistantStatuses: ${error.message}`);
   return (data ?? []) as AssistantStatus[];
 }
 
-export interface AssistantSettings { assistant_id: string; settings: Record<string, unknown>; updated_at: string }
+export interface AssistantSettings {
+  assistant_id: string;
+  settings: Record<string, unknown>;
+  updated_at: string;
+}
 
 export async function getAssistantSettings(
-  supabase: SupabaseClient, assistantId: string,
+  supabase: SupabaseClient,
+  assistantId: string,
 ): Promise<AssistantSettings | null> {
-  const { data, error } = await supabase.from('assistant_settings').select('*').eq('assistant_id', assistantId).maybeSingle();
+  const { data, error } = await supabase
+    .from('assistant_settings')
+    .select()
+    .eq('assistant_id', assistantId)
+    .maybeSingle();
   if (error) throw new Error(`getAssistantSettings: ${error.message}`);
   return data as AssistantSettings | null;
 }
 
 export async function updateAssistantSettings(
-  supabase: SupabaseClient, assistantId: string, settings: Record<string, unknown>,
+  supabase: SupabaseClient,
+  assistantId: string,
+  settings: Record<string, unknown>,
 ): Promise<AssistantSettings> {
   const { data, error } = await supabase.from('assistant_settings')
     .upsert({ assistant_id: assistantId, settings: settings as never, updated_at: new Date().toISOString() })

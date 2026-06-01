@@ -104,7 +104,9 @@ describe('listAssistantActivity', () => {
 function makeSelectClient(rows: Record<string, unknown>[] | null, error: unknown = null) {
   return {
     from: () => ({
-      select: async () => ({ data: rows, error }),
+      select: () => ({
+        order: async () => ({ data: rows, error }),
+      }),
     }),
   } as never;
 }
