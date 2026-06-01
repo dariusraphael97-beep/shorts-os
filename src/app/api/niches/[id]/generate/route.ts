@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { serializeError } from "@/lib/scrapers/shared";
 import { getServiceClient } from "@/lib/supabase/server";
 import { getClusterById } from "@/lib/supabase/repositories/niche-clusters";
-import { clusterToBrief } from "@/lib/niches/cluster-brief";
+import { clusterToBrief, type TopicBrief } from "@/lib/niches/cluster-brief";
 import { insertManualTopic } from "@/lib/supabase/repositories/topic-queue";
 import { recordNicheAction } from "@/lib/supabase/repositories/niche-actions";
 import { getActiveProduceVideoJob } from "@/lib/supabase/repositories/jobs";
@@ -24,7 +24,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const cluster = await getClusterById(supabase, id);
   if (!cluster) return NextResponse.json({ ok: false, error: "cluster_not_found" }, { status: 404 });
 
-  let brief;
+  let brief: TopicBrief;
   try {
     brief = clusterToBrief({
       id: cluster.id,

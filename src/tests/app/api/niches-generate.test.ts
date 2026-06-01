@@ -55,7 +55,6 @@ describe("POST /api/niches/[id]/generate", () => {
     expect(recordNicheAction).toHaveBeenCalled();
   });
   it("422s on non-native (clusterToBrief throws)", async () => {
-    getActiveProduceVideoJob.mockResolvedValue(null);
     clusterToBrief.mockImplementation(() => { throw new Error("not native"); });
     const res = await POST(post(), ctx);
     expect(res.status).toBe(422);
