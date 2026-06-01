@@ -33,6 +33,9 @@ const envSchema = z.object({
   // Plan #5 Sub-phase E — weekly digest email (optional; digest-send skips+logs when unset)
   RESEND_API_KEY: z.string().min(1).optional(),
   DIGEST_RECIPIENT: z.string().email().optional(),
+
+  // Plan #5 Sub-phase G — agent chat engine (optional; defaults to anthropic/claude-sonnet-4-5)
+  CHAT_MODEL: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
