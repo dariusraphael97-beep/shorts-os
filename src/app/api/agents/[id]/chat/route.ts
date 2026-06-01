@@ -9,10 +9,43 @@ import {
   appendChatMessage,
   getThreadMessages,
   touchThread,
+  listChatThreads,
 } from "@/lib/supabase/repositories/assistants";
 import { buildChatStream } from "@/lib/agents/chat/engine";
 
 export const dynamic = "force-dynamic";
+
+// GET /api/agents/[id]/chat
+//
+//   no query           → { ok: true, threads }  — every thread for this agent.
+//   ?threadId=<id>     → { ok: true, messages } — the ordered turns of one thread.
+//
+// Powers the chat tab's thread list + history hydration.
+export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const { id } = await ctx.params;
+  const supabase = getServiceClient();
+
+  const assistant = await getAssistantById(supabase, id);
+  if (!assistant) {
+    return NextResponse.json({ ok: false, error: "assistant_not_found" }, { status: 404 });
+  }
+
+  const threadId = new URL(req.url).searchParams.get("threadId");
+
+  try {
+    if (threadId) {
+      const messages = await getThreadMessages(supabase, threadId);
+      return NextResponse.json({ ok: true, messages });
+    }
+    const threads = await listChatThreads(supabase, id);
+    return NextResponse.json({ ok: true, threads });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 });
+  }
+}
 
 // POST /api/agents/[id]/chat
 //
