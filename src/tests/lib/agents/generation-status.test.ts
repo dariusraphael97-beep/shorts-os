@@ -34,4 +34,17 @@ describe("chipStatesFromProgress", () => {
     expect(s.writer).toBe("failed");
     expect(s.voice_coach).toBe("idle");
   });
+  it("shows strategist done + rest idle when currentAgent is past the strip (composer)", () => {
+    const s = chipStatesFromProgress({ currentAgent: "composer", status: "running" });
+    expect(s.strategist).toBe("done");
+    expect(s.writer).toBe("idle");
+    expect(s.voice_coach).toBe("idle");
+    expect(s.director).toBe("idle");
+  });
+  it("shows the first chip working when nothing has started yet (queued)", () => {
+    const s = chipStatesFromProgress({ currentAgent: null, status: "queued" });
+    expect(s.strategist).toBe("working");
+    expect(s.writer).toBe("idle");
+    expect(s.director).toBe("idle");
+  });
 });

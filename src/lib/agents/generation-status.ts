@@ -33,9 +33,14 @@ export function chipStatesFromProgress(args: {
   const done = args.status === "succeeded";
   const failed = args.status === "failed";
   const idx = args.currentAgent ? STRIP_ORDER.indexOf(args.currentAgent as AgentId) : -1;
+  // currentAgent set but not a strip agent (e.g. "composer" on the compilation
+  // branch) → the run moved past strategist down a non-explainer path. Show
+  // strategist done, the rest idle (writer/voice_coach/director won't run).
+  const pastStrip = idx < 0 && args.currentAgent !== null;
 
   STRIP_ORDER.forEach((id, i) => {
     if (done) { out[id] = "done"; return; }
+    if (pastStrip) { out[id] = i === 0 ? "done" : "idle"; return; }
     if (failed) { out[id] = i < idx ? "done" : i === idx ? "failed" : "idle"; return; }
     if (idx < 0) { out[id] = i === 0 ? "working" : "idle"; return; }
     out[id] = i < idx ? "done" : i === idx ? "working" : "idle";
