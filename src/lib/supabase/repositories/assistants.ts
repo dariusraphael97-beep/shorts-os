@@ -230,3 +230,86 @@ export async function deleteAssistantMemory(
   const { error } = await supabase.from('assistant_memory').delete().eq('id', id);
   if (error) throw new Error(`deleteAssistantMemory: ${error.message}`);
 }
+
+// ---------------------------------------------------------------------------
+// Chat threads + messages
+// ---------------------------------------------------------------------------
+
+export interface ChatThread {
+  id: string;
+  assistant_id: string;
+  started_at: string;
+  last_message_at: string;
+  title: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  thread_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+export async function createChatThread(
+  supabase: SupabaseClient,
+  params: { assistantId: string; title?: string | null },
+): Promise<ChatThread> {
+  const { data, error } = await supabase
+    .from('assistant_chat_threads')
+    .insert({ assistant_id: params.assistantId, title: params.title ?? null })
+    .select()
+    .single();
+  if (error) throw new Error(`createChatThread: ${error.message}`);
+  return data as ChatThread;
+}
+
+export async function listChatThreads(
+  supabase: SupabaseClient,
+  assistantId: string,
+): Promise<ChatThread[]> {
+  const { data, error } = await supabase
+    .from('assistant_chat_threads')
+    .select()
+    .eq('assistant_id', assistantId)
+    .order('last_message_at', { ascending: false });
+  if (error) throw new Error(`listChatThreads: ${error.message}`);
+  return (data ?? []) as ChatThread[];
+}
+
+export async function getThreadMessages(
+  supabase: SupabaseClient,
+  threadId: string,
+): Promise<ChatMessage[]> {
+  const { data, error } = await supabase
+    .from('assistant_chat_messages')
+    .select()
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(`getThreadMessages: ${error.message}`);
+  return (data ?? []) as ChatMessage[];
+}
+
+export async function appendChatMessage(
+  supabase: SupabaseClient,
+  params: { threadId: string; role: 'user' | 'assistant'; content: string },
+): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from('assistant_chat_messages')
+    .insert({ thread_id: params.threadId, role: params.role, content: params.content })
+    .select()
+    .single();
+  if (error) throw new Error(`appendChatMessage: ${error.message}`);
+  return data as ChatMessage;
+}
+
+export async function touchThread(
+  supabase: SupabaseClient,
+  threadId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('assistant_chat_threads')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', threadId);
+  if (error) throw new Error(`touchThread: ${error.message}`);
+}
