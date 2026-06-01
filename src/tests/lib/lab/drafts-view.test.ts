@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { toDraftRow } from "@/lib/lab/drafts-view";
 
 describe("toDraftRow", () => {
-  it("a rendered draft with a ship verdict shows Review + Upload actions", () => {
+  it("a rendered draft with a ship verdict shows Review + Schedule + Upload actions", () => {
     const row = toDraftRow({ id: "v1", title: "T", status: "rendered", review_verdict: "ship", thumbnail_url: null });
     expect(row.statusLabel).toBe("Rendered");
     expect(row.verdict).toBe("ship");
-    expect(row.actions).toEqual(["review", "upload"]);
+    expect(row.actions).toEqual(["review", "schedule", "upload"]);
   });
   it("a draft (not yet rendered) shows the Render action only", () => {
     const row = toDraftRow({ id: "v1", title: "T", status: "draft", review_verdict: null, thumbnail_url: null });
@@ -31,5 +31,13 @@ describe("toDraftRow", () => {
   it("thumbnail_url is passed through", () => {
     const row = toDraftRow({ id: "v1", title: "T", status: "draft", review_verdict: null, thumbnail_url: "https://example.com/thumb.jpg" });
     expect(row.thumbnailUrl).toBe("https://example.com/thumb.jpg");
+  });
+  it("a scheduled draft shows review/upload/cancel actions", () => {
+    const row = toDraftRow({ id: "v1", title: "T", status: "scheduled", review_verdict: "ship", thumbnail_url: null });
+    expect(row.actions).toEqual(["review", "upload", "cancel"]);
+  });
+  it("a posted video shows no actions", () => {
+    const row = toDraftRow({ id: "v1", title: "T", status: "posted", review_verdict: "ship", thumbnail_url: null });
+    expect(row.actions).toEqual([]);
   });
 });
