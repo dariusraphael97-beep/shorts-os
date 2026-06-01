@@ -42,8 +42,10 @@ export class ConcurrentRunError extends Error {
 export async function* runPipeline(args: {
   topicId: string;
   supabase: SupabaseClient;
+  sourceNicheClusterId?: string | null;
+  scriptBrief?: Record<string, unknown> | null;
 }): AsyncGenerator<StreamEvent> {
-  const { topicId, supabase } = args;
+  const { topicId, supabase, sourceNicheClusterId = null, scriptBrief = null } = args;
 
   // 1. Concurrency check
   const existing = await getActiveProduceVideoJob(supabase);
@@ -264,6 +266,8 @@ export async function* runPipeline(args: {
       visualTreatment: directorOut.visual_treatment,
       durationSeconds: writerOut.estimated_duration_seconds,
       captionProps: directorOut.caption_props,
+      sourceNicheClusterId,
+      scriptBrief,
     });
     await finishJobSuccess(supabase, job.id);
     await reportAssistant(supabase, 'generator', 'idle', null, { activityType: 'produced_draft', summary: `Produced draft ${draft.id}`, payload: { videoId: draft.id } });

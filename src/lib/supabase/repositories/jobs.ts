@@ -57,6 +57,22 @@ export async function getActiveProduceVideoJob(supabase: SupabaseClient): Promis
   return (data ?? null) as Job | null;
 }
 
+export async function getProduceVideoJobByTopic(
+  supabase: SupabaseClient,
+  topicId: string,
+): Promise<Job | null> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("kind", "produce_video")
+    .eq("topic_queue_id", topicId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getProduceVideoJobByTopic: ${error.message}`);
+  return (data ?? null) as Job | null;
+}
+
 export async function updateJobProgress(
   supabase: SupabaseClient,
   jobId: string,

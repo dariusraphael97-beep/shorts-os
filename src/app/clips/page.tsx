@@ -6,30 +6,28 @@
 // your_videos).
 import { AppShell } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { PageHeader } from "@/components/layout/page-header";
 import { InboxTab } from "@/components/clips/inbox-tab";
 import { CandidatesTab } from "@/components/clips/candidates-tab";
 import { RenderedTab } from "@/components/clips/rendered-tab";
 import { ClipsTabs } from "@/components/clips/clips-tabs";
+import { IngestUrlInput } from "@/components/clips/ingest-url-input";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClipsPage() {
   return (
-    <AppShell bare sidebar={<AppSidebar />}>
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
-        <header>
-          <h1 className="text-2xl font-semibold text-text-primary">Clips</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Inbox: auto-ingested clip_library. Candidates: compilation drafts waiting on you.
-            Rendered: finished renders to promote into your_videos.
-          </p>
-        </header>
-        <ClipsTabs
-          inbox={<InboxTab />}
-          candidates={<CandidatesTab />}
-          rendered={<RenderedTab />}
-        />
-      </div>
+    <AppShell sidebar={<AppSidebar />}>
+      <PageHeader
+        title="Clips"
+        description="Inbox: auto-ingested clip library. Candidates: compilation drafts waiting on you. Rendered: finished renders to promote."
+        actions={<IngestUrlInput />}
+      />
+      <ClipsTabs
+        inbox={<InboxTab />}
+        candidates={<CandidatesTab />}
+        rendered={<RenderedTab />}
+      />
     </AppShell>
   );
 }

@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Eye, Loader2, Swords, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectYouTubeButton } from "@/components/settings/connect-youtube-button";
+import { ScanFeed } from "@/components/onboarding/scan-feed";
 import { fadeRise } from "@/lib/motion";
 import { parseChannelUrls } from "@/lib/onboarding/parse-channel-urls";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,8 @@ export function OnboardingSetup() {
   // Best-effort, non-blocking: how many admired channels we couldn't add.
   const [failedAdds, setFailedAdds] = useState(0);
   const [finishError, setFinishError] = useState<string | null>(null);
+  // After a successful complete, show the live scan feed instead of the form.
+  const [scanning, setScanning] = useState(false);
 
   // --- interests (de-emphasized, optional) ---------------------------------
   const addInterest = useCallback((raw: string) => {
@@ -124,9 +127,10 @@ export function OnboardingSetup() {
       return;
     }
 
-    // 3) Land straight on the niches feed — that's the payoff.
-    router.push("/niches");
-  }, [admiredUrls, alsoCompetitor, finishing, interests, router]);
+    // 3) Background scan is already running; show the live scan feed.
+    setFinishing(false);
+    setScanning(true);
+  }, [admiredUrls, alsoCompetitor, finishing, interests]);
 
   const motionProps = prefersReducedMotion
     ? {}
@@ -135,6 +139,11 @@ export function OnboardingSetup() {
         initial: "initial" as const,
         animate: "animate" as const,
       };
+
+  // After a successful complete, swap the form out for the live scan feed.
+  if (scanning) {
+    return <ScanFeed onDone={() => router.push("/niches")} />;
+  }
 
   return (
     <motion.div {...motionProps} className="flex flex-col gap-10">
@@ -200,7 +209,7 @@ export function OnboardingSetup() {
             </p>
           )}
           {finishError && (
-            <p className="text-xs text-[var(--accent-red)]">{finishError}</p>
+            <p className="text-xs text-[var(--danger)]">{finishError}</p>
           )}
         </div>
       </div>

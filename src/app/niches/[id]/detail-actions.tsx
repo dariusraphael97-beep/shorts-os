@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useGeneratePipeline } from "@/components/niches/use-generate-pipeline";
+import { GenerationProgress } from "@/components/niches/generation-progress";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,31 +93,7 @@ export function DetailActions({
 }: DetailActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<NicheAction | null>(null);
-
-  async function handleGenerate() {
-    if (!canGenerate || busy) return;
-    setBusy("generated_from");
-    // The generate route records the `generated_from` action server-side, so we don't
-    // double-log it here.
-    try {
-      const res = await fetch(`/api/niches/${clusterId}/generate`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-      });
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (res.ok && body.ok) {
-        toast.success("Seeded a draft — finish it in the Lab", {
-          action: { label: "Open Lab", onClick: () => router.push("/lab") },
-        });
-      } else {
-        toast.error(body.error ?? `Generate failed (${res.status})`);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Generate request failed");
-    } finally {
-      setBusy(null);
-    }
-  }
+  const gen = useGeneratePipeline();
 
   async function handleAdd() {
     if (busy) return;
@@ -148,8 +126,8 @@ export function DetailActions({
         <Button
           variant="default"
           size="default"
-          disabled={!canGenerate || busy !== null}
-          onClick={handleGenerate}
+          disabled={!canGenerate || gen.state.phase === "generating"}
+          onClick={() => { void gen.start(clusterId); }}
           className="w-full justify-center gap-2"
           aria-label={
             canGenerate
@@ -158,7 +136,7 @@ export function DetailActions({
           }
         >
           <SparkIcon />
-          {busy === "generated_from" ? "Generating…" : "Generate now"}
+          {gen.state.phase === "generating" && gen.state.clusterId === clusterId ? "Generating…" : "Generate now"}
         </Button>
         {!canGenerate && (
           <p className="px-1 font-mono text-[10px] leading-snug tracking-wide text-[var(--text-tertiary)]">
@@ -166,6 +144,7 @@ export function DetailActions({
             recording or editing step.
           </p>
         )}
+        <GenerationProgress state={gen.state} clusterId={clusterId} />
 
         <Button
           variant="outline"

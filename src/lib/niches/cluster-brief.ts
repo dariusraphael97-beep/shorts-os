@@ -4,7 +4,7 @@ export interface BriefInput {
 }
 export interface TopicBrief {
   title: string; summary: string;
-  rawPayload: { clusterId: string; format: string; audience: string | null; referenceVideoIds: string[] };
+  rawPayload: Record<string, unknown>;
 }
 
 export function clusterToBrief(c: BriefInput): TopicBrief {

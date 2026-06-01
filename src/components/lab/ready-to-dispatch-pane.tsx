@@ -1,13 +1,14 @@
 // src/components/lab/ready-to-dispatch-pane.tsx
 //
 // Server component. Loads reviewed topics from the DB at request time
-// and renders a card per topic with a DispatchButton. The actual SSE
-// stream lifecycle is owned by DispatchButton (client).
+// and renders a premium queue card per topic with a DispatchButton.
+// The actual SSE stream lifecycle is owned by DispatchButton (client).
 
+import type React from "react";
 import Link from "next/link";
 import { Rocket, Sparkles } from "lucide-react";
 import { getServiceClient } from "@/lib/supabase/server";
-import { listReviewedTopics } from "@/lib/supabase/repositories/topic-queue";
+import { listReviewedTopics, type QueuedTopic } from "@/lib/supabase/repositories/topic-queue";
 import { Button } from "@/components/ui/button";
 import { DispatchButton } from "./dispatch-button";
 
@@ -26,33 +27,74 @@ export async function ReadyToDispatchPane() {
       {topics.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="grid gap-3">
-          {topics.map((t) => (
-            <li key={t.id}>
-              <article className="group relative flex items-center gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 shadow-[var(--elev-1)] transition-colors duration-[var(--duration-quick)] hover:border-[var(--border-strong)]">
-                <HookabilityScore score={t.hookability_score} />
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm font-medium leading-snug text-[var(--text-primary)]">
-                    {t.title}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
-                    <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
-                      {t.source}
-                    </span>
-                    {t.summary && (
-                      <span className="truncate">{t.summary}</span>
-                    )}
-                  </p>
-                </div>
-                <div className="shrink-0">
-                  <DispatchButton topicId={t.id} />
-                </div>
-              </article>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-3">
+            {topics.map((t, i) => (
+              <li
+                key={t.id}
+                className="queue-card-enter"
+                style={{ "--enter-delay": `${i * 55}ms` } as React.CSSProperties}
+              >
+                <QueueCard topic={t} />
+              </li>
+            ))}
+          </ul>
+
+          {/* Stagger entrance + reduced-motion guard */}
+          <style>{`
+            .queue-card-enter {
+              animation: queue-card-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+              animation-delay: var(--enter-delay, 0ms);
+            }
+            @keyframes queue-card-in {
+              from { opacity: 0; transform: translateY(8px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .queue-card-enter { animation: none; }
+            }
+          `}</style>
+        </>
       )}
     </section>
+  );
+}
+
+// ─── Queue card ──────────────────────────────────────────────────────────────
+
+function QueueCard({ topic: t }: { topic: QueuedTopic }) {
+  return (
+    <article className="group relative flex items-start gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 shadow-[var(--elev-1)] transition-all duration-200 ease-out hover:-translate-y-px hover:border-[var(--border-strong)] hover:shadow-[var(--elev-2)]">
+      {/* Left: hookability score tile */}
+      <HookabilityScore score={t.hookability_score} />
+
+      {/* Centre: content */}
+      <div className="min-w-0 flex-1">
+        {/* Source + format chip row */}
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">
+            {t.source}
+          </span>
+        </div>
+
+        {/* Primary: topic title */}
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug text-[var(--text-primary)] transition-colors group-hover:text-[var(--text-primary)]">
+          {t.title}
+        </p>
+
+        {/* Summary peek */}
+        {t.summary && (
+          <p className="mt-1.5 line-clamp-1 text-sm text-[var(--text-secondary)]">
+            {t.summary}
+          </p>
+        )}
+      </div>
+
+      {/* Right: Dispatch CTA */}
+      <div className="shrink-0 self-center">
+        <DispatchButton topicId={t.id} />
+      </div>
+    </article>
   );
 }
 
@@ -85,16 +127,27 @@ function SectionHeader({
   );
 }
 
-// ─── Hookability score chip ─────────────────────────────────────────────────────
+// ─── Hookability score chip ──────────────────────────────────────────────────
 
 function HookabilityScore({ score }: { score: number | null }) {
   const display = score ?? null;
+
+  /* Colour the score by band: ≥8 accent, ≥6 warning, else tertiary */
+  const scoreColor =
+    display === null
+      ? "text-[var(--text-tertiary)]"
+      : display >= 8
+        ? "text-[var(--accent)]"
+        : display >= 6
+          ? "text-[var(--warning)]"
+          : "text-[var(--text-secondary)]";
+
   return (
     <div
-      className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)]"
-      title="Hookability score"
+      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]"
+      title={`Hookability score: ${display ?? "unscored"}`}
     >
-      <span className="font-mono text-base font-semibold leading-none tabular-nums text-[var(--accent)]">
+      <span className={`font-mono text-base font-bold leading-none tabular-nums ${scoreColor}`}>
         {display ?? "—"}
       </span>
       <span className="mt-0.5 text-[9px] uppercase tracking-wider text-[var(--text-tertiary)]">
@@ -104,26 +157,29 @@ function HookabilityScore({ score }: { score: number | null }) {
   );
 }
 
-// ─── Empty state ────────────────────────────────────────────────────────────────
+// ─── Empty state ─────────────────────────────────────────────────────────────
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)]/40 px-8 py-14 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
-        <Rocket className="h-5 w-5 text-[var(--text-tertiary)]" aria-hidden />
+    <div className="flex flex-col items-center justify-center gap-5 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-1)]/40 px-8 py-16 text-center">
+      {/* Decorative icon tile */}
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-[var(--elev-1)]">
+        <Rocket className="h-6 w-6 text-[var(--text-tertiary)]" aria-hidden />
       </div>
-      <div>
-        <p className="text-sm font-medium text-[var(--text-primary)]">
-          No topics ready to dispatch yet
+
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">
+          Nothing queued
         </p>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--text-secondary)]">
-          Reviewed topics show up here, ready to send through the pipeline.
-          Approve a few in the Cockpit to get started.
+        <p className="mx-auto max-w-xs text-sm text-[var(--text-secondary)]">
+          Reviewed topics appear here, ready to send through the pipeline.
+          Generate topics from a niche to get started.
         </p>
       </div>
-      <Button render={<Link href="/" />} variant="outline" size="sm" className="gap-1.5">
+
+      <Button render={<Link href="/niches" />} variant="outline" size="sm" className="gap-1.5">
         <Sparkles className="h-3.5 w-3.5" aria-hidden />
-        Open the Cockpit
+        Browse niches
       </Button>
     </div>
   );

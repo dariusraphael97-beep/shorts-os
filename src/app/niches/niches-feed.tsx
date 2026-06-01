@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NicheCard } from "@/components/compositions/niche-card";
+import { useGeneratePipeline, type GenerateState } from "@/components/niches/use-generate-pipeline";
+import { GenerationProgress } from "@/components/niches/generation-progress";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,6 +127,7 @@ interface CardGridProps {
   onInvestigate: (id: string) => void;
   onGenerate: (id: string) => void;
   onDismiss: (id: string) => void;
+  genState: GenerateState;
   /** Stagger offset for CSS animation-delay */
   baseDelay?: number;
 }
@@ -138,6 +141,7 @@ function CardGrid({
   onInvestigate,
   onGenerate,
   onDismiss,
+  genState,
   baseDelay = 0,
 }: CardGridProps) {
   const visible = items.filter((c) => !dismissedIds.has(c.id));
@@ -169,12 +173,13 @@ function CardGrid({
             exampleThumbnails={cluster.exampleThumbnails}
             stats={cluster.stats}
             explainability={cluster.explainability}
-            canGenerate={cluster.canGenerate}
+            canGenerate={cluster.canGenerate && genState.phase !== "generating"}
             onOpen={() => onOpen(cluster.id)}
             onInvestigate={() => onInvestigate(cluster.id)}
             onGenerate={() => onGenerate(cluster.id)}
             onDismiss={() => onDismiss(cluster.id)}
           />
+          <GenerationProgress state={genState} clusterId={cluster.id} />
         </div>
       ))}
     </div>
@@ -189,6 +194,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const hasFiredViewedRef = useRef(false);
+  const gen = useGeneratePipeline();
 
   // Fire "viewed" once per mount for all visible cards
   useEffect(() => {
@@ -218,26 +224,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
     [router],
   );
 
-  const handleGenerate = useCallback(
-    (id: string) => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/niches/${id}/generate`, { method: "POST" });
-          const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-          if (res.ok && body.ok) {
-            toast.success("Seeded a draft — finish it in the Lab", {
-              action: { label: "Open Lab", onClick: () => router.push("/lab") },
-            });
-          } else {
-            toast.error(body.error ?? `Generate failed (${res.status})`);
-          }
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Generate request failed");
-        }
-      })();
-    },
-    [router],
-  );
+  const handleGenerate = useCallback((id: string) => { void gen.start(id); }, [gen.start]);
 
   const handleDismiss = useCallback((id: string) => {
     post("dismissed", id).catch(() => {});
@@ -399,6 +386,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
               onInvestigate={handleInvestigate}
               onGenerate={handleGenerate}
               onDismiss={handleDismiss}
+              genState={gen.state}
               baseDelay={0}
             />
           </section>
@@ -421,6 +409,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
               onInvestigate={handleInvestigate}
               onGenerate={handleGenerate}
               onDismiss={handleDismiss}
+              genState={gen.state}
               baseDelay={proven.length}
             />
           </section>

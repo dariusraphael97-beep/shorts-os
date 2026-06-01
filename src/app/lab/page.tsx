@@ -2,8 +2,10 @@
 //
 // The Lab — Plan #3.
 // Three panes:
-//   1. ReadyToDispatchPane (server) — reviewed topics with Dispatch buttons.
-//   2. ActiveRunPane (client) — live pipeline view, only mounts during a run.
+//   1. ActiveRunPane (client) — live pipeline view, only mounts during a run.
+//      When a run is live this is the hero; it renders nothing when idle.
+//   2. ReadyToDispatchPane (server) — reviewed topics with Dispatch buttons.
+//      Leads the content when idle — it is the next action.
 //   3. RecentDraftsPane (server) — last 10 your_videos drafts.
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -24,11 +26,12 @@ export default async function LabPage() {
           description="Dispatch a reviewed topic and watch the four agents assemble a video draft."
         />
 
-        {/* Active run lives at the top while live — it's the one primary thing
-            when a pipeline is running. Renders nothing when idle. */}
+        {/* Active run — hero when live, renders nothing when idle.
+            Lives above the queue so it's the first thing you see during a run. */}
         <ActiveRunPane />
 
-        <div className="space-y-10">
+        {/* Queue + history — the "what's next" content when idle */}
+        <div className="space-y-12">
           <ReadyToDispatchPane />
           <RecentDraftsPane />
         </div>
