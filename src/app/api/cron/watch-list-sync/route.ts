@@ -9,6 +9,7 @@ import { insertChannelStatSnapshot, getSnapshotNearestTo } from '@/lib/supabase/
 import { listActiveWatchedChannels, updateWatchedChannelSnapshot, upsertWatchedChannel, evictInactiveWatchedChannels } from '@/lib/supabase/repositories/watched-channels';
 import { runWithIngestionLog } from '@/lib/ingestion/run';
 import { runWatchListSync, type ActiveChannelRow } from '@/lib/ingestion/watch-list-sync';
+import { reportAssistant } from '@/lib/agents/dashboard/report';
 
 export const maxDuration = 300;
 
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
   const uploadsById = new Map(channels.map((c) => [c.channelId, c.uploadsPlaylistId]));
   const activeChannels: ActiveChannelRow[] = active.map((c) => ({ channel_id: c.channel_id, uploads_playlist_id: uploadsById.get(c.channel_id) ?? null }));
 
+  await reportAssistant(supabase, 'watch_list_curator', 'working', 'Syncing the watch list…');
   try {
     const run = await runWithIngestionLog(supabase, 'watch_list_sync', () =>
       runWatchListSync({
@@ -57,9 +59,11 @@ export async function GET(req: Request) {
         },
       }),
     );
+    await reportAssistant(supabase, 'watch_list_curator', 'idle', null, { activityType: 'watch_list_sync', summary: `Synced ${active.length} channels` });
     return NextResponse.json({ ok: true, ...scraperLog('watch-list-sync', { run }) });
   } catch (e) {
     console.error('watch-list-sync failed', e);
+    await reportAssistant(supabase, 'watch_list_curator', 'errored', serializeError(e).slice(0, 160));
     return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 });
   }
 }

@@ -8,6 +8,7 @@ import { listClassifiedObservationsSince } from "@/lib/supabase/repositories/sho
 import { getEmbeddings, upsertEmbeddings } from "@/lib/supabase/repositories/topic-embeddings";
 import { replaceWeek } from "@/lib/supabase/repositories/niche-clusters";
 import { runClustering } from "@/lib/ingestion/cluster-niches";
+import { reportAssistant } from "@/lib/agents/dashboard/report";
 
 export const maxDuration = 300;
 
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
   const now = new Date();
   const since = new Date(now.getTime() - 28 * 86_400_000);
   const weekStart = isoWeekStart(now);
+  await reportAssistant(supabase, 'niche_scout', 'working', "Clustering this week's observations…");
 
   try {
     const run = await runWithIngestionLog(supabase, "cluster_niches", () =>
@@ -42,9 +44,11 @@ export async function GET(req: Request) {
         replaceWeek: (w, clusterRows) => replaceWeek(supabase, w, clusterRows),
       }),
     );
+    await reportAssistant(supabase, 'niche_scout', 'idle', null, { activityType: 'clustering', summary: `Clustered week ${weekStart}`, payload: { weekStart } });
     return NextResponse.json({ ok: true, ...scraperLog("cluster-niches", { run, weekStart }) });
   } catch (e) {
     console.error("cluster-niches failed", e);
+    await reportAssistant(supabase, 'niche_scout', 'errored', serializeError(e).slice(0, 160));
     return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 });
   }
 }

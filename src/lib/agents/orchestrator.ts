@@ -19,6 +19,7 @@ import {
   finishJobFailure,
 } from "@/lib/supabase/repositories/jobs";
 import { updateAgentState } from "@/lib/supabase/repositories/agents";
+import { reportAssistant } from "@/lib/agents/dashboard/report";
 import { recordAgentMessage } from "@/lib/supabase/repositories/agent-messages";
 import { recordDecision } from "@/lib/supabase/repositories/decisions";
 import { createVideoDraft } from "@/lib/supabase/repositories/your-videos";
@@ -59,6 +60,7 @@ export async function* runPipeline(args: {
     type: "job_started",
     data: { jobId: job.id, topicId: topic.id, channelId: channel.id, startedAt },
   };
+  await reportAssistant(supabase, 'generator', 'working', `Producing draft for topic ${topic.id}`);
 
   const progressByAgent: Record<AgentId, number> = {
     strategist: 20,
@@ -151,6 +153,7 @@ export async function* runPipeline(args: {
       });
       yield* lifecycleAfter(supabase, job.id, "composer", progressByAgent.composer, Date.now() - compStart);
       await finishJobSuccess(supabase, job.id);
+      await reportAssistant(supabase, 'generator', 'idle', null, { activityType: 'produced_draft', summary: `Produced draft ${draftId}`, payload: { videoId: draftId } });
       yield { type: "job_completed", data: { videoId: draftId } };
       return;
     }
@@ -263,6 +266,7 @@ export async function* runPipeline(args: {
       captionProps: directorOut.caption_props,
     });
     await finishJobSuccess(supabase, job.id);
+    await reportAssistant(supabase, 'generator', 'idle', null, { activityType: 'produced_draft', summary: `Produced draft ${draft.id}`, payload: { videoId: draft.id } });
     yield { type: "job_completed", data: { videoId: draft.id } };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -272,6 +276,7 @@ export async function* runPipeline(args: {
     try {
       await finishJobFailure(supabase, job.id, message);
     } catch { /* ignore */ }
+    await reportAssistant(supabase, 'generator', 'errored', message.slice(0, 160));
     yield { type: "job_failed", data: { agent: currentAgent, error: message } };
   }
 }
