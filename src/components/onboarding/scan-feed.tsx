@@ -69,7 +69,7 @@ function StepIcon({ status }: { status: ScanStepStatus }) {
   if (status === "failed") {
     return (
       <AlertTriangle
-        className="h-4 w-4 text-[var(--accent-red)]"
+        className="h-4 w-4 text-[var(--danger)]"
         strokeWidth={1.75}
         aria-label="Failed"
       />

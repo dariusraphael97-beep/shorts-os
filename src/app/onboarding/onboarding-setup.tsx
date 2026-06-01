@@ -209,7 +209,7 @@ export function OnboardingSetup() {
             </p>
           )}
           {finishError && (
-            <p className="text-xs text-[var(--accent-red)]">{finishError}</p>
+            <p className="text-xs text-[var(--danger)]">{finishError}</p>
           )}
         </div>
       </div>
