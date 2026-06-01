@@ -1,5 +1,5 @@
 import "server-only";
-import { streamText, type ModelMessage } from "ai";
+import { streamText, stepCountIs, type ModelMessage } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getGatewayModel } from "@/lib/ai/models";
 import { getSystemPrompt } from "./system-prompts";
@@ -22,5 +22,8 @@ export function buildChatStream({ supabase, assistantId, messages }: BuildChatSt
     system: getSystemPrompt(assistantId),
     messages,
     tools: getToolsForAssistant(supabase, assistantId),
+    // AI SDK v6 defaults to stepCountIs(1) — a single step. Allow the model a few
+    // tool-call rounds so it can synthesize a text answer AFTER calling read tools.
+    stopWhen: stepCountIs(8),
   });
 }
