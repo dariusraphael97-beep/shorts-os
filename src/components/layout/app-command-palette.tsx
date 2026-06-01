@@ -2,7 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Eye, Send, Swords, Settings } from "lucide-react";
+import {
+  Sparkles,
+  Eye,
+  Send,
+  Swords,
+  Settings,
+  Bot,
+  Compass,
+  ShieldCheck,
+} from "lucide-react";
 import {
   CommandPalette,
   type CommandPaletteGroup,
@@ -51,6 +60,16 @@ export function AppCommandPalette() {
         { id: "digest-preview", label: "Digest: preview latest", icon: Send, onSelect: go("/niches/digest-preview") },
         { id: "competitors-add", label: "Competitors: add channel", icon: Swords, onSelect: go("/competitors") },
         { id: "settings-niche-finder", label: "Settings: niche finder", icon: Settings, onSelect: go("/settings/niche-finder") },
+      ],
+    },
+    {
+      heading: "Agents",
+      items: [
+        { id: "agents-dashboard", label: "Agents: dashboard", icon: Bot, onSelect: go("/agents") },
+        { id: "agents-niche-scout", label: "Agents: Niche Scout", icon: Compass, onSelect: go("/agents/niche_scout") },
+        { id: "agents-watch-list-curator", label: "Agents: Watch-list Curator", icon: Eye, onSelect: go("/agents/watch_list_curator") },
+        { id: "agents-generator", label: "Agents: Generator", icon: Sparkles, onSelect: go("/agents/generator") },
+        { id: "agents-reviewer", label: "Agents: Reviewer", icon: ShieldCheck, onSelect: go("/agents/video_reviewer") },
       ],
     },
   ];
