@@ -21,7 +21,6 @@ function isoWeekStart(d: Date): string {
 
 export async function GET(req: Request) {
   try { assertCronAuth(req); } catch (e) { if (e instanceof Response) return e; throw e; }
-  try { assertGatewayConfigured(); } catch (e) { return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 }); }
 
   const supabase = getServiceClient();
   const now = new Date();
@@ -29,8 +28,11 @@ export async function GET(req: Request) {
   const weekStart = isoWeekStart(now);
 
   try {
-    const run = await runWithIngestionLog(supabase, "cluster_niches", () =>
-      runClustering({
+    const run = await runWithIngestionLog(supabase, "cluster_niches", async () => {
+      // Gateway-config check INSIDE the logged run so a missing AI_GATEWAY_API_KEY
+      // is recorded as a `failed` ingestion_runs row instead of failing silently.
+      assertGatewayConfigured();
+      return runClustering({
         since, weekStart, minConfidence: 0.5, mergeThreshold: 0.85, now,
         fetchRows: () => listClassifiedObservationsSince(supabase, { since, minConfidence: 0.5 }),
         getCachedEmbeddings: (labels) => getEmbeddings(supabase, { labels, model: EMBEDDING_MODEL }),
@@ -40,8 +42,8 @@ export async function GET(req: Request) {
         },
         saveEmbeddings: (saveRows) => upsertEmbeddings(supabase, saveRows.map((r) => ({ ...r, model: EMBEDDING_MODEL }))),
         replaceWeek: (w, clusterRows) => replaceWeek(supabase, w, clusterRows),
-      }),
-    );
+      });
+    });
     return NextResponse.json({ ok: true, ...scraperLog("cluster-niches", { run, weekStart }) });
   } catch (e) {
     console.error("cluster-niches failed", e);

@@ -7,11 +7,20 @@ export const CLASSIFIER_TOPIC_MODEL = process.env.CLASSIFIER_TOPIC_MODEL ?? "ant
 export const CLASSIFIER_FORMAT_MODEL = process.env.CLASSIFIER_FORMAT_MODEL ?? "anthropic/claude-haiku-4-5";
 export const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL ?? "openai/text-embedding-3-small";
 
-/** Fail loudly when the gateway key is missing (mirrors how crons assert YOUTUBE_API_KEY). */
+/**
+ * Fail loudly only when the AI Gateway has NO usable credential.
+ *
+ * The Vercel AI Gateway (`@ai-sdk/gateway`) authenticates via either an explicit
+ * `AI_GATEWAY_API_KEY` OR, when running on a Vercel deployment, automatically via
+ * the injected OIDC token (`VERCEL_OIDC_TOKEN`) — no explicit key needed in prod.
+ * Accept either; only throw when neither exists (e.g. local dev with no key set).
+ */
 export function assertGatewayConfigured(): void {
   const env = loadEnv();
-  if (!env.AI_GATEWAY_API_KEY) {
-    throw new Error("AI_GATEWAY_API_KEY not set — required for the AI Gateway classifier/embeddings");
+  if (!env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
+    throw new Error(
+      "AI Gateway not configured: set AI_GATEWAY_API_KEY, or deploy on Vercel with OIDC enabled (VERCEL_OIDC_TOKEN).",
+    );
   }
 }
 
