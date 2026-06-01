@@ -41,7 +41,11 @@ export function chipStatesFromProgress(args: {
   STRIP_ORDER.forEach((id, i) => {
     if (done) { out[id] = "done"; return; }
     if (pastStrip) { out[id] = i === 0 ? "done" : "idle"; return; }
-    if (failed) { out[id] = i < idx ? "done" : i === idx ? "failed" : "idle"; return; }
+    if (failed) {
+      if (idx < 0) { out[id] = i === 0 ? "failed" : "idle"; return; }
+      out[id] = i < idx ? "done" : i === idx ? "failed" : "idle";
+      return;
+    }
     if (idx < 0) { out[id] = i === 0 ? "working" : "idle"; return; }
     out[id] = i < idx ? "done" : i === idx ? "working" : "idle";
   });

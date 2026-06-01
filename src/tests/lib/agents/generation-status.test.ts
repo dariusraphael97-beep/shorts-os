@@ -47,4 +47,9 @@ describe("chipStatesFromProgress", () => {
     expect(s.writer).toBe("idle");
     expect(s.director).toBe("idle");
   });
+  it("marks the first chip failed when a job fails before any agent runs", () => {
+    const s = chipStatesFromProgress({ currentAgent: null, status: "failed" });
+    expect(s.strategist).toBe("failed");
+    expect(s.writer).toBe("idle");
+  });
 });

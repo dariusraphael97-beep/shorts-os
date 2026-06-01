@@ -47,6 +47,7 @@ describe("POST /api/onboarding/complete", () => {
     expect(markOnboardingComplete).toHaveBeenCalledWith(expect.anything(), "ch-1");
   });
   it("still returns 200 when the scan enqueue fails (fire-and-forget)", async () => {
+    runOnboardingScan.mockRejectedValueOnce(new Error("network"));
     const res = await POST(req({ creatorGoals: "other", interests: [] }));
     expect(res.status).toBe(200);
     expect(markOnboardingComplete).toHaveBeenCalled();
