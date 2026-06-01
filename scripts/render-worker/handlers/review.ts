@@ -106,7 +106,7 @@ export async function runReview(
     const { data: yv, error: yvErr } = await supabase
       .from('your_videos')
       .select(
-        'id, title, script, render_artifact_url, topic_queue_id, source_niche_cluster_id, caption_props',
+        'id, title, description, script, render_artifact_url, topic_queue_id, source_niche_cluster_id',
       )
       .eq('id', payload.your_video_id)
       .single();
@@ -190,7 +190,7 @@ export async function runReview(
       if (stream) {
         const onSpecRes = stream.width === 1080 && stream.height === 1920;
         const isVertical = stream.height > stream.width;
-        const fpsOk = stream.fps >= 24 && stream.fps <= 61;
+        const fpsOk = stream.fps >= 24 && stream.fps <= 60;
         // 1080x1920 @ ~30fps scores high; vertical-but-off-res is middling;
         // landscape/off-fps is penalised.
         specScore = onSpecRes ? 1.0 : isVertical ? 0.6 : 0.25;
@@ -354,9 +354,11 @@ export async function runReview(
     }
     const titleVerdict = verdictFromScore(titleScore);
 
-    // ─── 11) Description SEO (pure) — title + first ~200 chars of script proxy ───
-    const descriptionProxy = `${title} ${script.slice(0, 200)}`.trim();
-    const descRes = scoreDescriptionSeo({ description: descriptionProxy, nicheKeywords });
+    // ─── 11) Description SEO (pure) — the real YouTube description (what upload.ts
+    // actually ships); falls back to a title + script proxy when it's not set yet. ───
+    const realDescription = (yv.description as string | null)?.trim();
+    const descriptionForSeo = realDescription || `${title} ${script.slice(0, 200)}`.trim();
+    const descRes = scoreDescriptionSeo({ description: descriptionForSeo, nicheKeywords });
     const descriptionSeoScore = descRes.score;
     const descriptionSeoVerdict = descRes.verdict;
     suggestions.push(...descRes.suggestions);
