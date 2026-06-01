@@ -13,12 +13,15 @@ const PER_RUN_LIMIT = 150;
 
 export async function GET(req: Request) {
   try { assertCronAuth(req); } catch (e) { if (e instanceof Response) return e; throw e; }
-  try { assertGatewayConfigured(); } catch (e) { return NextResponse.json({ ok: false, error: serializeError(e) }, { status: 500 }); }
 
   const supabase = getServiceClient();
   try {
-    const run = await runWithIngestionLog(supabase, "classify_observations", () =>
-      runClassification({
+    const run = await runWithIngestionLog(supabase, "classify_observations", async () => {
+      // Run the gateway-config check INSIDE the logged run so a missing
+      // AI_GATEWAY_API_KEY is recorded as a `failed` ingestion_runs row
+      // (visible on /admin/ingestion-health) instead of failing silently.
+      assertGatewayConfigured();
+      return runClassification({
         fetchQueue: (limit) => listUnclassifiedObservations(supabase, { limit }),
         upsertClassification: (r) => upsertClassification(supabase, {
           videoId: r.videoId, topicLabel: r.topicLabel, formatLabel: r.formatLabel,
@@ -30,8 +33,8 @@ export async function GET(req: Request) {
         }).then(() => undefined),
         deps: buildGatewayDeps(),
         limit: PER_RUN_LIMIT,
-      }),
-    );
+      });
+    });
     return NextResponse.json({ ok: true, ...scraperLog("classify-observations", { run }) });
   } catch (e) {
     console.error("classify-observations failed", e);
