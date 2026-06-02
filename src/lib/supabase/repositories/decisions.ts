@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AgentId } from "@/lib/agents/types";
+import type { LedgerRow } from "@/lib/longform/ledger";
 
 export interface ShotListEntry {
   segment_text: string;
@@ -28,6 +29,7 @@ export async function recordDecision(
     scores?: Record<string, number>;
     promptVersion?: string;
     guidanceIdsUsed?: string[];
+    yourVideoId?: string;
   },
 ): Promise<void> {
   const { error } = await supabase.from("decisions").insert({
@@ -41,8 +43,25 @@ export async function recordDecision(
     reasoning: args.reasoning,
     prompt_version: args.promptVersion ?? null,
     guidance_ids_used: args.guidanceIdsUsed ?? [],
+    your_video_id: args.yourVideoId ?? null,
   });
   if (error) throw new Error(`recordDecision: ${error.message}`);
+}
+
+export async function recordLongformLedger(supabase: SupabaseClient, rows: LedgerRow[]): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("decisions").insert(
+    rows.map((r) => ({
+      agent_id: r.agentId,
+      job_id: r.jobId,
+      your_video_id: r.yourVideoId,
+      decision_type: r.decisionType,
+      inputs: r.inputs,
+      chosen: r.chosen,
+      reasoning: r.reasoning,
+    })),
+  );
+  if (error) throw new Error(`recordLongformLedger: ${error.message}`);
 }
 
 export async function getDirectorShotListForVideo(

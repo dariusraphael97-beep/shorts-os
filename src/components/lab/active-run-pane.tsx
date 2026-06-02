@@ -162,6 +162,8 @@ export function ActiveRunPane() {
       Boolean(run.composer.output),
       run.failure?.agent === "composer",
     ),
+    style_picker: "idle",
+    beat_planner: "idle",
   };
 
   return (
@@ -220,10 +222,12 @@ function applyEvent(setRun: React.Dispatch<React.SetStateAction<RunState>>, ev: 
         return { ...r, jobId: ev.data.jobId, topicId: ev.data.topicId };
       case "agent_state": {
         const slotKey = mapAgentToKey(ev.data.agent);
+        if (!slotKey) return r;
         return { ...r, [slotKey]: { ...(r as any)[slotKey], state: ev.data.state } } as RunState;
       }
       case "agent_output": {
         const slotKey = mapAgentToKey(ev.data.agent);
+        if (!slotKey) return r;
         return { ...r, [slotKey]: { ...(r as any)[slotKey], output: ev.data.output } } as RunState;
       }
       case "writer_chunk":
@@ -233,6 +237,7 @@ function applyEvent(setRun: React.Dispatch<React.SetStateAction<RunState>>, ev: 
         };
       case "agent_done": {
         const slotKey = mapAgentToKey(ev.data.agent);
+        if (!slotKey) return r;
         return { ...r, [slotKey]: { ...(r as any)[slotKey], durationMs: ev.data.durationMs } } as RunState;
       }
       case "job_completed":
@@ -247,12 +252,13 @@ function applyEvent(setRun: React.Dispatch<React.SetStateAction<RunState>>, ev: 
 
 function mapAgentToKey(
   agent: AgentId,
-): "strategist" | "writer" | "voiceCoach" | "director" | "composer" {
+): "strategist" | "writer" | "voiceCoach" | "director" | "composer" | null {
   switch (agent) {
     case "strategist": return "strategist";
     case "writer": return "writer";
     case "voice_coach": return "voiceCoach";
     case "director": return "director";
     case "composer": return "composer";
+    default: return null;
   }
 }
