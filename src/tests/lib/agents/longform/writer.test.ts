@@ -35,9 +35,16 @@ function routeByPrompt(prompt: string) {
   return { object: { narration: "A man walks on. The lights dim. But this is no ordinary talk." } };
 }
 
+function mockByPrompt() {
+  return async (args: Parameters<typeof generateObject>[0]) => {
+    const prompt = (typeof args.prompt === "string" ? args.prompt : "") ;
+    return routeByPrompt(prompt) as never;
+  };
+}
+
 beforeEach(() => {
   vi.mocked(generateObject).mockReset();
-  vi.mocked(generateObject).mockImplementation(async (args: { prompt: string }) => routeByPrompt(args.prompt) as never);
+  vi.mocked(generateObject).mockImplementation(mockByPrompt());
 });
 
 const ctx = () => ({ topic: "Why Dubai is building an underwater city", targetDurationSeconds: 540, playbook: EMPTY_LONGFORM_PLAYBOOK });
@@ -58,16 +65,17 @@ describe("longform/writer", () => {
     const err = makeNoObjectErr();
     vi.mocked(generateObject)
       .mockImplementationOnce(async () => { throw err; })
-      .mockImplementation(async (args: { prompt: string }) => routeByPrompt(args.prompt) as never);
+      .mockImplementation(mockByPrompt());
     const out = await runLongformWriter(ctx());
     expect(out.chapters.length).toBe(3);
   });
 
   it("falls back to a minimal chapter set if the outline pass keeps failing", async () => {
     const err = makeNoObjectErr();
-    vi.mocked(generateObject).mockImplementation(async (args: { prompt: string }) => {
-      if (args.prompt.includes("PASS:OUTLINE")) throw err;
-      return routeByPrompt(args.prompt) as never;
+    vi.mocked(generateObject).mockImplementation(async (args: Parameters<typeof generateObject>[0]) => {
+      const prompt = (typeof args.prompt === "string" ? args.prompt : "");
+      if (prompt.includes("PASS:OUTLINE")) throw err;
+      return routeByPrompt(prompt) as never;
     });
     const out = await runLongformWriter(ctx());
     expect(out.chapters.length).toBeGreaterThanOrEqual(3); // deriveChapterCount(540) === 5 fallback titles
