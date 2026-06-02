@@ -70,40 +70,37 @@ export async function POST(req: Request) {
       const trace = out.debug_trace;
       const traceText = typeof trace === 'string' ? trace : null;
 
-      // render_longform side-effect — update your_videos with url, duration, chapter_markers + status
-      if ('duration_seconds_actual' in out) {
-        const longformOut = out as { render_artifact_url?: string; duration_seconds_actual?: number; chapter_markers?: unknown };
+      // render_f1 + render_longform BOTH emit render_artifact_url (and both emit
+      // duration_seconds_actual), so output-shape alone cannot tell them apart —
+      // disambiguate by job_type fetched from the render_jobs row.
+      if ('render_artifact_url' in out) {
         const { data: jobRow } = await supabase
           .from('render_jobs')
-          .select('your_video_id')
+          .select('job_type, your_video_id')
           .eq('id', body.job_id)
           .single();
         if (jobRow?.your_video_id) {
-          const { error: updErr } = await supabase
-            .from('your_videos')
-            .update({
-              render_artifact_url: longformOut.render_artifact_url ?? null,
-              duration_seconds: longformOut.duration_seconds_actual ?? null,
-              chapter_markers: (longformOut.chapter_markers ?? null) as unknown as Record<string, unknown> | null,
-              status: 'rendered',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', jobRow.your_video_id);
-          if (updErr) throw new Error(`render_longform complete: ${updErr.message}`);
-        }
-      // render_f1 side-effect — update your_videos.render_artifact_url + status
-      } else if ('render_artifact_url' in out) {
-        const url = out.render_artifact_url as string;
-        const { data: jobRow } = await supabase
-          .from('render_jobs')
-          .select('your_video_id')
-          .eq('id', body.job_id)
-          .single();
-        if (jobRow?.your_video_id) {
-          await supabase
-            .from('your_videos')
-            .update({ render_artifact_url: url, status: 'rendered', updated_at: new Date().toISOString() })
-            .eq('id', jobRow.your_video_id);
+          if (jobRow.job_type === 'render_longform') {
+            // render_longform side-effect — url + duration + chapter_markers + status
+            const longformOut = out as { render_artifact_url?: string; duration_seconds_actual?: number; chapter_markers?: unknown };
+            const { error: updErr } = await supabase
+              .from('your_videos')
+              .update({
+                render_artifact_url: longformOut.render_artifact_url ?? null,
+                duration_seconds: longformOut.duration_seconds_actual ?? null,
+                chapter_markers: (longformOut.chapter_markers ?? null) as unknown as Record<string, unknown> | null,
+                status: 'rendered',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', jobRow.your_video_id);
+            if (updErr) throw new Error(`render_longform complete: ${updErr.message}`);
+          } else {
+            // render_f1 side-effect — update your_videos.render_artifact_url + status
+            await supabase
+              .from('your_videos')
+              .update({ render_artifact_url: out.render_artifact_url as string, status: 'rendered', updated_at: new Date().toISOString() })
+              .eq('id', jobRow.your_video_id);
+          }
         }
       }
 
