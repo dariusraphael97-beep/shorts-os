@@ -2069,6 +2069,7 @@ export type Database = {
           editor_session_id: string | null
           external_video_id: string | null
           format: string
+          generator_edits: Json | null
           id: string
           longform_plan: Json | null
           orientation: string
@@ -2103,6 +2104,7 @@ export type Database = {
           editor_session_id?: string | null
           external_video_id?: string | null
           format?: string
+          generator_edits?: Json | null
           id?: string
           longform_plan?: Json | null
           orientation?: string
@@ -2137,6 +2139,7 @@ export type Database = {
           editor_session_id?: string | null
           external_video_id?: string | null
           format?: string
+          generator_edits?: Json | null
           id?: string
           longform_plan?: Json | null
           orientation?: string
@@ -2232,18 +2235,25 @@ export type Database = {
           agent_id: string | null
           analytics_snapshot_at: string | null
           avg_view_duration_seconds: number | null
-          chosen: Json
+          chosen: Json | null
           ctr_pct: number | null
-          decision_id: string
-          decision_type: string
+          decision_id: string | null
+          decision_type: string | null
           posted_at: string | null
-          status: string
-          title: string
+          status: string | null
+          title: string | null
           views: number | null
           watch_time_seconds: number | null
           your_video_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "decisions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "decisions_your_video_id_fkey"
             columns: ["your_video_id"]
@@ -2444,3 +2454,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

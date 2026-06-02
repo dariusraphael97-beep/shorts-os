@@ -3,16 +3,22 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { encodeSseEvent } from "@/lib/sse";
 import { runLongformPipeline } from "@/lib/agents/longform/orchestrator";
 import { buildLongformDeps } from "@/lib/agents/longform/deps";
+import { PRESET_IDS, type PresetId } from "@/lib/longform/style-presets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown };
+  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown };
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   const channelId = typeof body.channelId === "string" ? body.channelId : "";
   const targetDurationSeconds =
     typeof body.targetDurationSeconds === "number" ? body.targetDurationSeconds : 540;
+  // Optional operator override; "auto" / anything unrecognized falls through to the style-picker LLM.
+  const presetId: PresetId | undefined =
+    typeof body.presetId === "string" && (PRESET_IDS as readonly string[]).includes(body.presetId)
+      ? (body.presetId as PresetId)
+      : undefined;
 
   if (!topic || !channelId) {
     return new Response(
@@ -28,7 +34,7 @@ export async function POST(req: Request): Promise<Response> {
     async start(controller) {
       try {
         for await (const event of runLongformPipeline(
-          { topic, targetDurationSeconds, channelId },
+          { topic, targetDurationSeconds, channelId, presetId },
           deps,
         )) {
           controller.enqueue(encodeSseEvent(event));

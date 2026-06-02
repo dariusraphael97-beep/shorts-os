@@ -24,10 +24,12 @@ export class RenderLongformError extends Error {
 
 const KEN_BURNS_DIRECTIONS = ['in', 'right', 'in', 'left'] as const;
 
-// Per-preset gradient fallback colors (teal→amber for cinematic; neutral→accent for editorial).
+// Per-preset gradient fallback colors (teal→amber for cinematic; neutral→accent for editorial;
+// near-white "blank whiteboard" for the stick-figure doodle look).
 const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'cinematic-realistic': { hexA: '0b2027', hexB: '8a5a2b' },
   'editorial-graphic': { hexA: '121316', hexB: '2b6cb0' },
+  'stick-figure-animated': { hexA: 'f7f7f2', hexB: 'e4e4dc' },
 };
 
 interface PlanBeat { index: number; estDurationSeconds: number; imagePrompt: string; negativePrompt: string }
@@ -39,9 +41,19 @@ interface LongformPlan {
   chapters: PlanChapter[];
 }
 
+export interface RenderLongformOptions {
+  /** Render only the first N chapters — for cost-bounded local proof renders. */
+  maxChapters?: number;
+  /** Cap beats (images) per chapter — for cost-bounded proofs. Beats still scale to fill the chapter VO. */
+  maxBeatsPerChapter?: number;
+  /** Skip the Blob upload and return a local file:// path — for local proof renders with no Blob token. */
+  skipUpload?: boolean;
+}
+
 export async function runRenderLongform(
   job: { id: string; payload: unknown },
   supabase: SupabaseClient,
+  opts: RenderLongformOptions = {},
 ): Promise<Record<string, unknown>> {
   const trace: string[] = [];
   const log = (m: string) => { trace.push(`[${new Date().toISOString()}] ${m}`); };
@@ -67,7 +79,10 @@ export async function runRenderLongform(
     const chapterDurations: number[] = [];
     const chapterTitles: string[] = [];
 
-    for (const chapter of plan.chapters) {
+    const chapters = opts.maxChapters != null ? plan.chapters.slice(0, opts.maxChapters) : plan.chapters;
+    if (opts.maxChapters != null) log(`proof mode: rendering ${chapters.length}/${plan.chapters.length} chapters`);
+
+    for (const chapter of chapters) {
       const chapterClip = join(workDir, `chapter_${chapter.index}.mp4`);
       chapterTitles.push(chapter.title);
       // Resumability: skip a chapter already rendered on a prior attempt.
@@ -88,18 +103,20 @@ export async function runRenderLongform(
       log(`chapter ${chapter.index} VO ${vo.durationSeconds.toFixed(1)}s`);
 
       // 2. Rescale beat durations to fill the real VO length (alignment without Whisper in L1).
-      const estTotal = chapter.beats.reduce((s, b) => s + b.estDurationSeconds, 0) || 1;
+      const beats = opts.maxBeatsPerChapter != null ? chapter.beats.slice(0, opts.maxBeatsPerChapter) : chapter.beats;
+      const estTotal = beats.reduce((s, b) => s + b.estDurationSeconds, 0) || 1;
       const scale = vo.durationSeconds / estTotal;
 
       // 3. One image per beat (Higgsfield or gradient fallback) → Ken-Burns clip.
       const beatClipPaths: string[] = [];
-      for (const beat of chapter.beats) {
+      for (const beat of beats) {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
         const gen = await generateImage({
           prompt: beat.imagePrompt,
           negativePrompt: beat.negativePrompt,
           outputPath: imgPath,
           aspect: '16:9',
+          presetId,
         });
         if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
         const beatDur = Math.max(0.5, beat.estDurationSeconds * scale);
@@ -154,7 +171,9 @@ export async function runRenderLongform(
 
     // 7. Upload + return.
     const chapterMarkers = buildChapterMarkers(chapterDurations, chapterTitles);
-    const blobUrl = await uploadMp4ToBlob(finalPath, `renders/longform/${payload.your_video_id}.mp4`);
+    const blobUrl = opts.skipUpload
+      ? `file://${finalPath}`
+      : await uploadMp4ToBlob(finalPath, `renders/longform/${payload.your_video_id}.mp4`);
     const durationActual = await probeDurationSeconds(finalPath);
     log(`done ${durationActual.toFixed(1)}s → ${blobUrl}`);
 

@@ -43,4 +43,20 @@ describe("longform/orchestrator", () => {
     expect(d.failJob).toHaveBeenCalledOnce();
     expect(d.enqueueRender).not.toHaveBeenCalled();
   });
+
+  it("forces the operator-selected preset and skips the style-picker LLM", async () => {
+    const d = deps();
+    const events = await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1", presetId: "stick-figure-animated" }, d));
+    expect(d.runStylePicker).not.toHaveBeenCalled();
+    expect(d.createDraft).toHaveBeenCalledWith(expect.objectContaining({ presetId: "stick-figure-animated" }));
+    // the forced preset must drive the beat-planner's style bible too
+    expect(d.runBeatPlanner).toHaveBeenCalledWith(expect.objectContaining({ styleBible: expect.objectContaining({ presetId: "stick-figure-animated" }) }));
+    expect(events.map((e) => e.type)).toContain("job_completed");
+  });
+
+  it("still runs the style-picker when no preset is forced", async () => {
+    const d = deps();
+    await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1" }, d));
+    expect(d.runStylePicker).toHaveBeenCalledOnce();
+  });
 });

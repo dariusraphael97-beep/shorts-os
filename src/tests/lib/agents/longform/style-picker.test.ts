@@ -42,4 +42,24 @@ describe("longform/style-picker", () => {
     expect(out.presetId).toBe("cinematic-realistic");
     expect(out.styleBible.aspect).toBe("16:9");
   });
+
+  it("offers the stick-figure (Zenn) preset as a selectable option", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      return { object: { presetId: "cinematic-realistic", musicMood: "calm bed", rationale: "a rationale comfortably past the minimum length validation." } } as never;
+    });
+    await runStylePicker(ctx());
+    expect(captured).toContain("stick-figure-animated");
+    expect(captured.toLowerCase()).toMatch(/stick.?figure|doodle|zenn/);
+  });
+
+  it("resolves the stick-figure preset into its style bible when chosen", async () => {
+    vi.mocked(generateObject).mockResolvedValue({ object: { presetId: "stick-figure-animated", musicMood: "quirky", rationale: "a playful relatable explainer reads best as crude hand-drawn stick-figure doodles." } } as never);
+    const out = await runStylePicker(ctx());
+    expect(out.presetId).toBe("stick-figure-animated");
+    expect(out.styleBible.presetId).toBe("stick-figure-animated");
+    expect(out.styleBible.positivePrefix.toLowerCase()).toMatch(/stick.?figure|stickman/);
+  });
 });

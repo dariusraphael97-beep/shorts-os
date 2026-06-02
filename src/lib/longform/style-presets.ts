@@ -1,10 +1,15 @@
 // src/lib/longform/style-presets.ts
-// The two L1 visual style presets. A StyleBible locks the aesthetic for an entire
+// The L1 visual style presets. A StyleBible locks the aesthetic for an entire
 // video so every beat image reads as one film. Consistency lever (per reference #1):
 // a heavy reused positivePrefix + a long negativePrompt, no per-image randomness.
 // Mirrored into the worker is NOT needed (the agent bakes the final prompt into the plan).
+//
+// NOTE on negatives: Soul V2 and GPT Image 2 both have NO negative-prompt CLI param, so the
+// negativePrompt is stored for the plan/flywheel but is NOT sent at render time. Any suppressor
+// that must actually bite (e.g. "no collage", or the stickman "do not make it look good") is
+// folded into the POSITIVE positivePrefix instead.
 
-export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic"] as const;
+export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic", "stick-figure-animated"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
 export interface StyleBible {
@@ -60,6 +65,34 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     kenBurnsZoom: 0.03,
     targetBeatSeconds: 3.5,
     musicMood: "clean, driving, understated electronic bed, low-energy",
+  },
+  // Crude hand-drawn stickman doodles (YouTuber Zenn look) — captured verbatim from Danny's
+  // "recreate Zenn" tutorial in docs/longform/zenn-style-image-prompt.md. Renders with GPT Image 2
+  // (gpt_image_2, low/2k), NOT Soul V2 (Soul V2 makes broken stickmen — tested & rejected). The
+  // negatives ("no 3d…", "do not make it look good") are baked into positivePrefix because neither
+  // model accepts a negative-prompt param — that's also literally how Danny's prompt works.
+  "stick-figure-animated": {
+    presetId: "stick-figure-animated",
+    positivePrefix:
+      "crude hand-drawn doodle that looks like an extremely simple beginner MS Paint drawing made " +
+      "quickly by someone who is not good at drawing, simple stickman childish drawing style, " +
+      "pure white background, thick uneven black outlines, wobbly hand-drawn lines, " +
+      "stick figure people with round heads and thin straight line bodies, simple dot eyes, " +
+      "very basic facial expressions, flat solid colors only, no realistic shading, no 3D, " +
+      "no cinematic lighting, no realistic cartoon style, no Disney style, no anime style, " +
+      "no photorealism, do not make it look good, polished, or professional",
+    negativePrompt: `${NEG_COMMON}, realistic shading, 3d render, cinematic lighting, photorealistic, ` +
+      `realistic cartoon, disney style, anime, gradient shading, fine detail, professional illustration, painterly`,
+    lighting: "completely flat, no shading, no lighting effects",
+    palette: "flat solid marker-fill colors, only a few basic colors, no gradients",
+    framing:
+      "one single clear and simple scene that literally shows what is being said at this moment, " +
+      "one or two subjects centered with plenty of empty white space, " +
+      "never a collage, never a grid, never multiple panels",
+    aspect: "16:9",
+    kenBurnsZoom: 0.03,
+    targetBeatSeconds: 4,
+    musicMood: "light, quirky, playful, low-energy background bed",
   },
 };
 

@@ -16,10 +16,19 @@ export interface BeatPlannerRunContext {
 
 function scenePrompt(styleBible: StyleBible, chapterTitle: string, slices: string[]): string {
   const numbered = slices.map((s, i) => `${i + 1}. ${s}`).join("\n");
-  return `You are the Beat Planner. For each narration beat below, describe ONE concrete, filmable VISUAL SCENE
-that literally illustrates what is said at that moment (no random images). Subjects centered. Think like a
+  const guidance =
+    styleBible.presetId === "stick-figure-animated"
+      ? `For each narration beat below, describe ONE extremely simple, literal doodle of exactly what the
+narrator is saying at that moment — a quick stick-figure sketch of the idea (e.g. "a stick figure lying
+awake in bed at night", "a stick figure staring at a glowing phone"). One clear simple scene with one or
+two subjects doing one thing — never a collage, never multiple things at once. Describe only WHAT is
+happening (the subject and the action) in one short plain sentence — do NOT include any drawing-style,
+lighting, or quality words (those are added automatically).`
+      : `For each narration beat below, describe ONE concrete, filmable VISUAL SCENE that literally
+illustrates what is said at that moment (no random images, no collage). Subjects centered. Think like a
 ${styleBible.presetId} documentary. Describe the subject and setting only — do NOT include style/lighting/quality
-words (those are added automatically). Keep each scene one vivid sentence.
+words (those are added automatically). Keep each scene one vivid sentence.`;
+  return `You are the Beat Planner. ${guidance}
 
 Chapter: "${chapterTitle}"
 Return EXACTLY ${slices.length} scenes, in order, as JSON: { "scenes": string[] }.

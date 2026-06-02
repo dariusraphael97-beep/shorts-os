@@ -8,11 +8,20 @@ import { runLongformWriter } from "@/lib/agents/longform/writer";
 import { runStylePicker, type StylePickerResult } from "@/lib/agents/longform/style-picker";
 import { runBeatPlanner } from "@/lib/agents/longform/beat-planner";
 import { pickLongformVoice } from "@/lib/agents/voice-coach";
+import { getStylePreset, type PresetId } from "@/lib/longform/style-presets";
 
 export interface LongformPipelineArgs {
   topic: string;
   targetDurationSeconds: number;
   channelId: string;
+  /** When set, the operator forced this preset in the UI — skip the style-picker LLM and lock it. */
+  presetId?: PresetId;
+}
+
+// Resolve a forced preset into a StylePickerResult without calling the LLM.
+function forcedStyle(presetId: PresetId): StylePickerResult {
+  const styleBible = getStylePreset(presetId);
+  return { presetId, musicMood: styleBible.musicMood, rationale: "operator-selected preset", styleBible };
 }
 
 // All side-effecting deps are injected so the orchestrator is unit-testable with no network/DB.
@@ -42,9 +51,11 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
     yield { type: "agent_output", data: { agent: "writer", output: writer } };
     yield { type: "agent_done", data: { agent: "writer", durationMs: 0 } };
 
-    // 2. Style-picker
+    // 2. Style-picker (skipped when the operator forced a preset in the UI)
     yield { type: "agent_state", data: { agent: "style_picker", state: "working" } };
-    const style: StylePickerResult = await deps.runStylePicker({ topic: args.topic, angle: writer.angle, playbook });
+    const style: StylePickerResult = args.presetId
+      ? forcedStyle(args.presetId)
+      : await deps.runStylePicker({ topic: args.topic, angle: writer.angle, playbook });
     yield { type: "agent_output", data: { agent: "style_picker", output: style } };
     yield { type: "agent_done", data: { agent: "style_picker", durationMs: 0 } };
 

@@ -26,10 +26,11 @@ Angle: "${ctx.angle}"
 Options:
 - "cinematic-realistic": photoreal cinematic footage, teal/amber dramatic grade. Best for history, true-story, immersive, science-mystery, human-interest.
 - "editorial-graphic": bold flat editorial illustration. Best for finance, economics, tech, abstract/explainer topics where photoreal footage would look generic.
+- "stick-figure-animated": crude hand-drawn MS-Paint stick-figure doodles (YouTuber Zenn style) — one simple whiteboard sketch per beat. Best for playful, relatable, funny explainers about everyday life, psychology, habits, or "history of an ordinary thing" told in a light way.
 
 Also choose a short MUSIC MOOD phrase for a subtle, low-energy bed that sits well under the narration.
 
-Return JSON: { "presetId": "cinematic-realistic" | "editorial-graphic", "musicMood": string, "rationale": string }.`;
+Return JSON: { "presetId": "cinematic-realistic" | "editorial-graphic" | "stick-figure-animated", "musicMood": string, "rationale": string }.`;
 }
 
 async function callOnce(prompt: string): Promise<{ presetId: StyleBible["presetId"]; musicMood: string; rationale: string }> {

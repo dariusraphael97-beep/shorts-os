@@ -24,9 +24,12 @@ alter table public.jobs add constraint jobs_kind_check
   check (kind in ('scrape', 'score_topics', 'produce_video', 'analyze_performance', 'produce_longform_video'));
 
 -- 4. render_jobs.job_type: allow the longform render job.
+-- NOTE: 'review' is kept here on purpose. It was added to prod out-of-band by the
+-- 20260601001909_render_jobs_review_type migration (which has no file in this repo), so this
+-- redefinition must stay a SUPERSET — dropping it would silently regress a value prod allows today.
 alter table public.render_jobs drop constraint if exists render_jobs_job_type_check;
 alter table public.render_jobs add constraint render_jobs_job_type_check
-  check (job_type in ('clip_ingest', 'render_f1', 'render_f2', 'upload', 'render_longform'));
+  check (job_type in ('clip_ingest', 'render_f1', 'render_f2', 'upload', 'review', 'render_longform'));
 
 -- 5. Seed the two new agents (FK target for decisions/agent_messages). writer + voice_coach already exist.
 insert into public.agents (id, display_name, emoji, description, prompt_template, model_id) values
@@ -46,7 +49,10 @@ from public.agents where id in ('style_picker', 'beat_planner')
 on conflict do nothing;
 
 -- 6. Outcome-join view: longform ledger rows joined to their video's latest analytics snapshot.
-create or replace view public.longform_decision_outcomes as
+-- security_invoker so the view runs as the querying role (not the definer) — Supabase best practice
+-- and clears the security_definer_view linter ERROR.
+create or replace view public.longform_decision_outcomes
+with (security_invoker = true) as
 select
   d.id              as decision_id,
   d.agent_id,

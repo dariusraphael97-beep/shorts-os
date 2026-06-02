@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { StreamEvent, AgentId } from "@/lib/agents/types";
 import { LongformPipelineStrip, type ChipState } from "./longform-pipeline-strip";
 
-interface LongformDispatchDetail { topic: string; targetDurationSeconds: number; channelId: string }
+interface LongformDispatchDetail { topic: string; targetDurationSeconds: number; channelId: string; presetId?: string }
 
 type RunState = {
   active: boolean;
