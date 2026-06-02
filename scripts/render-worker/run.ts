@@ -10,6 +10,7 @@ import { runClipIngest, ClipIngestError } from './handlers/clip-ingest.ts';
 import { runRenderF1, RenderF1Error } from './handlers/render-f1.ts';
 import { runRenderF2, RenderF2Error } from './handlers/render-f2.ts';
 import { runUpload, UploadHandlerError } from './handlers/upload.ts';
+import { runRenderLongform, RenderLongformError } from './handlers/render-longform.ts';
 
 const jobId = process.argv[2];
 const jobToken = process.argv[3];
@@ -41,10 +42,11 @@ async function main() {
   try {
     let output: Record<string, unknown>;
     switch (job.job_type) {
-      case 'clip_ingest':  output = await runClipIngest(job, supabase); break;
-      case 'render_f1':    output = await runRenderF1(job, supabase); break;
-      case 'render_f2':    output = await runRenderF2(job, supabase); break;
-      case 'upload':       output = await runUpload(job, supabase); break;
+      case 'clip_ingest':    output = await runClipIngest(job, supabase); break;
+      case 'render_f1':      output = await runRenderF1(job, supabase); break;
+      case 'render_f2':      output = await runRenderF2(job, supabase); break;
+      case 'upload':         output = await runUpload(job, supabase); break;
+      case 'render_longform': output = await runRenderLongform(job, supabase); break;
       default: throw new Error(`unknown job_type: ${job.job_type}`);
     }
     await postCallback({ jobId, jobToken, sandboxInvocationId, result: { status: 'succeeded', output } });
@@ -55,6 +57,7 @@ async function main() {
       : err instanceof RenderF2Error ? err.trace
       : err instanceof ClipIngestError ? err.trace
       : err instanceof UploadHandlerError ? err.trace
+      : err instanceof RenderLongformError ? err.trace
       : undefined;
     await postCallback({
       jobId, jobToken, sandboxInvocationId,
