@@ -73,10 +73,17 @@ export class VercelSandboxRenderWorker implements RenderWorker {
     });
 
     // Bootstrap (blocking): install worker package deps.
-    // Caps at ~60s per Phase 1 benchmark gate.
+    // npm_config_os + npm_config_cpu tell npm to skip optional packages whose
+    // os/cpu don't match — critically, Remotion ships 6 platform-specific
+    // compositor binaries (darwin-arm64, darwin-x64, linux-arm64-gnu,
+    // linux-arm64-musl, linux-x64-gnu, linux-x64-musl, win32-x64-msvc) as
+    // optionalDependencies. Without platform filtering, npm ci downloads all 6
+    // (~300 MB of native binaries), blowing the 15-minute Sandbox timeout.
+    // With os=linux cpu=x64, only the two linux-x64 variants are installed.
     await sandbox.runCommand({
       cmd: 'npm',
       args: ['ci', '--prefix', 'scripts/render-worker'],
+      env: { npm_config_os: 'linux', npm_config_cpu: 'x64' },
     });
 
     // Detached: returns immediately; the sandbox continues executing and posts
