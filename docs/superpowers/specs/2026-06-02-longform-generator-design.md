@@ -26,6 +26,17 @@ This is the first sub-project of the **shorts → longform pivot**. It is the *g
 
 ---
 
+## 1.5 Reference videos — format & quality benchmark (MUST MATCH)
+
+The operator's hard requirement: the generated videos must **follow the format and match the quality** of the two YouTube videos reviewed during scoping:
+
+- **Workflow / tooling reference:** https://www.youtube.com/watch?v=WODnqHPLR38 — the Higgsfield AI-image method and tool order for turning a script into image-driven video.
+- **Output-format reference:** https://www.youtube.com/watch?v=--w3Rumz9sM — the longform faceless style the output should look and feel like.
+
+**Implementation requirement:** before tuning the Writer / Style-picker / Beat-planner prompts, **re-watch both videos with the `/watch` skill** and extract the concrete format spec: cold-open hook structure, narration cadence and tone, how often the image changes (beat length), image style and shot framing, music/pacing, and how chapters/sections are paced. Encode those findings directly into the agent prompts and the two style presets. The agents and presets are considered done only when a generated video plausibly passes as the same format/quality as these references (the "1000+ views" benchmark from project memory), not merely "a video was produced."
+
+---
+
 ## 2. Scope
 
 **In scope (Phase L1):**
