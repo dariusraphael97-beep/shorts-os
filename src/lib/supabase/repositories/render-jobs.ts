@@ -6,7 +6,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type RenderJobType = 'clip_ingest' | 'render_f1' | 'render_f2' | 'upload';
+export type RenderJobType = 'clip_ingest' | 'render_f1' | 'render_f2' | 'upload' | 'render_longform';
 export type RenderJobStatus = 'pending' | 'claimed' | 'running' | 'succeeded' | 'failed';
 
 export interface RenderJobRow {
