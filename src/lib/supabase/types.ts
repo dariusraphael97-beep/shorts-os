@@ -747,6 +747,7 @@ export type Database = {
           prompt_version: string | null
           reasoning: string | null
           scores: Json | null
+          your_video_id: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -763,6 +764,7 @@ export type Database = {
           prompt_version?: string | null
           reasoning?: string | null
           scores?: Json | null
+          your_video_id?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -779,6 +781,7 @@ export type Database = {
           prompt_version?: string | null
           reasoning?: string | null
           scores?: Json | null
+          your_video_id?: string | null
         }
         Relationships: [
           {
@@ -786,6 +789,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decisions_your_video_id_fkey"
+            columns: ["your_video_id"]
+            isOneToOne: false
+            referencedRelation: "your_videos"
             referencedColumns: ["id"]
           },
         ]
@@ -2052,12 +2062,16 @@ export type Database = {
         Row: {
           caption_props: Json | null
           channel_id: string
+          chapter_markers: Json | null
           created_at: string
           description: string | null
           duration_seconds: number | null
           editor_session_id: string | null
           external_video_id: string | null
+          format: string
           id: string
+          longform_plan: Json | null
+          orientation: string
           posted_at: string | null
           posted_dow_local: number | null
           posted_hour_local: number | null
@@ -2069,6 +2083,8 @@ export type Database = {
           source_compilation_draft_id: string | null
           source_niche_cluster_id: string | null
           status: string
+          style_preset_id: string | null
+          target_duration_seconds: number | null
           title: string
           topic_queue_id: string | null
           updated_at: string
@@ -2080,12 +2096,16 @@ export type Database = {
         Insert: {
           caption_props?: Json | null
           channel_id: string
+          chapter_markers?: Json | null
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
           editor_session_id?: string | null
           external_video_id?: string | null
+          format?: string
           id?: string
+          longform_plan?: Json | null
+          orientation?: string
           posted_at?: string | null
           posted_dow_local?: number | null
           posted_hour_local?: number | null
@@ -2097,6 +2117,8 @@ export type Database = {
           source_compilation_draft_id?: string | null
           source_niche_cluster_id?: string | null
           status?: string
+          style_preset_id?: string | null
+          target_duration_seconds?: number | null
           title: string
           topic_queue_id?: string | null
           updated_at?: string
@@ -2108,12 +2130,16 @@ export type Database = {
         Update: {
           caption_props?: Json | null
           channel_id?: string
+          chapter_markers?: Json | null
           created_at?: string
           description?: string | null
           duration_seconds?: number | null
           editor_session_id?: string | null
           external_video_id?: string | null
+          format?: string
           id?: string
+          longform_plan?: Json | null
+          orientation?: string
           posted_at?: string | null
           posted_dow_local?: number | null
           posted_hour_local?: number | null
@@ -2125,6 +2151,8 @@ export type Database = {
           source_compilation_draft_id?: string | null
           source_niche_cluster_id?: string | null
           status?: string
+          style_preset_id?: string | null
+          target_duration_seconds?: number | null
           title?: string
           topic_queue_id?: string | null
           updated_at?: string
@@ -2199,7 +2227,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      longform_decision_outcomes: {
+        Row: {
+          agent_id: string | null
+          analytics_snapshot_at: string | null
+          avg_view_duration_seconds: number | null
+          chosen: Json
+          ctr_pct: number | null
+          decision_id: string
+          decision_type: string
+          posted_at: string | null
+          status: string
+          title: string
+          views: number | null
+          watch_time_seconds: number | null
+          your_video_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decisions_your_video_id_fkey"
+            columns: ["your_video_id"]
+            isOneToOne: false
+            referencedRelation: "your_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       claim_due_scheduled_uploads: {
