@@ -41,7 +41,7 @@ describe("longform/beats", () => {
     const beats = splitNarrationIntoBeats(long, { targetBeatSeconds: 2.5, wordsPerSecond: 3 });
     expect(beats.length).toBeGreaterThanOrEqual(2);
     const maxBeat = Math.max(...beats.map((b) => b.estDurationSeconds));
-    expect(maxBeat).toBeLessThanOrEqual(2.5 * 2); // capped — no long lingering beat
+    expect(maxBeat).toBeLessThanOrEqual(2.5 * 1.6); // capped — no long lingering beat
   });
 
   it("merges a tiny fragment so no image flashes too briefly", () => {
@@ -60,7 +60,10 @@ describe("longform/beats", () => {
       "Afternoons unfolded slowly, deliberately, almost endlessly. A single Tuesday could contain three different adventures.";
     const beats = splitNarrationIntoBeats(narration, { targetBeatSeconds: 2.5, wordsPerSecond: 3 });
     const maxBeat = Math.max(...beats.map((b) => b.estDurationSeconds));
-    expect(maxBeat).toBeLessThanOrEqual(2.5 * 2);
+    expect(maxBeat).toBeLessThanOrEqual(2.5 * 1.6); // no long lingering image
+    // and no flash: every beat except possibly one unmergeable tail has a sensible minimum
+    const tooShort = beats.filter((b) => wc(b.text) < 3);
+    expect(tooShort.length).toBeLessThanOrEqual(1);
     expect(norm(beats.map((b) => b.text).join(" "))).toBe(norm(narration));
   });
 });
