@@ -24,17 +24,20 @@ describe("longform/style-presets", () => {
     expect(p.palette.toLowerCase()).toMatch(/teal|amber/);
   });
 
-  it("stick-figure preset encodes the crude MS-Paint stickman doodle look", () => {
+  it("stick-figure preset encodes a CLEAN simple hand-drawn doodle (smooth lines, expressive faces, colored scenes)", () => {
     const p = getStylePreset("stick-figure-animated");
     const pre = p.positivePrefix.toLowerCase();
     expect(pre).toMatch(/stick ?figure|stickman/);
-    expect(pre).toMatch(/ms ?paint|doodle|hand-drawn/);
-    expect(pre).toContain("white background");
-    // gpt_image_2 has no negative-prompt param, so the "do not make it good" + "no 3d/anime"
-    // suppressors must be baked into the POSITIVE prompt to take effect.
-    expect(pre).toMatch(/do not make it look (good|polished|professional)/);
-    expect(pre).toMatch(/no 3d|no realistic|no anime/);
-    // crude doodles read wrong with a hard Ken-Burns push and play at a relaxed cadence.
+    expect(pre).toMatch(/doodle|hand-drawn/);
+    expect(pre).toMatch(/clean|smooth/); // Zenn is simple but CLEAN — corrected from the over-crude v1
+    expect(pre).not.toMatch(/ms ?paint/);
+    expect(pre).not.toMatch(/do not make it look good|wobbly|uneven/);
+    // gpt_image_2 has no negative-prompt param, so style suppressors live in the POSITIVE prompt.
+    expect(pre).toMatch(/no 3d|no realistic|no anime|no photoreal/);
+    // scenes get a simple colored setting/background when the moment calls for one (not forced white).
+    expect(`${p.framing} ${p.palette}`.toLowerCase()).toMatch(/background|environment|setting|scene/);
+    expect(p.framing.toLowerCase()).toContain("collage"); // still forbid collages
+    // static hold (no jittery Ken-Burns) for this preset; relaxed cadence.
     expect(p.kenBurnsZoom).toBeLessThanOrEqual(0.04);
     expect(p.targetBeatSeconds).toBeGreaterThanOrEqual(3);
   });

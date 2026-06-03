@@ -8,7 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { synthesizeChapterToWav } from '../lib/cartesia-longform.ts';
 import { generateImage } from '../lib/higgsfield.ts';
-import { renderGradientStill, renderKenBurnsClip, muxChapterAudio, concatChapterClips, muxMusicBed } from '../lib/ffmpeg-longform.ts';
+import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed } from '../lib/ffmpeg-longform.ts';
 import { runFfmpeg } from '../lib/ffmpeg-commands.ts';
 import { buildChapterMarkers } from '../lib/chapters.ts';
 import { probeDurationSeconds } from '../lib/probe.ts';
@@ -37,8 +37,15 @@ interface PlanChapter { index: number; title: string; narration: string; beats: 
 interface LongformPlan {
   presetId: string;
   styleBible: { kenBurnsZoom: number };
-  voice: { voiceId: string };
+  voice: { voiceId: string; speed: number };
   chapters: PlanChapter[];
+}
+
+// Map the plan's numeric narration speed to Cartesia's pace enum.
+function cartesiaSpeed(n: number): string {
+  if (n <= 0.93) return 'slow';
+  if (n >= 1.07) return 'fast';
+  return 'normal';
 }
 
 export interface RenderLongformOptions {
@@ -93,12 +100,13 @@ export async function runRenderLongform(
         continue;
       }
 
-      // 1. Chapter voiceover (chunked).
+      // 1. Chapter voiceover (chunked). Apply the picked pace (Cartesia pace enum from plan speed).
       const vo = await synthesizeChapterToWav({
         narration: chapter.narration,
         voiceId: plan.voice.voiceId,
         workDir,
         chapterIndex: chapter.index,
+        speed: cartesiaSpeed(plan.voice.speed),
       });
       log(`chapter ${chapter.index} VO ${vo.durationSeconds.toFixed(1)}s`);
 
@@ -121,13 +129,18 @@ export async function runRenderLongform(
         if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
         const beatDur = Math.max(0.5, beat.estDurationSeconds * scale);
         const clip = join(workDir, `ch${chapter.index}_beat${beat.index}.mp4`);
-        await renderKenBurnsClip({
-          imagePath: imgPath,
-          durationSeconds: beatDur,
-          direction: KEN_BURNS_DIRECTIONS[beat.index % KEN_BURNS_DIRECTIONS.length],
-          zoom,
-          outputPath: clip,
-        });
+        if (zoom > 0) {
+          await renderKenBurnsClip({
+            imagePath: imgPath,
+            durationSeconds: beatDur,
+            direction: KEN_BURNS_DIRECTIONS[beat.index % KEN_BURNS_DIRECTIONS.length],
+            zoom,
+            outputPath: clip,
+          });
+        } else {
+          // zoom == 0 (e.g. stick-figure): static hold, zero zoompan jitter.
+          await renderStaticClip({ imagePath: imgPath, durationSeconds: beatDur, outputPath: clip });
+        }
         beatClipPaths.push(clip);
       }
       log(`chapter ${chapter.index} rendered ${beatClipPaths.length} beats`);
@@ -157,16 +170,17 @@ export async function runRenderLongform(
     const totalDuration = await probeDurationSeconds(concatPath);
 
     // 6. Subtle music bed (best-effort — render still succeeds without music).
+    // The stick-figure doodle style runs voice-only (Zenn uses no music bed; it read as a "hum").
     const finalPath = join(workDir, 'final.mp4');
-    const music = await pickAndDownloadMusic({
-      supabase,
-      outputPath: join(workDir, 'music.mp3'),
-    }).catch(() => null);
+    const wantsMusic = presetId !== 'stick-figure-animated';
+    const music = wantsMusic
+      ? await pickAndDownloadMusic({ supabase, outputPath: join(workDir, 'music.mp3') }).catch(() => null)
+      : null;
     if (music) {
       await muxMusicBed({ videoPath: concatPath, musicPath: music.outputPath, durationSeconds: totalDuration, outputPath: finalPath });
     } else {
       await runFfmpeg(['-y', '-i', concatPath, '-c', 'copy', finalPath]);
-      log('no music track available — voice only');
+      log(wantsMusic ? 'no music track available — voice only' : 'stick-figure preset: voice-only (no music bed)');
     }
 
     // 7. Upload + return.

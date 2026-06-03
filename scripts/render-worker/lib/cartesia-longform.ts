@@ -11,7 +11,7 @@ import { planTtsChunks } from './tts-chunks.ts';
 const MAX_CHUNK_CHARS = 1200; // Cartesia handles long text, but chunking bounds retries + memory.
 
 export async function synthesizeChapterToWav(args: {
-  narration: string; voiceId: string; workDir: string; chapterIndex: number;
+  narration: string; voiceId: string; workDir: string; chapterIndex: number; speed?: string;
 }): Promise<{ wavPath: string; durationSeconds: number }> {
   const chunks = planTtsChunks(args.narration, MAX_CHUNK_CHARS);
   const chunkPaths: string[] = [];
@@ -19,9 +19,9 @@ export async function synthesizeChapterToWav(args: {
     const out = join(args.workDir, `ch${args.chapterIndex}_chunk${i}.wav`);
     // Per-chunk retry: one bounded retry so a transient failure fails only its chunk.
     try {
-      await synthesizeToWav({ script: chunks[i], voiceId: args.voiceId, outputPath: out });
+      await synthesizeToWav({ script: chunks[i], voiceId: args.voiceId, outputPath: out, speed: args.speed });
     } catch {
-      await synthesizeToWav({ script: chunks[i], voiceId: args.voiceId, outputPath: out });
+      await synthesizeToWav({ script: chunks[i], voiceId: args.voiceId, outputPath: out, speed: args.speed });
     }
     chunkPaths.push(out);
   }

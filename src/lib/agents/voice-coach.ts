@@ -97,15 +97,26 @@ export interface LongformVoiceArgs {
   topic: string;
   narrationSample: string;
   playbook: LongformPlaybook;
+  /** Style preset — steers the narrator tone (dramatic doc vs warm conversational doodle). */
+  presetId?: string;
 }
 
 // Authoritative narrator default (Ronald — Thinker: intense, deep, dramatic weight).
 const LONGFORM_DEFAULT_VOICE_ID = "5ee9feff-1265-424a-9d7f-8e4d431a12c7";
+// Conversational default (Jameson — Easygoing Support: friendly, laid-back, podcast-style).
+const LONGFORM_CONVERSATIONAL_VOICE_ID = "a5136bf9-224c-4d76-b823-52bd5efcffcc";
 
 function buildLongformVoicePrompt(args: LongformVoiceArgs): string {
-  return `You are the Voice Coach for a faceless longform documentary. Pick ONE narrator voice from the pool.
-This is measured, authoritative, suspense-building narration (NOT hype). Prefer a deep, steady, dramatic voice;
-choose a speed between 0.90 and 1.00 (measured pacing with room for pauses).
+  const styleGuidance =
+    args.presetId === "stick-figure-animated"
+      ? `This is a RELATABLE, friendly explainer told over simple hand-drawn doodles — NOT a dramatic
+movie-trailer. Prefer a WARM, NATURAL, CONVERSATIONAL human voice that sounds like a real person casually
+explaining something interesting to a friend. Avoid intense or heavy "narrator" voices. Choose a speed
+between 0.95 and 1.05 (natural, easy pace) and a LOWER stability (more expressive, less robotic).`
+      : `This is measured, authoritative, suspense-building narration (NOT hype). Prefer a deep, steady, dramatic voice;
+choose a speed between 0.90 and 1.00 (measured pacing with room for pauses).`;
+  return `You are the Voice Coach for a faceless longform video. Pick ONE narrator voice from the pool.
+${styleGuidance}
 
 Topic: "${args.topic}"
 Narration sample:
@@ -132,7 +143,9 @@ export async function pickLongformVoice(args: LongformVoiceArgs): Promise<Longfo
       return await callLongformVoiceOnce(prompt);
     } catch (retryErr) {
       if (!NoObjectGeneratedError.isInstance(retryErr)) throw retryErr;
-      return { voiceId: LONGFORM_DEFAULT_VOICE_ID, provider: "cartesia", speed: 0.95, stability: 0.6, rationale: "fallback: default authoritative narrator" };
+      return args.presetId === "stick-figure-animated"
+        ? { voiceId: LONGFORM_CONVERSATIONAL_VOICE_ID, provider: "cartesia", speed: 1.0, stability: 0.4, rationale: "fallback: default conversational narrator" }
+        : { voiceId: LONGFORM_DEFAULT_VOICE_ID, provider: "cartesia", speed: 0.95, stability: 0.6, rationale: "fallback: default authoritative narrator" };
     }
   }
 }

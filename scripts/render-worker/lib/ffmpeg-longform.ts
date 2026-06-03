@@ -32,6 +32,21 @@ export async function renderKenBurnsClip(args: {
   ]);
 }
 
+/** Hold a still as a 1920x1080 H.264 clip with NO movement (zero zoompan jitter). Used for the
+ *  stick-figure doodle style, where any Ken-Burns shake is glaring on clean line art. */
+export async function renderStaticClip(args: {
+  imagePath: string; durationSeconds: number; outputPath: string;
+}): Promise<void> {
+  await runFfmpeg([
+    '-y', '-loop', '1', '-i', args.imagePath,
+    '-t', args.durationSeconds.toFixed(3),
+    '-vf', 'scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1',
+    '-r', String(FPS),
+    '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast',
+    args.outputPath,
+  ]);
+}
+
 /** Mux a chapter's voiceover onto its (silent) beat-concat video. */
 export async function muxChapterAudio(args: { videoPath: string; voicePath: string; outputPath: string }): Promise<void> {
   await runFfmpeg([

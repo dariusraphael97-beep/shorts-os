@@ -12,6 +12,8 @@ export async function synthesizeToWav(args: {
   script: string;
   voiceId: string;
   outputPath: string;
+  /** Cartesia pace control: "slowest"|"slow"|"normal"|"fast"|"fastest". Optional; omit for default. */
+  speed?: string;
 }): Promise<{ durationSeconds: number }> {
   const apiKey = process.env.CARTESIA_API_KEY;
   if (!apiKey) throw new Error('CARTESIA_API_KEY must be set');
@@ -27,6 +29,7 @@ export async function synthesizeToWav(args: {
       model_id: 'sonic-2',
       transcript: args.script,
       voice: { mode: 'id', id: args.voiceId },
+      ...(args.speed ? { speed: args.speed } : {}),
       output_format: { container: 'wav', sample_rate: 44100, encoding: 'pcm_s16le' },
     }),
     signal: AbortSignal.timeout(60_000),

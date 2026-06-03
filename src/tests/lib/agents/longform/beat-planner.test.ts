@@ -84,7 +84,9 @@ describe("longform/beat-planner", () => {
     expect(p).toMatch(/simple|literal/);
     expect(p).toContain("collage"); // must still forbid collages
     expect(p).not.toContain("documentary");
-    expect(p).toContain("do not include"); // style words are added automatically, not by this model
+    expect(p).toMatch(/background|setting|environment/); // Zenn fills scenes with simple settings
+    expect(p).toMatch(/word|label|text/); // and stamps key words on screen
+    expect(p).toContain("do not include"); // drawing-STYLE words are added automatically, not by this model
   });
 
   it("keeps documentary framing for the cinematic preset", async () => {

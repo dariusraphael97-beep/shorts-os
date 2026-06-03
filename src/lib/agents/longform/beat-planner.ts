@@ -18,12 +18,15 @@ function scenePrompt(styleBible: StyleBible, chapterTitle: string, slices: strin
   const numbered = slices.map((s, i) => `${i + 1}. ${s}`).join("\n");
   const guidance =
     styleBible.presetId === "stick-figure-animated"
-      ? `For each narration beat below, describe ONE extremely simple, literal doodle of exactly what the
-narrator is saying at that moment — a quick stick-figure sketch of the idea (e.g. "a stick figure lying
-awake in bed at night", "a stick figure staring at a glowing phone"). One clear simple scene with one or
-two subjects doing one thing — never a collage, never multiple things at once. Describe only WHAT is
-happening (the subject and the action) in one short plain sentence — do NOT include any drawing-style,
-lighting, or quality words (those are added automatically).`
+      ? `For each narration beat below, describe ONE simple, literal doodle of exactly what the narrator is
+saying at that moment — a quick stick-figure sketch of the idea (e.g. "a stick figure lying awake in bed at
+night", "a stick figure staring at a glowing phone"). Always place it in a simple SETTING / BACKGROUND that
+fits the moment (a bedroom, outdoors with a ground line and sky, a sofa, a campfire, a simple object) — not
+an empty void. One clear scene with one or two subjects doing one thing — never a collage, never multiple
+things at once. When a short KEY WORD or LABEL would make the idea instantly clear (like the channel does),
+add it as on-screen text drawn into the scene, e.g. a sign, a label, or a written word in quotes — keep it
+to 1-3 words. Describe only WHAT is happening (subject, action, setting, any on-screen word) in one short
+plain sentence — do NOT include any drawing-style, lighting, or quality words (those are added automatically).`
       : `For each narration beat below, describe ONE concrete, filmable VISUAL SCENE that literally
 illustrates what is said at that moment (no random images, no collage). Subjects centered. Think like a
 ${styleBible.presetId} documentary. Describe the subject and setting only — do NOT include style/lighting/quality

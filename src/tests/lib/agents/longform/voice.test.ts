@@ -40,4 +40,22 @@ describe("pickLongformVoice", () => {
     expect(VOICE_POOL_IDS).toContain(out.voiceId);
     expect(out.provider).toBe("cartesia");
   });
+
+  it("steers toward a warm conversational narrator for the stick-figure preset", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation((async (opts: { prompt?: string }) => {
+      captured = opts?.prompt ?? "";
+      return { object: { voiceId: VOICE_POOL_IDS[4], provider: "cartesia", speed: 1.0, stability: 0.4, rationale: "a warm conversational voice suits a relatable doodle explainer best." } };
+    }) as never);
+    await pickLongformVoice({ topic: "t", narrationSample: "You wake up at 3am.", presetId: "stick-figure-animated", playbook: { voice: { bestVoiceIdByGenre: {} } } as never });
+    expect(captured.toLowerCase()).toMatch(/conversational|warm|natural|friendly/);
+    // the dramatic cinematic guidance line must NOT be the directive for this preset
+    expect(captured).not.toContain("Prefer a deep, steady, dramatic voice");
+  });
+
+  it("falls back to the conversational default for the stick-figure preset", async () => {
+    vi.mocked(generateObject).mockRejectedValueOnce(makeNoObjectErr()).mockRejectedValueOnce(makeNoObjectErr());
+    const out = await pickLongformVoice({ topic: "t", narrationSample: "x", presetId: "stick-figure-animated", playbook: { voice: { bestVoiceIdByGenre: {} } } as never });
+    expect(out.voiceId).toBe("a5136bf9-224c-4d76-b823-52bd5efcffcc"); // Jameson — conversational
+  });
 });

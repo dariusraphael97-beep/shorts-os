@@ -71,7 +71,7 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
 
     // 4. Voice
     yield { type: "agent_state", data: { agent: "voice_coach", state: "working" } };
-    const voice = await deps.pickVoice({ topic: args.topic, narrationSample: writer.hook, playbook });
+    const voice = await deps.pickVoice({ topic: args.topic, narrationSample: writer.hook, playbook, presetId: style.presetId });
     yield { type: "agent_output", data: { agent: "voice_coach", output: voice } };
     yield { type: "agent_done", data: { agent: "voice_coach", durationMs: 0 } };
 

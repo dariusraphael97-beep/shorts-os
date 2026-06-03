@@ -66,31 +66,32 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     targetBeatSeconds: 3.5,
     musicMood: "clean, driving, understated electronic bed, low-energy",
   },
-  // Crude hand-drawn stickman doodles (YouTuber Zenn look) — captured verbatim from Danny's
-  // "recreate Zenn" tutorial in docs/longform/zenn-style-image-prompt.md. Renders with GPT Image 2
-  // (gpt_image_2, low/2k), NOT Soul V2 (Soul V2 makes broken stickmen — tested & rejected). The
-  // negatives ("no 3d…", "do not make it look good") are baked into positivePrefix because neither
-  // model accepts a negative-prompt param — that's also literally how Danny's prompt works.
+  // Clean simple hand-drawn doodles (YouTuber Zenn look). v1 over-cooked the "bad MS Paint" angle —
+  // re-watching Zenn (youtube st_Ah6Ykbh4) shows it is SIMPLE but CLEAN: smooth confident black ink
+  // lines, expressive minimal faces (eyebrows, glasses, hair, real emotion), flat colors, and often a
+  // simple COLORED setting (a room, sky-over-ground, an object), not bare white. Renders with GPT Image
+  // 2 (gpt_image_2, low/2k), NOT Soul V2. Style suppressors are baked into positivePrefix because
+  // neither model accepts a negative-prompt param.
   "stick-figure-animated": {
     presetId: "stick-figure-animated",
     positivePrefix:
-      "crude hand-drawn doodle that looks like an extremely simple beginner MS Paint drawing made " +
-      "quickly by someone who is not good at drawing, simple stickman childish drawing style, " +
-      "pure white background, thick uneven black outlines, wobbly hand-drawn lines, " +
-      "stick figure people with round heads and thin straight line bodies, simple dot eyes, " +
-      "very basic facial expressions, flat solid colors only, no realistic shading, no 3D, " +
-      "no cinematic lighting, no realistic cartoon style, no Disney style, no anime style, " +
-      "no photorealism, do not make it look good, polished, or professional",
+      "a clean simple hand-drawn doodle in the style of a minimalist 2D explainer cartoon, " +
+      "smooth confident black ink outlines of even weight, friendly round-headed stick figures with " +
+      "simple but expressive faces (dot or oval eyes, eyebrows, a mouth that clearly shows the emotion), " +
+      "flat solid colors, bold and uncluttered, easy to read at a glance, " +
+      "no photorealism, no 3D, no realistic shading or gradients, no anime, no fine rendered detail",
     negativePrompt: `${NEG_COMMON}, realistic shading, 3d render, cinematic lighting, photorealistic, ` +
-      `realistic cartoon, disney style, anime, gradient shading, fine detail, professional illustration, painterly`,
-    lighting: "completely flat, no shading, no lighting effects",
-    palette: "flat solid marker-fill colors, only a few basic colors, no gradients",
+      `anime, gradient shading, busy cluttered detail, painterly, sketchy crosshatching`,
+    lighting: "flat, no realistic shading, no gradients",
+    palette: "a small set of flat, solid, bright colors, clean fills",
     framing:
       "one single clear and simple scene that literally shows what is being said at this moment, " +
-      "one or two subjects centered with plenty of empty white space, " +
+      "drawn in a simple setting / environment that fits the moment (e.g. a room, outdoors with a ground " +
+      "line and sky, or a single clear object) on a flat solid background color when the scene has a place, " +
+      "otherwise a clean plain background; one or two subjects, centered, easy to read; " +
       "never a collage, never a grid, never multiple panels",
     aspect: "16:9",
-    kenBurnsZoom: 0.03,
+    kenBurnsZoom: 0, // static hold — Zenn doesn't pan; avoids the zoompan jitter on clean line art
     targetBeatSeconds: 4,
     musicMood: "light, quirky, playful, low-energy background bed",
   },
