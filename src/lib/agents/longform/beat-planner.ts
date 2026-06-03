@@ -18,16 +18,17 @@ function scenePrompt(styleBible: StyleBible, chapterTitle: string, slices: strin
   const numbered = slices.map((s, i) => `${i + 1}. ${s}`).join("\n");
   const guidance =
     styleBible.presetId === "stick-figure-animated"
-      ? `For each narration beat below, describe ONE simple, literal doodle of exactly what the narrator is
-saying at that moment — a quick stick-figure sketch of the idea (e.g. "a stick figure lying awake in bed at
-night", "a stick figure staring at a glowing phone"). Place it in a simple SETTING / BACKGROUND that fits
-the moment (a bedroom, outdoors with a ground line and sky, a sofa, a campfire, a simple object) — not an
-empty void. One clear scene with one or two subjects doing one thing — never a collage, never multiple
-things at once. EVERY image MUST also include ONE short KEY WORD (1-2 words) — the single most important
-word for this exact moment — written large and clearly as on-screen text in the drawing (like a caption or
-label), the way the channel stamps a word on every frame. Put that key word in quotes in your description.
-Describe only WHAT is happening (subject, action, setting, the on-screen key word) in one short plain
-sentence — do NOT include any drawing-style, lighting, or quality words (those are added automatically).`
+      ? `For each narration beat below, describe ONE clear, simple doodle of exactly what the narrator is
+saying at that moment. Make the video VISUALLY INTERESTING and VARIED — across consecutive beats CHANGE the
+composition, the camera distance, the setting and the background color, and mix the approach: a character in
+a scene, a close-up of an object, a simple diagram or chart, a before/after, a map, a visual metaphor. Do
+NOT keep drawing the same "stick figure standing in a plain room" — each image should feel fresh and
+different from the ones around it. One clear scene, never a collage or multiple panels. Add ON-SCREEN TEXT
+the way the channel does so the viewer absorbs the point — it can be a single word, a few words, a label, a
+sign, or a short phrase, whatever amount fits the moment (it does NOT have to be exactly one word). Put any
+on-screen text in quotes. Describe only WHAT is happening (subject, action, setting, on-screen text) in one
+short plain sentence — do NOT include any drawing-style, lighting, or quality words (those are added
+automatically).`
       : `For each narration beat below, describe ONE concrete, filmable VISUAL SCENE that literally
 illustrates what is said at that moment (no random images, no collage). Subjects centered. Think like a
 ${styleBible.presetId} documentary. Describe the subject and setting only — do NOT include style/lighting/quality

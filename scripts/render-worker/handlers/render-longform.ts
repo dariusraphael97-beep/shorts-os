@@ -11,6 +11,7 @@ import { generateImage } from '../lib/higgsfield.ts';
 import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed } from '../lib/ffmpeg-longform.ts';
 import { runFfmpeg } from '../lib/ffmpeg-commands.ts';
 import { buildChapterMarkers } from '../lib/chapters.ts';
+import { countWords, beatDurationsFromWordStarts } from '../lib/beat-timing.ts';
 import { probeDurationSeconds } from '../lib/probe.ts';
 import { uploadMp4ToBlob } from '../lib/blob.ts';
 import { pickAndDownloadMusic } from '../lib/music.ts';
@@ -51,7 +52,7 @@ const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'stick-figure-animated': { hexA: 'f7f7f2', hexB: 'e4e4dc' },
 };
 
-interface PlanBeat { index: number; estDurationSeconds: number; imagePrompt: string; negativePrompt: string }
+interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; imagePrompt: string; negativePrompt: string }
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
@@ -129,10 +130,23 @@ export async function runRenderLongform(
       });
       log(`chapter ${chapter.index} VO ${vo.durationSeconds.toFixed(1)}s`);
 
-      // 2. Rescale beat durations to fill the real VO length (alignment without Whisper in L1).
+      // 2. Per-beat timing. Prefer EXACT placement from Cartesia's real word timestamps (each image
+      //    shows exactly when its words are spoken); fall back to proportional estimate if unavailable.
       const beats = opts.maxBeatsPerChapter != null ? chapter.beats.slice(0, opts.maxBeatsPerChapter) : chapter.beats;
-      const estTotal = beats.reduce((s, b) => s + b.estDurationSeconds, 0) || 1;
-      const scale = vo.durationSeconds / estTotal;
+      let beatDurations: number[];
+      if (vo.words.length > 0) {
+        beatDurations = beatDurationsFromWordStarts(
+          beats.map((b) => countWords(b.narrationSlice)),
+          vo.words.map((w) => w.start),
+          vo.durationSeconds,
+        );
+        log(`chapter ${chapter.index} synced to ${vo.words.length} word timestamps`);
+      } else {
+        const estTotal = beats.reduce((s, b) => s + b.estDurationSeconds, 0) || 1;
+        const scale = vo.durationSeconds / estTotal;
+        beatDurations = beats.map((b) => Math.max(0.5, b.estDurationSeconds * scale));
+        log(`chapter ${chapter.index} no word timestamps — proportional timing`);
+      }
 
       // 3a. Generate all beat images CONCURRENTLY (bounded) — image gen is the ~30s/img bottleneck.
       //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
@@ -153,7 +167,7 @@ export async function runRenderLongform(
       const beatClipPaths: string[] = [];
       for (let i = 0; i < beats.length; i++) {
         const beat = beats[i];
-        const beatDur = Math.max(0.5, beat.estDurationSeconds * scale);
+        const beatDur = beatDurations[i];
         const clip = join(workDir, `ch${chapter.index}_beat${beat.index}.mp4`);
         if (zoom > 0) {
           await renderKenBurnsClip({

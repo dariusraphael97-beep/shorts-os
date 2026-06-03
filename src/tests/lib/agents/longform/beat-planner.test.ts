@@ -81,12 +81,13 @@ describe("longform/beat-planner", () => {
     });
     const p = captured.toLowerCase();
     expect(p).toMatch(/doodle|stick.?figure/);
-    expect(p).toMatch(/simple|literal/);
+    expect(p).toMatch(/vary|varied|different|fresh/); // visual variety — not the same picture every time
+    expect(p).toMatch(/diagram|chart|metaphor|close-?up|object/); // varied visual approaches, not just "person in a room"
+    expect(p).toContain("on-screen text"); // Zenn-style words to aid comprehension
+    expect(p).toMatch(/few words|short phrase|not.*exactly one/); // flexible length, not a rigid single word
     expect(p).toContain("collage"); // must still forbid collages
     expect(p).not.toContain("documentary");
-    expect(p).toMatch(/background|setting|environment/); // Zenn fills scenes with simple settings
-    expect(p).toContain("every image"); // a key word on EVERY image, like Zenn (not "when it helps")
-    expect(p).toMatch(/key word|one word/);
+    expect(p).toMatch(/background|setting/);
     expect(p).toContain("do not include"); // drawing-STYLE words are added automatically, not by this model
   });
 
