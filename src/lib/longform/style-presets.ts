@@ -92,7 +92,7 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "never a collage, never a grid, never multiple panels",
     aspect: "16:9",
     kenBurnsZoom: 0, // static hold — Zenn doesn't pan; avoids the zoompan jitter on clean line art
-    targetBeatSeconds: 4,
+    targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
     musicMood: "light, quirky, playful, low-energy background bed",
   },
 };

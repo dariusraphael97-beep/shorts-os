@@ -24,6 +24,25 @@ export class RenderLongformError extends Error {
 
 const KEN_BURNS_DIRECTIONS = ['in', 'right', 'in', 'left'] as const;
 
+// Higgsfield/GPT-Image-2 image gen is the bottleneck (~30s/img sequential). Generate a few at a
+// time; kept low because the Higgsfield plan rate-limits concurrency (override via env if needed).
+const IMAGE_CONCURRENCY = Math.max(1, Number(process.env.HIGGSFIELD_CONCURRENCY) || 3);
+
+// Bounded-concurrency map that preserves input order in the results.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // Per-preset gradient fallback colors (teal→amber for cinematic; neutral→accent for editorial;
 // near-white "blank whiteboard" for the stick-figure doodle look).
 const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
@@ -115,9 +134,9 @@ export async function runRenderLongform(
       const estTotal = beats.reduce((s, b) => s + b.estDurationSeconds, 0) || 1;
       const scale = vo.durationSeconds / estTotal;
 
-      // 3. One image per beat (Higgsfield or gradient fallback) → Ken-Burns clip.
-      const beatClipPaths: string[] = [];
-      for (const beat of beats) {
+      // 3a. Generate all beat images CONCURRENTLY (bounded) — image gen is the ~30s/img bottleneck.
+      //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
+      const imgPaths = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
         const gen = await generateImage({
           prompt: beat.imagePrompt,
@@ -127,11 +146,18 @@ export async function runRenderLongform(
           presetId,
         });
         if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
+        return imgPath;
+      });
+
+      // 3b. Render each still into its clip, in beat order (local ffmpeg — fast).
+      const beatClipPaths: string[] = [];
+      for (let i = 0; i < beats.length; i++) {
+        const beat = beats[i];
         const beatDur = Math.max(0.5, beat.estDurationSeconds * scale);
         const clip = join(workDir, `ch${chapter.index}_beat${beat.index}.mp4`);
         if (zoom > 0) {
           await renderKenBurnsClip({
-            imagePath: imgPath,
+            imagePath: imgPaths[i],
             durationSeconds: beatDur,
             direction: KEN_BURNS_DIRECTIONS[beat.index % KEN_BURNS_DIRECTIONS.length],
             zoom,
@@ -139,7 +165,7 @@ export async function runRenderLongform(
           });
         } else {
           // zoom == 0 (e.g. stick-figure): static hold, zero zoompan jitter.
-          await renderStaticClip({ imagePath: imgPath, durationSeconds: beatDur, outputPath: clip });
+          await renderStaticClip({ imagePath: imgPaths[i], durationSeconds: beatDur, outputPath: clip });
         }
         beatClipPaths.push(clip);
       }

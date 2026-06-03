@@ -37,9 +37,10 @@ describe("longform/style-presets", () => {
     // scenes get a simple colored setting/background when the moment calls for one (not forced white).
     expect(`${p.framing} ${p.palette}`.toLowerCase()).toMatch(/background|environment|setting|scene/);
     expect(p.framing.toLowerCase()).toContain("collage"); // still forbid collages
-    // static hold (no jittery Ken-Burns) for this preset; relaxed cadence.
+    // static hold (no jittery Ken-Burns) for this preset; fast Zenn cadence: a new image every 2-3s.
     expect(p.kenBurnsZoom).toBeLessThanOrEqual(0.04);
-    expect(p.targetBeatSeconds).toBeGreaterThanOrEqual(3);
+    expect(p.targetBeatSeconds).toBeGreaterThanOrEqual(2);
+    expect(p.targetBeatSeconds).toBeLessThanOrEqual(3);
   });
 
   it("getStylePreset throws on an unknown id", () => {

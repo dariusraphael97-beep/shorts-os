@@ -85,7 +85,8 @@ describe("longform/beat-planner", () => {
     expect(p).toContain("collage"); // must still forbid collages
     expect(p).not.toContain("documentary");
     expect(p).toMatch(/background|setting|environment/); // Zenn fills scenes with simple settings
-    expect(p).toMatch(/word|label|text/); // and stamps key words on screen
+    expect(p).toContain("every image"); // a key word on EVERY image, like Zenn (not "when it helps")
+    expect(p).toMatch(/key word|one word/);
     expect(p).toContain("do not include"); // drawing-STYLE words are added automatically, not by this model
   });
 
