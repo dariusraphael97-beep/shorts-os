@@ -205,10 +205,11 @@ export async function runRenderLongform(
     });
     const totalDuration = await probeDurationSeconds(concatPath);
 
-    // 6. Subtle music bed (best-effort — render still succeeds without music).
-    // The stick-figure doodle style runs voice-only (Zenn uses no music bed; it read as a "hum").
+    // 6. Music bed — DISABLED. The current supabase music source reads as a low, weird "hum"
+    // under the narration (Darius flagged it repeatedly). Run voice-only until the sound-design
+    // layer (SFX + curated/generated music) replaces it. Set MUSIC_BED_ENABLED=1 to re-enable.
     const finalPath = join(workDir, 'final.mp4');
-    const wantsMusic = presetId !== 'stick-figure-animated';
+    const wantsMusic = process.env.MUSIC_BED_ENABLED === '1';
     const music = wantsMusic
       ? await pickAndDownloadMusic({ supabase, outputPath: join(workDir, 'music.mp3') }).catch(() => null)
       : null;
@@ -216,7 +217,7 @@ export async function runRenderLongform(
       await muxMusicBed({ videoPath: concatPath, musicPath: music.outputPath, durationSeconds: totalDuration, outputPath: finalPath });
     } else {
       await runFfmpeg(['-y', '-i', concatPath, '-c', 'copy', finalPath]);
-      log(wantsMusic ? 'no music track available — voice only' : 'stick-figure preset: voice-only (no music bed)');
+      log(wantsMusic ? 'no music track available — voice only' : 'music bed disabled — voice only (sound-design layer pending)');
     }
 
     // 7. Upload + return.
