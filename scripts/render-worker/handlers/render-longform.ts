@@ -31,6 +31,8 @@ const KEN_BURNS_DIRECTIONS = ['in', 'right', 'in', 'left'] as const;
 const IMAGE_CONCURRENCY = Math.max(1, Number(process.env.HIGGSFIELD_CONCURRENCY) || 3);
 // Cap SFX generations per chapter to keep the ElevenLabs credit spend in check.
 const MAX_SFX_PER_CHAPTER = Math.max(0, Number(process.env.MAX_SFX_PER_CHAPTER) || 12);
+// SFX mix level under the narration (Darius: 0.35 was too loud). Env-tunable.
+const SFX_VOLUME = Number(process.env.SFX_VOLUME) || 0.18;
 
 // Bounded-concurrency map that preserves input order in the results.
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
@@ -206,7 +208,7 @@ export async function runRenderLongform(
         const p = join(workDir, `ch${chapter.index}_sfx${i}.mp3`);
         try {
           await generateSoundEffect({ text: x.cue, durationSeconds: Math.min(4, x.dur), outputPath: p });
-          return { path: p, startSec: x.startSec, volume: 0.35 };
+          return { path: p, startSec: x.startSec, volume: SFX_VOLUME };
         } catch { return null; }
       })).filter((s): s is { path: string; startSec: number; volume: number } => s !== null);
 
