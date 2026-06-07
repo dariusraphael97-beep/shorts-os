@@ -10,6 +10,9 @@ import { runBeatPlanner } from "@/lib/agents/longform/beat-planner";
 import { pickLongformVoice } from "@/lib/agents/voice-coach";
 import { getStylePreset, type PresetId } from "@/lib/longform/style-presets";
 
+// ElevenLabs "George — Warm, Captivating Storyteller" (british male). The natural longform narrator.
+const ELEVENLABS_NARRATOR_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
+
 export interface LongformPipelineArgs {
   topic: string;
   targetDurationSeconds: number;
@@ -71,7 +74,10 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
 
     // 4. Voice
     yield { type: "agent_state", data: { agent: "voice_coach", state: "working" } };
-    const voice = await deps.pickVoice({ topic: args.topic, narrationSample: writer.hook, playbook, presetId: style.presetId });
+    // Longform narrator = ElevenLabs "George" (warm British storyteller) — far more natural than
+    // Cartesia TTS. Keep the voice-coach pick for pacing/rationale, but force the provider+voice.
+    const picked = await deps.pickVoice({ topic: args.topic, narrationSample: writer.hook, playbook, presetId: style.presetId });
+    const voice = { ...picked, provider: "elevenlabs", voiceId: ELEVENLABS_NARRATOR_VOICE_ID };
     yield { type: "agent_output", data: { agent: "voice_coach", output: voice } };
     yield { type: "agent_done", data: { agent: "voice_coach", durationMs: 0 } };
 

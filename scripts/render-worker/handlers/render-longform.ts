@@ -57,15 +57,8 @@ interface PlanChapter { index: number; title: string; narration: string; beats: 
 interface LongformPlan {
   presetId: string;
   styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string> };
-  voice: { voiceId: string; speed: number };
+  voice: { voiceId: string; speed: number; provider?: string };
   chapters: PlanChapter[];
-}
-
-// Map the plan's numeric narration speed to Cartesia's pace enum.
-function cartesiaSpeed(n: number): string {
-  if (n <= 0.93) return 'slow';
-  if (n >= 1.07) return 'fast';
-  return 'normal';
 }
 
 export interface RenderLongformOptions {
@@ -126,7 +119,8 @@ export async function runRenderLongform(
         voiceId: plan.voice.voiceId,
         workDir,
         chapterIndex: chapter.index,
-        speed: cartesiaSpeed(plan.voice.speed),
+        provider: plan.voice.provider,
+        speed: plan.voice.speed,
       });
       log(`chapter ${chapter.index} VO ${vo.durationSeconds.toFixed(1)}s`);
 
