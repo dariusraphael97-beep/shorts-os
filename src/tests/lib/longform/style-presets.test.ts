@@ -2,8 +2,18 @@ import { describe, it, expect } from "vitest";
 import { STYLE_PRESETS, getStylePreset, PRESET_IDS } from "@/lib/longform/style-presets";
 
 describe("longform/style-presets", () => {
-  it("exposes the cinematic, editorial, stick-figure, and naturalist presets", () => {
-    expect(PRESET_IDS).toEqual(["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration"]);
+  it("exposes the cinematic, editorial, stick-figure, naturalist, and technical-illustration presets", () => {
+    expect(PRESET_IDS).toEqual(["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration", "technical-illustration"]);
+  });
+
+  it("technical-illustration is an illustrated (not photoreal) reference-driven cutaway style", () => {
+    const p = getStylePreset("technical-illustration");
+    const pre = p.positivePrefix.toLowerCase();
+    expect(pre).toMatch(/illustration|cutaway|field-guide/);
+    expect(pre).toMatch(/reference/); // draws from a real reference photo
+    expect(p.negativePrompt.toLowerCase()).toMatch(/photograph|photorealistic/); // NOT photoreal
+    expect(p.referenceDriven).toBe(true);
+    expect(p.model).toBe("nano_banana_2");
   });
 
   it("each preset has a non-empty positive prefix, a rich negative list, 16:9 aspect, a beat target, and an image model", () => {

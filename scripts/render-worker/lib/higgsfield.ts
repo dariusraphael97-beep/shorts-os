@@ -67,6 +67,9 @@ export interface GenerateImageArgs {
   model?: string;
   /** Model params (e.g. {quality,resolution}) from the style; sent as `--key value`. */
   imageParams?: Record<string, string>;
+  /** Local path to a real reference photo — passed as `--image` (auto-uploaded) so the
+   *  model draws the subject accurately. Used by reference-driven illustration styles. */
+  referenceImagePath?: string;
 }
 
 export interface GenerateImageResult { ok: boolean; reason?: string }
@@ -97,7 +100,7 @@ export async function generateImage(args: GenerateImageArgs): Promise<GenerateIm
   if (!isEnabled()) return { ok: false, reason: "higgsfield disabled (HIGGSFIELD_ENABLED!=1)" };
   try {
     await ensureCreds();
-    const url = await callHiggsfield(args.prompt, resolveModelConfig(args));
+    const url = await callHiggsfield(args.prompt, resolveModelConfig(args), args.referenceImagePath);
     await downloadTo(url, args.outputPath);
     return { ok: true };
   } catch (err) {
@@ -108,11 +111,12 @@ export async function generateImage(args: GenerateImageArgs): Promise<GenerateIm
 // Create one 16:9 image job (model per preset), wait for it, and return the result image URL.
 // One bounded retry, but only on a pre-job transient failure (spawn/network/timeout) — never
 // re-run after a job may have been created, to avoid double-charging credits.
-async function callHiggsfield(prompt: string, cfg: ModelConfig): Promise<string> {
+async function callHiggsfield(prompt: string, cfg: ModelConfig, referenceImagePath?: string): Promise<string> {
   const args = [
     "generate", "create", cfg.model,
     "--prompt", prompt,
     "--aspect_ratio", "16:9",
+    ...(referenceImagePath ? ["--image", referenceImagePath] : []), // real reference photo (auto-uploaded)
     ...Object.entries(cfg.params).flatMap(([k, v]) => [`--${k}`, v]),
     "--wait", "--wait-timeout", WAIT_TIMEOUT,
     "--json",

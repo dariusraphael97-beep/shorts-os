@@ -10,6 +10,7 @@ import { synthesizeChapterToWav } from '../lib/cartesia-longform.ts';
 import { generateImage } from '../lib/higgsfield.ts';
 import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed, muxSoundEffects } from '../lib/ffmpeg-longform.ts';
 import { generateSoundEffect } from '../lib/elevenlabs-sfx.ts';
+import { searchImageUrl, downloadToFile } from '../lib/image-search.ts';
 import { runFfmpeg } from '../lib/ffmpeg-commands.ts';
 import { buildChapterMarkers } from '../lib/chapters.ts';
 import { countWords, beatDurationsFromWordStarts } from '../lib/beat-timing.ts';
@@ -57,11 +58,11 @@ const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'stick-figure-animated': { hexA: 'f7f7f2', hexB: 'e4e4dc' },
 };
 
-interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; imagePrompt: string; negativePrompt: string; soundEffect?: string }
+interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; sceneDescription?: string; imagePrompt: string; negativePrompt: string; soundEffect?: string }
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
-  styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string> };
+  styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string>; referenceDriven?: boolean };
   voice: { voiceId: string; speed: number; provider?: string };
   chapters: PlanChapter[];
 }
@@ -151,6 +152,16 @@ export async function runRenderLongform(
       //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
       const imgPaths = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
+        // Reference-driven styles: fetch a REAL photo of the beat's subject and draw FROM it
+        // (accuracy). Best-effort — falls back to prompt-only if no photo is found.
+        let referenceImagePath: string | undefined;
+        if (plan.styleBible?.referenceDriven && beat.sceneDescription) {
+          const refUrl = await searchImageUrl(beat.sceneDescription);
+          if (refUrl) {
+            const refPath = join(workDir, `ch${chapter.index}_ref${beat.index}.jpg`);
+            if (await downloadToFile(refUrl, refPath)) referenceImagePath = refPath;
+          }
+        }
         const gen = await generateImage({
           prompt: beat.imagePrompt,
           negativePrompt: beat.negativePrompt,
@@ -159,6 +170,7 @@ export async function runRenderLongform(
           presetId,
           model: plan.styleBible?.model,
           imageParams: plan.styleBible?.imageParams,
+          referenceImagePath,
         });
         if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
         return imgPath;

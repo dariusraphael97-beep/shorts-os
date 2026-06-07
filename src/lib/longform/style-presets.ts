@@ -9,7 +9,7 @@
 // that must actually bite (e.g. "no collage", or the stickman "do not make it look good") is
 // folded into the POSITIVE positivePrefix instead.
 
-export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration"] as const;
+export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration", "technical-illustration"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
 export interface StyleBible {
@@ -32,6 +32,9 @@ export interface StyleBible {
   model: string;
   /** Extra model params beyond prompt+aspect (e.g. {quality,resolution}); model-specific. */
   imageParams: Record<string, string>;
+  /** When true, the renderer first fetches a REAL reference photo of each beat's subject
+   *  (Google image search) and draws from it, so parts are accurate to the real thing. */
+  referenceDriven?: boolean;
 }
 
 const NEG_COMMON =
@@ -128,6 +131,29 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     musicMood: "calm, atmospheric, gentle nature-documentary ambient bed",
     model: "nano_banana_2",
     imageParams: { resolution: "2k" },
+  },
+  // Illustrated technical CUTAWAY style for engineering / product / how-it-works niches (e.g. the
+  // BMW B58 video). Hand-drawn field-guide look (NOT photoreal) so internals read clearly — but
+  // REFERENCE-DRIVEN: the renderer pulls a real photo of each part and draws FROM it (via Nano
+  // Banana's --image), so every component is accurate to the real thing.
+  "technical-illustration": {
+    presetId: "technical-illustration",
+    positivePrefix:
+      "a detailed hand-drawn technical illustration in a clean engineering field-guide / cutaway style, " +
+      "fine inked linework with light shading and clear labels where helpful, the subject drawn accurately " +
+      "from the reference photo with a partial cutaway revealing how it works, legible and uncluttered, " +
+      "soft muted colors, clean light background — NOT a photograph, an illustration",
+    negativePrompt: `${NEG_COMMON}, photograph, photorealistic, 3d render, doodle, childish drawing, flat vector`,
+    lighting: "even, clear, illustrative — no dramatic photographic lighting",
+    palette: "soft muted technical-illustration colors, clean fills",
+    framing: "a single component as the clear hero, partial cutaway / exploded view to show internals, generous space",
+    aspect: "16:9",
+    kenBurnsZoom: 0,
+    targetBeatSeconds: 3.5,
+    musicMood: "driving, focused, understated electronic bed",
+    model: "nano_banana_2",
+    imageParams: { resolution: "2k" },
+    referenceDriven: true,
   },
 };
 
