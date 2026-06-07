@@ -4,7 +4,7 @@ import { getClaudeModel } from "@/lib/ai/gateway";
 import { splitNarrationIntoBeats } from "@/lib/longform/beats";
 import { assembleImagePrompt } from "@/lib/longform/image-prompt";
 import { WORDS_PER_SECOND } from "@/lib/longform/duration";
-import { SceneDescriptionsSchema, type BeatPlannerOutput } from "@/lib/agents/longform/types";
+import { SceneItemsSchema, type BeatPlannerOutput } from "@/lib/agents/longform/types";
 import type { StyleBible } from "@/lib/longform/style-presets";
 import type { LongformPlaybook } from "@/lib/agents/longform/playbook";
 
@@ -35,32 +35,39 @@ ${styleBible.presetId} documentary. Describe the subject and setting only — do
 words (those are added automatically). Keep each scene one vivid sentence.`;
   return `You are the Beat Planner. ${guidance}
 
+Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt for a real-world
+sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees", "wings flapping",
+"a heartbeat thudding", "soft rain"). Use a sound on the beats where one clearly belongs; use an EMPTY
+string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few words, concrete, single.
+
 Chapter: "${chapterTitle}"
-Return EXACTLY ${slices.length} scenes, in order, as JSON: { "scenes": string[] }.
+Return EXACTLY ${slices.length} items, in order, as JSON: { "items": [{ "scene": string, "sound": string }] }.
 Beats:
 ${numbered}`;
 }
 
-async function sceneDescriptions(styleBible: StyleBible, chapterTitle: string, slices: string[]): Promise<string[]> {
+interface SceneItem { scene: string; sound: string }
+
+async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: string[]): Promise<SceneItem[]> {
   const prompt = scenePrompt(styleBible, chapterTitle, slices);
   const run = async () => {
-    const result = await generateObject({ model: getClaudeModel("claude-sonnet-4-5"), schema: SceneDescriptionsSchema, prompt });
-    return SceneDescriptionsSchema.parse(result.object).scenes;
+    const result = await generateObject({ model: getClaudeModel("claude-sonnet-4-5"), schema: SceneItemsSchema, prompt });
+    return SceneItemsSchema.parse(result.object).items;
   };
-  let scenes: string[];
+  let items: SceneItem[];
   try {
-    scenes = await run();
+    items = await run();
   } catch (err) {
     if (!NoObjectGeneratedError.isInstance(err)) throw err;
     try {
-      scenes = await run();
+      items = await run();
     } catch (retryErr) {
       if (!NoObjectGeneratedError.isInstance(retryErr)) throw retryErr;
-      scenes = slices.slice(); // fallback: use the narration slice itself as the scene
+      items = slices.map((s) => ({ scene: s, sound: "" })); // fallback: slice as scene, no SFX
     }
   }
-  // Repair count mismatch: pad with the slice text, truncate extras.
-  return slices.map((slice, i) => scenes[i] ?? slice);
+  // Repair count mismatch: pad with the slice text (no sound), truncate extras.
+  return slices.map((slice, i) => items[i] ?? { scene: slice, sound: "" });
 }
 
 export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPlannerOutput> {
@@ -71,16 +78,18 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
       wordsPerSecond: WORDS_PER_SECOND,
     });
     const sliceTexts = slices.map((s) => s.text);
-    const scenes = await sceneDescriptions(ctx.styleBible, ch.title, sliceTexts);
+    const items = await sceneItems(ctx.styleBible, ch.title, sliceTexts);
     const beats = slices.map((slice, i) => {
-      const { prompt, negativePrompt } = assembleImagePrompt({ sceneDescription: scenes[i], styleBible: ctx.styleBible });
+      const { prompt, negativePrompt } = assembleImagePrompt({ sceneDescription: items[i].scene, styleBible: ctx.styleBible });
+      const sound = items[i].sound?.trim();
       return {
         index: i,
         narrationSlice: slice.text,
         estDurationSeconds: slice.estDurationSeconds,
-        sceneDescription: scenes[i],
+        sceneDescription: items[i].scene,
         imagePrompt: prompt,
         negativePrompt,
+        ...(sound ? { soundEffect: sound } : {}),
       };
     });
     chapters.push({ chapterIndex: ch.index, beats });

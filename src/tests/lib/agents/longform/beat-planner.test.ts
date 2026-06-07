@@ -33,12 +33,12 @@ const ctx = () => ({
 });
 
 describe("longform/beat-planner", () => {
-  it("returns one beat per slice with an assembled, style-prefixed image prompt", async () => {
-    // model returns exactly as many scenes as there are beats
+  it("returns one beat per slice with an assembled, style-prefixed image prompt + SFX cues", async () => {
+    // model returns exactly as many items (scene + sound) as there are beats
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
-      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) scenes/)?.[1] ?? 1);
-      return { object: { scenes: Array.from({ length: n }, (_, i) => `cinematic scene ${i}`) } } as never;
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, sound: i % 2 === 0 ? "a hawk screech" : "" })) } } as never;
     });
     const out = await runBeatPlanner(ctx());
     expect(out.chapters).toHaveLength(1);
@@ -49,6 +49,9 @@ describe("longform/beat-planner", () => {
       expect(b.imagePrompt.startsWith(getStylePreset("cinematic-realistic").positivePrefix)).toBe(true);
       expect(b.negativePrompt).toBe(getStylePreset("cinematic-realistic").negativePrompt);
     });
+    // even-index beats carry an SFX cue; empty sounds become undefined (no soundEffect key)
+    expect(beats[0].soundEffect).toBe("a hawk screech");
+    expect(beats[1]?.soundEffect).toBeUndefined();
   });
 
   it("falls back to the narration slice as the scene when the model fails", async () => {
@@ -60,7 +63,7 @@ describe("longform/beat-planner", () => {
   });
 
   it("repairs a scene-count mismatch by padding/truncating to the beat count", async () => {
-    vi.mocked(generateObject).mockResolvedValue({ object: { scenes: ["only one scene"] } } as never);
+    vi.mocked(generateObject).mockResolvedValue({ object: { items: [{ scene: "only one scene", sound: "" }] } } as never);
     const out = await runBeatPlanner(ctx());
     const beats = out.chapters[0].beats;
     expect(beats.every((b) => b.sceneDescription.length > 0)).toBe(true);
@@ -71,8 +74,8 @@ describe("longform/beat-planner", () => {
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
       captured = opts?.prompt ?? "";
-      const n = Number(captured.match(/EXACTLY (\d+) scenes/)?.[1] ?? 1);
-      return { object: { scenes: Array.from({ length: n }, (_, i) => `a stick figure scene ${i}`) } } as never;
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `a stick figure scene ${i}`, sound: "" })) } } as never;
     });
     await runBeatPlanner({
       styleBible: getStylePreset("stick-figure-animated"),
@@ -80,6 +83,7 @@ describe("longform/beat-planner", () => {
       chapters: [{ index: 0, title: "Why we wake at 3am", narration: "You wake up at 3am. Your brain starts racing. It feels endless." }],
     });
     const p = captured.toLowerCase();
+    expect(p).toMatch(/sound|sfx/); // also asks for per-beat sound design
     expect(p).toMatch(/doodle|stick.?figure/);
     expect(p).toMatch(/vary|varied|different|fresh/); // visual variety — not the same picture every time
     expect(p).toMatch(/diagram|chart|metaphor|close-?up|object/); // varied visual approaches, not just "person in a room"
@@ -96,8 +100,8 @@ describe("longform/beat-planner", () => {
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
       captured = opts?.prompt ?? "";
-      const n = Number(captured.match(/EXACTLY (\d+) scenes/)?.[1] ?? 1);
-      return { object: { scenes: Array.from({ length: n }, (_, i) => `cinematic scene ${i}`) } } as never;
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, sound: "" })) } } as never;
     });
     await runBeatPlanner(ctx());
     expect(captured.toLowerCase()).toContain("documentary");

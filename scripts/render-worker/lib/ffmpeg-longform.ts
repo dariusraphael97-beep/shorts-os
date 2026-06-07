@@ -67,6 +67,38 @@ export async function concatChapterClips(args: { clipPaths: string[]; listPath: 
   ]);
 }
 
+/** Mix scene-matched sound effects into a video's audio at their timestamps, UNDER the narration.
+ *  Each SFX is volume-scaled + delayed to its start; amix normalize=0 keeps the VO at full level. */
+export async function muxSoundEffects(args: {
+  videoPath: string;
+  sfx: Array<{ path: string; startSec: number; volume?: number }>;
+  outputPath: string;
+}): Promise<void> {
+  if (args.sfx.length === 0) {
+    await runFfmpeg(['-y', '-i', args.videoPath, '-c', 'copy', args.outputPath]);
+    return;
+  }
+  const inputs: string[] = ['-i', args.videoPath];
+  for (const s of args.sfx) inputs.push('-i', s.path);
+  const parts: string[] = [];
+  const mixLabels: string[] = ['[0:a]'];
+  args.sfx.forEach((s, i) => {
+    const k = i + 1;
+    const ms = Math.max(0, Math.round(s.startSec * 1000));
+    const vol = s.volume ?? 0.35;
+    parts.push(`[${k}:a]volume=${vol},adelay=${ms}|${ms}[s${k}]`);
+    mixLabels.push(`[s${k}]`);
+  });
+  const filter = `${parts.join(';')};${mixLabels.join('')}amix=inputs=${mixLabels.length}:normalize=0:duration=first[a]`;
+  await runFfmpeg([
+    '-y', ...inputs,
+    '-filter_complex', filter,
+    '-map', '0:v', '-map', '[a]',
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart',
+    args.outputPath,
+  ]);
+}
+
 /** Mux a subtle music bed under the narration (lower than shorts' 0.25; fade in/out). */
 export async function muxMusicBed(args: { videoPath: string; musicPath: string; durationSeconds: number; outputPath: string; volume?: number }): Promise<void> {
   const vol = args.volume ?? 0.12;

@@ -8,7 +8,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { synthesizeChapterToWav } from '../lib/cartesia-longform.ts';
 import { generateImage } from '../lib/higgsfield.ts';
-import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed } from '../lib/ffmpeg-longform.ts';
+import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed, muxSoundEffects } from '../lib/ffmpeg-longform.ts';
+import { generateSoundEffect } from '../lib/elevenlabs-sfx.ts';
 import { runFfmpeg } from '../lib/ffmpeg-commands.ts';
 import { buildChapterMarkers } from '../lib/chapters.ts';
 import { countWords, beatDurationsFromWordStarts } from '../lib/beat-timing.ts';
@@ -28,6 +29,8 @@ const KEN_BURNS_DIRECTIONS = ['in', 'right', 'in', 'left'] as const;
 // Higgsfield/GPT-Image-2 image gen is the bottleneck (~30s/img sequential). Generate a few at a
 // time; kept low because the Higgsfield plan rate-limits concurrency (override via env if needed).
 const IMAGE_CONCURRENCY = Math.max(1, Number(process.env.HIGGSFIELD_CONCURRENCY) || 3);
+// Cap SFX generations per chapter to keep the ElevenLabs credit spend in check.
+const MAX_SFX_PER_CHAPTER = Math.max(0, Number(process.env.MAX_SFX_PER_CHAPTER) || 12);
 
 // Bounded-concurrency map that preserves input order in the results.
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
@@ -52,7 +55,7 @@ const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'stick-figure-animated': { hexA: 'f7f7f2', hexB: 'e4e4dc' },
 };
 
-interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; imagePrompt: string; negativePrompt: string }
+interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; imagePrompt: string; negativePrompt: string; soundEffect?: string }
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
@@ -190,7 +193,31 @@ export async function runRenderLongform(
         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-an',
         silent,
       ]);
-      await muxChapterAudio({ videoPath: silent, voicePath: vo.wavPath, outputPath: chapterClip });
+
+      // 4b. Sound design: generate scene-matched SFX (ElevenLabs) and mix them in at each beat's
+      //     start time, UNDER the narration. Capped per chapter to control cost; best-effort.
+      let cum = 0;
+      const beatStarts = beatDurations.map((d) => { const s = cum; cum += d; return s; });
+      const sfxBeats = beats
+        .map((b, i) => ({ cue: b.soundEffect, startSec: beatStarts[i], dur: beatDurations[i] }))
+        .filter((x): x is { cue: string; startSec: number; dur: number } => !!x.cue)
+        .slice(0, MAX_SFX_PER_CHAPTER);
+      const sfx = (await mapWithConcurrency(sfxBeats, 4, async (x, i) => {
+        const p = join(workDir, `ch${chapter.index}_sfx${i}.mp3`);
+        try {
+          await generateSoundEffect({ text: x.cue, durationSeconds: Math.min(4, x.dur), outputPath: p });
+          return { path: p, startSec: x.startSec, volume: 0.35 };
+        } catch { return null; }
+      })).filter((s): s is { path: string; startSec: number; volume: number } => s !== null);
+
+      const voClip = join(workDir, `chapter_${chapter.index}_vo.mp4`);
+      await muxChapterAudio({ videoPath: silent, voicePath: vo.wavPath, outputPath: voClip });
+      if (sfx.length > 0) {
+        await muxSoundEffects({ videoPath: voClip, sfx, outputPath: chapterClip });
+        log(`chapter ${chapter.index} mixed ${sfx.length} sound effects`);
+      } else {
+        await runFfmpeg(['-y', '-i', voClip, '-c', 'copy', chapterClip]);
+      }
 
       chapterClipPaths.push(chapterClip);
       chapterDurations.push(await probeDurationSeconds(chapterClip));
