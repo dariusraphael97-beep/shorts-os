@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { STYLE_PRESETS, getStylePreset, PRESET_IDS } from "@/lib/longform/style-presets";
 
 describe("longform/style-presets", () => {
-  it("exposes the cinematic, editorial, and stick-figure presets", () => {
-    expect(PRESET_IDS).toEqual(["cinematic-realistic", "editorial-graphic", "stick-figure-animated"]);
+  it("exposes the cinematic, editorial, stick-figure, and naturalist presets", () => {
+    expect(PRESET_IDS).toEqual(["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration"]);
   });
 
-  it("each preset has a non-empty positive prefix, a rich negative list, 16:9 aspect, and a beat target", () => {
+  it("each preset has a non-empty positive prefix, a rich negative list, 16:9 aspect, a beat target, and an image model", () => {
     for (const id of PRESET_IDS) {
       const p = getStylePreset(id);
       expect(p.presetId).toBe(id);
@@ -15,6 +15,9 @@ describe("longform/style-presets", () => {
       expect(p.aspect).toBe("16:9");
       expect(p.targetBeatSeconds).toBeGreaterThan(0);
       expect(p.musicMood.length).toBeGreaterThan(0);
+      // every style now carries its own render model + params (dynamic styles).
+      expect(p.model.length).toBeGreaterThan(0);
+      expect(typeof p.imageParams).toBe("object");
     }
   });
 
@@ -41,6 +44,16 @@ describe("longform/style-presets", () => {
     expect(p.kenBurnsZoom).toBeLessThanOrEqual(0.04);
     expect(p.targetBeatSeconds).toBeGreaterThanOrEqual(2);
     expect(p.targetBeatSeconds).toBeLessThanOrEqual(3);
+  });
+
+  it("naturalist preset = detailed illustration on a high-quality model (for animal/nature niches)", () => {
+    const p = getStylePreset("naturalist-illustration");
+    const pre = p.positivePrefix.toLowerCase();
+    expect(pre).toMatch(/naturalist|illustration|watercolor|field guide/);
+    expect(pre).not.toMatch(/stick figure|doodle/);
+    expect(p.negativePrompt.toLowerCase()).toMatch(/doodle|stick figure/); // explicitly NOT the doodle look
+    expect(p.model).toBe("nano_banana_2"); // high-quality model, not gpt_image_2 low
+    expect(p.imageParams.resolution).toBe("2k");
   });
 
   it("getStylePreset throws on an unknown id", () => {

@@ -6,7 +6,7 @@ const plan: LongformPlan = {
   topic: "t", targetDurationSeconds: 540, presetId: "cinematic-realistic", musicMood: "cinematic",
   angle: "angle", hook: "hook", estimatedWords: 1200, captionsEnabled: false,
   voice: { provider: "cartesia", voiceId: "v1", speed: 0.95, stability: 0.6 },
-  styleBible: { presetId: "cinematic-realistic", positivePrefix: "x", negativePrompt: "no text", lighting: "l", palette: "teal", framing: "f", aspect: "16:9", kenBurnsZoom: 0.06, targetBeatSeconds: 4.5, musicMood: "cinematic" },
+  styleBible: { presetId: "cinematic-realistic", positivePrefix: "x", negativePrompt: "no text", lighting: "l", palette: "teal", framing: "f", aspect: "16:9", kenBurnsZoom: 0.06, targetBeatSeconds: 4.5, musicMood: "cinematic", model: "text2image_soul_v2", imageParams: { quality: "2k" } },
   chapters: [
     { index: 0, title: "A", purpose: "p", narration: "n", beats: [
       { index: 0, narrationSlice: "n", estDurationSeconds: 4, sceneDescription: "s", imagePrompt: "ip", negativePrompt: "no text" },

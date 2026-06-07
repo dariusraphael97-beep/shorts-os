@@ -56,7 +56,7 @@ interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: 
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
-  styleBible: { kenBurnsZoom: number };
+  styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string> };
   voice: { voiceId: string; speed: number };
   chapters: PlanChapter[];
 }
@@ -158,6 +158,8 @@ export async function runRenderLongform(
           outputPath: imgPath,
           aspect: '16:9',
           presetId,
+          model: plan.styleBible?.model,
+          imageParams: plan.styleBible?.imageParams,
         });
         if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
         return imgPath;

@@ -15,6 +15,8 @@ export const StyleBibleSchema = z.object({
   kenBurnsZoom: z.number().min(0).max(0.5),
   targetBeatSeconds: z.number().positive(),
   musicMood: z.string(),
+  model: z.string().min(1),
+  imageParams: z.record(z.string(), z.string()),
 });
 
 export const VoiceChoiceSchema = z.object({

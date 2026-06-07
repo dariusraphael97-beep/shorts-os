@@ -9,7 +9,7 @@
 // that must actually bite (e.g. "no collage", or the stickman "do not make it look good") is
 // folded into the POSITIVE positivePrefix instead.
 
-export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic", "stick-figure-animated"] as const;
+export const PRESET_IDS = ["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration"] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
 export interface StyleBible {
@@ -28,6 +28,10 @@ export interface StyleBible {
   targetBeatSeconds: number;
   /** Default music mood for the bed (Style-picker may override within the preset). */
   musicMood: string;
+  /** Higgsfield image model (job_set_type) this style renders with. */
+  model: string;
+  /** Extra model params beyond prompt+aspect (e.g. {quality,resolution}); model-specific. */
+  imageParams: Record<string, string>;
 }
 
 const NEG_COMMON =
@@ -50,6 +54,8 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     kenBurnsZoom: 0.06,
     targetBeatSeconds: 4.5,
     musicMood: "cinematic, dramatic, suspenseful, low-energy orchestral bed",
+    model: "text2image_soul_v2",
+    imageParams: { quality: "2k" },
   },
   "editorial-graphic": {
     presetId: "editorial-graphic",
@@ -65,6 +71,8 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     kenBurnsZoom: 0.03,
     targetBeatSeconds: 3.5,
     musicMood: "clean, driving, understated electronic bed, low-energy",
+    model: "text2image_soul_v2",
+    imageParams: { quality: "2k" },
   },
   // Clean simple hand-drawn doodles (YouTuber Zenn look). v1 over-cooked the "bad MS Paint" angle —
   // re-watching Zenn (youtube st_Ah6Ykbh4) shows it is SIMPLE but CLEAN: smooth confident black ink
@@ -94,6 +102,32 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     kenBurnsZoom: 0, // static hold — Zenn doesn't pan; avoids the zoompan jitter on clean line art
     targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
     musicMood: "light, quirky, playful, low-energy background bed",
+    model: "gpt_image_2",
+    imageParams: { quality: "low", resolution: "2k" },
+  },
+  // Detailed naturalist storybook illustration — DETECTED from the winning backyard-bird channels
+  // (yt _xftmgUhS7Q etc.): fine inked linework + crosshatching, soft muted watercolor fills, the
+  // animal rendered realistically as the large hero subject, atmospheric natural backgrounds. The
+  // right look for animal / nature / wildlife niches (NOT the Zenn doodle). High quality via Nano
+  // Banana Pro. This is the first "Style-Scout-shaped" preset; the scout will generate these per-niche.
+  "naturalist-illustration": {
+    presetId: "naturalist-illustration",
+    positivePrefix:
+      "detailed naturalist storybook illustration, fine hand-inked linework with delicate crosshatching " +
+      "and texture detail, soft muted watercolor fills, the subject rendered realistically and anatomically " +
+      "accurate as the large central hero of the frame, atmospheric natural setting with real depth, " +
+      "gentle ambient light, beautiful and polished, the look of a high-end illustrated field guide",
+    negativePrompt: `${NEG_COMMON}, doodle, stick figure, childish drawing, flat vector, cartoon, ` +
+      `3d render, photograph, low effort, sketchy`,
+    lighting: "soft natural ambient light, gentle atmospheric glow, subtle depth",
+    palette: "soft muted watercolor, warm earth tones with cool atmospheric accents",
+    framing: "a single hero subject, large and centered, with an atmospheric natural background and cinematic depth",
+    aspect: "16:9",
+    kenBurnsZoom: 0, // static for now (no shake); smooth slow push is a later refinement
+    targetBeatSeconds: 3.5,
+    musicMood: "calm, atmospheric, gentle nature-documentary ambient bed",
+    model: "nano_banana_2",
+    imageParams: { resolution: "2k" },
   },
 };
 

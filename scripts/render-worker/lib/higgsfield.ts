@@ -37,27 +37,36 @@ interface ModelConfig {
   params: Record<string, string>;
 }
 
-// Per-preset model selection. Keyed by the plan's presetId; unknown presets fall back to Soul V2.
+// Fallback per-preset model selection for OLD plans that predate dynamic styles (the style now
+// carries its own model + params). Unknown presets fall back to Soul V2.
 const MODEL_CONFIGS: Record<string, ModelConfig> = {
   "stick-figure-animated": { model: "gpt_image_2", params: { quality: "low", resolution: "2k" } },
   "cinematic-realistic": { model: "text2image_soul_v2", params: { quality: "2k" } },
   "editorial-graphic": { model: "text2image_soul_v2", params: { quality: "2k" } },
+  "naturalist-illustration": { model: "nano_banana_2", params: { resolution: "2k" } },
 };
 const DEFAULT_MODEL_CONFIG: ModelConfig = MODEL_CONFIGS["cinematic-realistic"];
 
-function resolveModelConfig(presetId: string): ModelConfig {
-  return MODEL_CONFIGS[presetId] ?? DEFAULT_MODEL_CONFIG;
+// Prefer the model/params the style itself specifies (dynamic styles from the Style Scout);
+// fall back to the preset map for older plans that don't carry them.
+function resolveModelConfig(args: GenerateImageArgs): ModelConfig {
+  if (args.model) return { model: args.model, params: args.imageParams ?? {} };
+  return MODEL_CONFIGS[args.presetId] ?? DEFAULT_MODEL_CONFIG;
 }
 
 export interface GenerateImageArgs {
   prompt: string;
-  /** Neither model has a negative-prompt param — kept for interface stability / future models. */
+  /** Most image models have no negative-prompt param — kept for interface stability / future models. */
   negativePrompt: string;
   outputPath: string;
   /** 16:9 target. */
   aspect: "16:9";
-  /** Style preset id — selects the image model (gpt_image_2 for stick-figure, Soul V2 otherwise). */
+  /** Style preset id — used as the model fallback for plans without an explicit model. */
   presetId: string;
+  /** Higgsfield job_set_type from the style (dynamic styles); overrides the preset map. */
+  model?: string;
+  /** Model params (e.g. {quality,resolution}) from the style; sent as `--key value`. */
+  imageParams?: Record<string, string>;
 }
 
 export interface GenerateImageResult { ok: boolean; reason?: string }
@@ -88,7 +97,7 @@ export async function generateImage(args: GenerateImageArgs): Promise<GenerateIm
   if (!isEnabled()) return { ok: false, reason: "higgsfield disabled (HIGGSFIELD_ENABLED!=1)" };
   try {
     await ensureCreds();
-    const url = await callHiggsfield(args.prompt, resolveModelConfig(args.presetId));
+    const url = await callHiggsfield(args.prompt, resolveModelConfig(args));
     await downloadTo(url, args.outputPath);
     return { ok: true };
   } catch (err) {

@@ -18,6 +18,7 @@ describe("longform/types", () => {
         presetId: "cinematic-realistic", positivePrefix: "x", negativePrompt: "no text",
         lighting: "x", palette: "teal", framing: "x", aspect: "16:9", kenBurnsZoom: 0.06,
         targetBeatSeconds: 4.5, musicMood: "cinematic",
+        model: "text2image_soul_v2", imageParams: { quality: "2k" },
       },
       chapters: [
         { index: 0, title: "The Reveal", purpose: "open on the stage", narration: "A man walks on. The lights dim.",
