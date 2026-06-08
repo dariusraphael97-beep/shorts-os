@@ -14,7 +14,7 @@ export const maxDuration = 300;
 
 /** Pure, testable: cluster + channel + optional topic override → planOnly pipeline args. */
 export function buildPlanArgs(
-  cluster: { canonical_topic: string; production_fit: string },
+  cluster: { canonical_topic: string; production_fit: string; winnerDurationSeconds?: number | null },
   channelId: string,
   topicOverride: string | undefined,
   sourceNicheClusterId?: string,
@@ -51,7 +51,11 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const channel = await getDefaultChannel(supabase);
     args = buildPlanArgs(
-      { canonical_topic: cluster.canonical_topic, production_fit: cluster.production_fit ?? "manual_only" },
+      {
+        canonical_topic: cluster.canonical_topic,
+        production_fit: cluster.production_fit ?? "manual_only",
+        winnerDurationSeconds: cluster.explainability_top_signals?.winnerDurationSeconds,
+      },
       channel.id,
       topicOverride,
       clusterId,

@@ -39,6 +39,7 @@ export default async function NichesPage() {
       niche_score: c.niche_score,
       proven_score: c.proven_score,
       first_mover_score: c.first_mover_score,
+      winnerDurationSeconds: c.explainability_top_signals?.winnerDurationSeconds ?? null,
     })),
   );
   const heroPick = pick

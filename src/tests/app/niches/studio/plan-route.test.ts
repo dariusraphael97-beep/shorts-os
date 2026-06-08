@@ -45,4 +45,14 @@ describe("buildPlanArgs", () => {
     );
     expect(args.sourceNicheClusterId).toBeUndefined();
   });
+
+  it("uses the winner duration for the target when present", () => {
+    const args = buildPlanArgs(
+      { canonical_topic: "deep sea creatures", production_fit: "native", winnerDurationSeconds: 660 },
+      "channel-1",
+      undefined,
+      "cluster-9",
+    );
+    expect(args.targetDurationSeconds).toBe(660);
+  });
 });
