@@ -93,7 +93,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 const rows = top.map((c, i) => ({
   week_start: weekStart,
   canonical_topic: c.bestTitle.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).slice(0, 6).join(' '),
-  format_label: 'youtube_long',
+  format_label: 'ai_voiceover_facts', // a valid FormatLabel; the engine produces AI-voiceover longform
   example_video_ids: [c.bestId],
   channel_count: 1,
   avg_views: c.bestViews,
