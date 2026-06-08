@@ -220,21 +220,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
 
   const handleGenerate = useCallback(
     (id: string) => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/niches/${id}/generate`, { method: "POST" });
-          const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-          if (res.ok && body.ok) {
-            toast.success("Seeded a draft — finish it in the Lab", {
-              action: { label: "Open Lab", onClick: () => router.push("/lab") },
-            });
-          } else {
-            toast.error(body.error ?? `Generate failed (${res.status})`);
-          }
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Generate request failed");
-        }
-      })();
+      router.push(`/niches/studio?cluster=${id}`);
     },
     [router],
   );

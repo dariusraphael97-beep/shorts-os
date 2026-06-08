@@ -255,7 +255,7 @@ function CardCTAs({
                   aria-label={
                     canGenerate
                       ? "Generate a video for this niche"
-                      : "Generate now — add to queue first to enable"
+                      : "Generate now — only native-format niches can auto-generate"
                   }
                 >
                   Generate now
@@ -264,7 +264,7 @@ function CardCTAs({
             </TooltipTrigger>
             {!canGenerate && (
               <TooltipContent side="top">
-                Add to watch-list to unlock generation
+                Only native-format niches can auto-generate
               </TooltipContent>
             )}
           </Tooltip>
