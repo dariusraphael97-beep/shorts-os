@@ -14,6 +14,7 @@ import { getServiceClient } from '@/lib/supabase/server';
 import { verifyCallbackToken, CallbackTokenError } from '@/lib/render/callback-token';
 import { markJobSucceeded, markJobFailed } from '@/lib/supabase/repositories/render-jobs';
 import { markPosted } from '@/lib/supabase/repositories/your-videos';
+import { longformRenderUpdate } from '@/lib/render/longform-complete';
 
 const CompleteBody = z.object({
   job_id: z.string().uuid(),
@@ -85,13 +86,7 @@ export async function POST(req: Request) {
             const longformOut = out as { render_artifact_url?: string; duration_seconds_actual?: number; chapter_markers?: unknown };
             const { error: updErr } = await supabase
               .from('your_videos')
-              .update({
-                render_artifact_url: longformOut.render_artifact_url ?? null,
-                duration_seconds: longformOut.duration_seconds_actual ?? null,
-                chapter_markers: (longformOut.chapter_markers ?? null) as unknown as Record<string, unknown> | null,
-                status: 'rendered',
-                updated_at: new Date().toISOString(),
-              })
+              .update(longformRenderUpdate(longformOut))
               .eq('id', jobRow.your_video_id);
             if (updErr) throw new Error(`render_longform complete: ${updErr.message}`);
           } else {
