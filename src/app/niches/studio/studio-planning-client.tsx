@@ -26,21 +26,27 @@ export function StudioPlanningClient() {
 
   // ── Data/effect contract (do not change): read params → POST /plan →
   //    stream-parse SSE frames split on "\n\n" → redirect on job_completed.
+  //
+  // Fire-and-forget by design: NO AbortController. The plan stream is short-lived
+  // (<1 min) and the `started` ref guards against a double POST. Do NOT add an
+  // abort-on-unmount cleanup here — React StrictMode (dev) mounts twice, so the
+  // cleanup would cancel the one in-flight run while the ref blocks the retry,
+  // leaving the stepper stuck on "Waiting" forever.
   useEffect(() => {
     if (started.current || !clusterId) return;
     started.current = true;
-    const controller = new AbortController();
     void (async () => {
+      const fail = (err: unknown) =>
+        setFailure(`Plan failed (${err instanceof Error ? err.message : String(err)})`);
       let res: Response;
       try {
         res = await fetch("/api/niches/studio/plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clusterId, topic }),
-          signal: controller.signal,
         });
       } catch (err) {
-        if (!controller.signal.aborted) setFailure(`Plan failed (${err})`);
+        fail(err);
         return;
       }
       if (!res.ok || !res.body) {
@@ -71,11 +77,9 @@ export function StudioPlanningClient() {
           }
         }
       } catch (err) {
-        // Unmount aborts the reader — swallow that, surface anything else.
-        if (!controller.signal.aborted) setFailure(`Plan failed (${err})`);
+        fail(err);
       }
     })();
-    return () => controller.abort();
   }, [clusterId, topic, router]);
 
   if (!clusterId) return <MissingClusterState />;

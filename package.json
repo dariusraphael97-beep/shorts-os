@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "render-worker": "node --import tsx --env-file=.env.local scripts/render-worker/poll.ts"
+    "render-worker": "cd scripts/render-worker && node --import tsx --env-file=../../.env.local poll.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",

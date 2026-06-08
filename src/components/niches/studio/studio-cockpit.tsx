@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { StudioPhase } from "@/app/api/niches/studio/[draftId]/status/route";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkpoint } from "@/components/niches/studio/checkpoint";
@@ -59,26 +59,28 @@ export function StudioCockpit({
     return <PlanningState />;
   })();
 
-  // Crossfade between phases. Loading shares a key so the spinner doesn't restart on refresh.
+  // Fade each phase in. Loading shares a key so the spinner doesn't restart on refresh.
   const phaseKey = status ? phase : "loading";
 
   if (reduceMotion) {
     return <div className="mx-auto max-w-2xl">{body}</div>;
   }
 
+  // Deliberately NOT AnimatePresence mode="wait": its exit→enter handshake can
+  // deadlock (the exiting element's exit never completes under StrictMode / rapid
+  // state updates), holding back the incoming phase and stranding the cockpit on
+  // the loading card. A keyed motion.div re-mounts and fades the new phase in
+  // immediately, with no exit dependency.
   return (
     <div className="mx-auto max-w-2xl">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={phaseKey}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.24, ease: [0, 0, 0.2, 1] }}
-        >
-          {body}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={phaseKey}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: [0, 0, 0.2, 1] }}
+      >
+        {body}
+      </motion.div>
     </div>
   );
 }
