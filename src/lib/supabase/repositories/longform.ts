@@ -9,6 +9,8 @@ export interface CreateLongformDraftArgs {
   presetId: string;
   plan: LongformPlan;
   description: string | null;
+  /** The niche cluster this draft was generated from — powers regenerate + outcome measurement. */
+  sourceNicheClusterId?: string | null;
 }
 
 export async function createLongformDraft(supabase: SupabaseClient, args: CreateLongformDraftArgs): Promise<{ id: string }> {
@@ -27,6 +29,7 @@ export async function createLongformDraft(supabase: SupabaseClient, args: Create
       voice_provider: args.plan.voice.provider,
       voice_id: args.plan.voice.voiceId,
       longform_plan: args.plan as unknown as Record<string, unknown>,
+      source_niche_cluster_id: args.sourceNicheClusterId ?? null,
     })
     .select("id")
     .single();

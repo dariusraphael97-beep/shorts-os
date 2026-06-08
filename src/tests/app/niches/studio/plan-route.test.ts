@@ -9,7 +9,7 @@ describe("buildPlanArgs", () => {
       "channel-1",
       undefined,
     );
-    expect(args).toEqual({
+    expect(args).toMatchObject({
       topic: "backyard birds ranked",
       targetDurationSeconds: 210,
       channelId: "channel-1",
@@ -25,5 +25,24 @@ describe("buildPlanArgs", () => {
     );
     expect(args.topic).toBe("Backyard birds ranked by how terrifying they are");
     expect(args.planOnly).toBe(true);
+  });
+
+  it("threads the source niche cluster id so the draft can be measured + regenerated", () => {
+    const args = buildPlanArgs(
+      { canonical_topic: "backyard birds ranked", production_fit: "native" },
+      "channel-1",
+      undefined,
+      "cluster-42",
+    );
+    expect(args.sourceNicheClusterId).toBe("cluster-42");
+  });
+
+  it("leaves sourceNicheClusterId undefined when not provided (back-compat)", () => {
+    const args = buildPlanArgs(
+      { canonical_topic: "backyard birds ranked", production_fit: "native" },
+      "channel-1",
+      undefined,
+    );
+    expect(args.sourceNicheClusterId).toBeUndefined();
   });
 });

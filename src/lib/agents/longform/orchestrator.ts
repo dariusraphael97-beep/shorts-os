@@ -21,6 +21,8 @@ export interface LongformPipelineArgs {
   presetId?: PresetId;
   /** When true, persist the draft + plan but do NOT enqueue a render job (operator checkpoint). */
   planOnly?: boolean;
+  /** The niche cluster this video was generated from, for outcome measurement + regenerate. */
+  sourceNicheClusterId?: string;
 }
 
 /** The single planOnly decision — extracted so it is testable in isolation. */
@@ -41,7 +43,7 @@ export interface LongformPipelineDeps {
   runBeatPlanner: typeof runBeatPlanner;
   pickVoice: typeof pickLongformVoice;
   createJob: (args: { channelId: string }) => Promise<{ id: string }>;
-  createDraft: (args: { channelId: string; topic: string; targetDurationSeconds: number; presetId: string; plan: LongformPlan; description: string | null }) => Promise<{ id: string }>;
+  createDraft: (args: { channelId: string; topic: string; targetDurationSeconds: number; presetId: string; plan: LongformPlan; description: string | null; sourceNicheClusterId?: string | null }) => Promise<{ id: string }>;
   recordLedger: (rows: LedgerRow[]) => Promise<void>;
   enqueueRender: (args: { yourVideoId: string }) => Promise<{ id: string }>;
   finishJob: (jobId: string) => Promise<void>;
@@ -109,7 +111,7 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
       })),
     });
 
-    const draft = await deps.createDraft({ channelId: args.channelId, topic: args.topic, targetDurationSeconds: target, presetId: style.presetId, plan, description: null });
+    const draft = await deps.createDraft({ channelId: args.channelId, topic: args.topic, targetDurationSeconds: target, presetId: style.presetId, plan, description: null, sourceNicheClusterId: args.sourceNicheClusterId ?? null });
     await deps.recordLedger(buildLongformLedgerRows(plan, { jobId: job.id, yourVideoId: draft.id }));
     if (shouldEnqueueRender(args)) {
       await deps.enqueueRender({ yourVideoId: draft.id });

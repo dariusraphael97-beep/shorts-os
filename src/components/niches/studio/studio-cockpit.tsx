@@ -45,7 +45,7 @@ export function StudioCockpit({
   }, [refresh]);
 
   useEffect(() => {
-    if (phase !== "rendering") return;
+    if (phase !== "rendering" && phase !== "planning") return;
     const t = setInterval(() => void refresh(), 5_000);
     return () => clearInterval(t);
   }, [phase, refresh]);

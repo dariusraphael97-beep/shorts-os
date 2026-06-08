@@ -7,6 +7,7 @@ import { buildLongformDeps } from "@/lib/agents/longform/deps";
 import { getClusterById } from "@/lib/supabase/repositories/niche-clusters";
 import { getDefaultChannel } from "@/lib/supabase/repositories/channels";
 import { clusterToLongformInput } from "@/lib/niches/longform-topic";
+import { recordNicheAction } from "@/lib/supabase/repositories/niche-actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -16,6 +17,7 @@ export function buildPlanArgs(
   cluster: { canonical_topic: string; production_fit: string },
   channelId: string,
   topicOverride: string | undefined,
+  sourceNicheClusterId?: string,
 ): LongformPipelineArgs {
   const base = clusterToLongformInput(cluster);
   return {
@@ -23,6 +25,7 @@ export function buildPlanArgs(
     targetDurationSeconds: base.targetDurationSeconds,
     channelId,
     planOnly: true,
+    sourceNicheClusterId,
   };
 }
 
@@ -51,6 +54,7 @@ export async function POST(req: Request): Promise<Response> {
       { canonical_topic: cluster.canonical_topic, production_fit: cluster.production_fit ?? "manual_only" },
       channel.id,
       topicOverride,
+      clusterId,
     );
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
@@ -63,6 +67,10 @@ export async function POST(req: Request): Promise<Response> {
     async start(controller) {
       try {
         for await (const event of runLongformPipeline(args, deps)) {
+          if (event.type === "job_completed") {
+            // Best-effort: restores the cluster → outcome link. A logging failure must not abort the stream.
+            await recordNicheAction(supabase, { nicheClusterId: clusterId, action: "generated_from" }).catch(() => {});
+          }
           controller.enqueue(encodeSseEvent(event));
         }
       } catch (err) {
