@@ -276,6 +276,31 @@ export async function countTodayUploads(
   return (data ?? []).length;
 }
 
+export interface StudioDraft {
+  id: string;
+  status: string;
+  title: string;
+  longform_plan: Record<string, unknown> | null;
+  render_artifact_url: string | null;
+  duration_seconds: number | null;
+  source_niche_cluster_id: string | null;
+}
+
+export async function getYourVideoById(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<StudioDraft | null> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("id, status, title, longform_plan, render_artifact_url, duration_seconds, source_niche_cluster_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error && (error as { code?: string }).code !== "PGRST116") {
+    throw new Error(`getYourVideoById: ${error.message}`);
+  }
+  return (data as StudioDraft | null) ?? null;
+}
+
 export interface ClaimedRow {
   id: string;
   channel_id: string;
