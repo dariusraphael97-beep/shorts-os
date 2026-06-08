@@ -13,8 +13,12 @@ export interface LongformPipelineInput {
   targetDurationSeconds: number;
 }
 
-/** Default longform target — ~3.5 min, matching the proven B58 / bird renders. */
-export const DEFAULT_LONGFORM_DURATION_SECONDS = 210;
+/**
+ * Default longform target — ~8 min. Niche videos are meant to be substantial
+ * (target 7–9 min, up to 15), not 3-min shorts; the pipeline supports up to
+ * MAX_DURATION_SECONDS (20 min) / 12 chapters. Operator-overridable per generate.
+ */
+export const DEFAULT_LONGFORM_DURATION_SECONDS = 480;
 
 export function clusterToLongformInput(c: LongformTopicClusterInput): LongformPipelineInput {
   if (c.production_fit !== "native") {

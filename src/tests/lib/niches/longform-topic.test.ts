@@ -9,7 +9,7 @@ describe("clusterToLongformInput", () => {
       production_fit: "native",
     });
     expect(input.topic).toBe("backyard birds ranked");
-    expect(input.targetDurationSeconds).toBe(210);
+    expect(input.targetDurationSeconds).toBe(480);
   });
 
   it("throws for non-native production fit (cannot auto-generate)", () => {

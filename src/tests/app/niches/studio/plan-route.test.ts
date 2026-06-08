@@ -11,7 +11,7 @@ describe("buildPlanArgs", () => {
     );
     expect(args).toMatchObject({
       topic: "backyard birds ranked",
-      targetDurationSeconds: 210,
+      targetDurationSeconds: 480,
       channelId: "channel-1",
       planOnly: true,
     });
