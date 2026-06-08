@@ -21,10 +21,12 @@ export async function approveDraftForRender(
     payload: { your_video_id: draftId },
     yourVideoId: draftId,
   });
-  await supabase
+  const { error: updateErr } = await supabase
     .from("your_videos")
     .update({ status: "rendering", updated_at: new Date().toISOString() })
     .eq("id", draftId);
+  // The job is already enqueued; a failed status flip would leave the draft out of sync.
+  if (updateErr) throw new Error(`approve: status update failed: ${updateErr.message}`);
   return { enqueued: true, jobId: job.id };
 }
 
