@@ -37,6 +37,7 @@ export function DonePanel({ status }: { status: StudioStatus }) {
             src={url}
             controls
             playsInline
+            aria-label={status.draft.title}
             className="aspect-video w-full rounded-lg bg-black shadow-[var(--elev-2)]"
           />
         ) : (
@@ -48,7 +49,7 @@ export function DonePanel({ status }: { status: StudioStatus }) {
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
           {url && (
-            <Button render={<a href={url} download />}>Download</Button>
+            <Button nativeButton={false} render={<a href={url} download />}>Download</Button>
           )}
           <Button variant="outline" onClick={() => router.push("/lab")}>
             Open in Lab

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkpoint } from "@/components/niches/studio/checkpoint";
 import { RenderProgress } from "@/components/niches/studio/render-progress";
 import { DonePanel } from "@/components/niches/studio/done-panel";
+import { Spinner } from "@/components/niches/studio/spinner";
 
 export interface StudioStatus {
   phase: StudioPhase;
@@ -83,27 +84,6 @@ export function StudioCockpit({
 }
 
 // ─── Designed inline states ─────────────────────────────────────────────────
-
-function Spinner({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.2" />
-      <path
-        d="M12 3a9 9 0 0 1 9 9"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        className="origin-center motion-safe:animate-spin"
-        style={{ animationDuration: "0.8s" }}
-      />
-    </svg>
-  );
-}
 
 function LoadingState() {
   return (

@@ -35,7 +35,14 @@ export function RenderProgress({ status }: { status: StudioStatus }) {
 
       <CardContent className="space-y-4">
         {/* Coarse progress with an indeterminate shimmer */}
-        <div className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--surface-2)]">
+        <div
+          role="progressbar"
+          aria-label="Render progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+          className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--surface-2)]"
+        >
           <motion.div
             className="relative h-full overflow-hidden rounded-full bg-[var(--accent)]"
             initial={false}

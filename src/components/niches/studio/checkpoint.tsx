@@ -6,27 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { StudioStatus } from "@/components/niches/studio/studio-cockpit";
+import { Spinner } from "@/components/niches/studio/spinner";
 
 function planField(plan: Record<string, unknown> | null, path: string[]): string {
   let cur: unknown = plan;
   for (const k of path) cur = (cur as Record<string, unknown> | null)?.[k];
   return typeof cur === "string" || typeof cur === "number" ? String(cur) : "—";
-}
-
-function Spinner() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
-      <path
-        d="M12 3a9 9 0 0 1 9 9"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        className="origin-center motion-safe:animate-spin"
-        style={{ animationDuration: "0.7s" }}
-      />
-    </svg>
-  );
 }
 
 interface MetaProps {
@@ -149,7 +134,7 @@ export function Checkpoint({
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Button onClick={approve} disabled={submitting} size="lg">
-            {submitting && <Spinner />}
+            {submitting && <Spinner className="size-3.5" />}
             {submitting ? "Starting…" : "Approve & render"}
           </Button>
           {status.draft.sourceNicheClusterId && (
