@@ -11,6 +11,8 @@ export interface PickableCluster {
   niche_score: number | null;
   proven_score: number | null;
   first_mover_score: number | null;
+  /** Proven winner's length (seconds), if known. Known-short niches are not auto-generated as longform. */
+  winnerDurationSeconds?: number | null;
 }
 
 export interface NichePick {
@@ -20,7 +22,12 @@ export interface NichePick {
 }
 
 export function pickBestNiche(clusters: PickableCluster[]): NichePick | null {
-  const native = clusters.filter((c) => c.production_fit === "native");
+  const SHORT_FORM_MAX_SECONDS = 240;
+  const native = clusters.filter(
+    (c) =>
+      c.production_fit === "native" &&
+      !(c.winnerDurationSeconds != null && c.winnerDurationSeconds < SHORT_FORM_MAX_SECONDS),
+  );
   const banded = native
     .map((c) => ({
       cluster: c,

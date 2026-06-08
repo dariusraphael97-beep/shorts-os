@@ -33,4 +33,17 @@ describe("pickBestNiche", () => {
     expect(picked?.cluster.id).toBe("p2");
     expect(picked?.band).toBe("proven");
   });
+
+  it("excludes a native niche whose proven winner is short-form", () => {
+    const picked = pickBestNiche([
+      base({ id: "short", first_mover_score: 0.95, winnerDurationSeconds: 45 }),
+      base({ id: "long", first_mover_score: 0.8, winnerDurationSeconds: 600 }),
+    ]);
+    expect(picked?.cluster.id).toBe("long");
+  });
+
+  it("keeps niches whose winner duration is unknown (back-compat)", () => {
+    const picked = pickBestNiche([base({ id: "u", first_mover_score: 0.9 })]);
+    expect(picked?.cluster.id).toBe("u");
+  });
 });
