@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { StreamEvent, AgentId } from "@/lib/agents/types";
+import { parseSseFrame } from "@/components/niches/studio/sse";
 import { LongformPipelineStrip, type ChipState } from "./longform-pipeline-strip";
 
 interface LongformDispatchDetail { topic: string; targetDurationSeconds: number; channelId: string; presetId?: string }
@@ -23,18 +24,6 @@ const INITIAL: RunState = {
   states: { strategist: "idle", writer: "idle", style_picker: "idle", beat_planner: "idle", voice_coach: "idle", director: "idle", composer: "idle" },
   hook: null, presetId: null, beatCount: null, voiceId: null, failure: null, completed: false,
 };
-
-function parseSseFrame(frame: string): StreamEvent | null {
-  const lines = frame.split("\n");
-  let eventName: string | null = null;
-  let dataLine: string | null = null;
-  for (const line of lines) {
-    if (line.startsWith("event: ")) eventName = line.slice(7).trim();
-    else if (line.startsWith("data: ")) dataLine = line.slice(6);
-  }
-  if (!eventName || !dataLine) return null;
-  try { return { type: eventName, data: JSON.parse(dataLine) } as StreamEvent; } catch { return null; }
-}
 
 export function LongformRunPane() {
   const router = useRouter();

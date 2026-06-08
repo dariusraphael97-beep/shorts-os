@@ -29,12 +29,20 @@ export function StudioPlanningClient() {
   useEffect(() => {
     if (started.current || !clusterId) return;
     started.current = true;
+    const controller = new AbortController();
     void (async () => {
-      const res = await fetch("/api/niches/studio/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clusterId, topic }),
-      });
+      let res: Response;
+      try {
+        res = await fetch("/api/niches/studio/plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clusterId, topic }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        if (!controller.signal.aborted) setFailure(`Plan failed (${err})`);
+        return;
+      }
       if (!res.ok || !res.body) {
         setFailure(`Plan failed (${res.status})`);
         return;
@@ -42,26 +50,32 @@ export function StudioPlanningClient() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        buf += decoder.decode(chunk.value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n\n")) !== -1) {
-          const frame = buf.slice(0, idx);
-          buf = buf.slice(idx + 2);
-          const ev = parseSseFrame(frame);
-          if (!ev) continue;
-          if (ev.type === "agent_state") setStates((s) => ({ ...s, [ev.data.agent]: "working" }));
-          if (ev.type === "agent_done") setStates((s) => ({ ...s, [ev.data.agent]: "done" }));
-          if (ev.type === "job_failed") {
-            setStates((s) => ({ ...s, [ev.data.agent]: "failed" }));
-            setFailure(ev.data.error);
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          buf += decoder.decode(chunk.value, { stream: true });
+          let idx: number;
+          while ((idx = buf.indexOf("\n\n")) !== -1) {
+            const frame = buf.slice(0, idx);
+            buf = buf.slice(idx + 2);
+            const ev = parseSseFrame(frame);
+            if (!ev) continue;
+            if (ev.type === "agent_state") setStates((s) => ({ ...s, [ev.data.agent]: "working" }));
+            if (ev.type === "agent_done") setStates((s) => ({ ...s, [ev.data.agent]: "done" }));
+            if (ev.type === "job_failed") {
+              setStates((s) => ({ ...s, [ev.data.agent]: "failed" }));
+              setFailure(ev.data.error);
+            }
+            if (ev.type === "job_completed") router.replace(`/niches/studio/${ev.data.videoId}`);
           }
-          if (ev.type === "job_completed") router.replace(`/niches/studio/${ev.data.videoId}`);
         }
+      } catch (err) {
+        // Unmount aborts the reader — swallow that, surface anything else.
+        if (!controller.signal.aborted) setFailure(`Plan failed (${err})`);
       }
     })();
+    return () => controller.abort();
   }, [clusterId, topic, router]);
 
   if (!clusterId) return <MissingClusterState />;
