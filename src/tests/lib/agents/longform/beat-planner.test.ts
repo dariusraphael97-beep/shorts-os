@@ -38,7 +38,7 @@ describe("longform/beat-planner", () => {
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
       const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
-      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, sound: i % 2 === 0 ? "a hawk screech" : "" })) } } as never;
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, onScreenText: `hook ${i}`, sound: i % 2 === 0 ? "a hawk screech" : "" })) } } as never;
     });
     const out = await runBeatPlanner(ctx());
     expect(out.chapters).toHaveLength(1);
@@ -52,6 +52,9 @@ describe("longform/beat-planner", () => {
     // even-index beats carry an SFX cue; empty sounds become undefined (no soundEffect key)
     expect(beats[0].soundEffect).toBe("a hawk screech");
     expect(beats[1]?.soundEffect).toBeUndefined();
+    // the per-beat retention hook is threaded onto the beat and into its image prompt
+    expect(beats[0].onScreenText).toBe("hook 0");
+    expect(beats[0].imagePrompt).toContain('reading exactly "hook 0"');
   });
 
   it("falls back to the narration slice as the scene when the model fails", async () => {
@@ -60,10 +63,13 @@ describe("longform/beat-planner", () => {
     const beats = out.chapters[0].beats;
     expect(beats.length).toBeGreaterThanOrEqual(1);
     expect(beats[0].sceneDescription.length).toBeGreaterThan(0);
+    // fallback has no retention hook, so the image prompt suppresses on-screen text
+    expect(beats[0].onScreenText).toBe("");
+    expect(beats[0].imagePrompt).toContain("no on-screen text");
   });
 
   it("repairs a scene-count mismatch by padding/truncating to the beat count", async () => {
-    vi.mocked(generateObject).mockResolvedValue({ object: { items: [{ scene: "only one scene", sound: "" }] } } as never);
+    vi.mocked(generateObject).mockResolvedValue({ object: { items: [{ scene: "only one scene", onScreenText: "the hook", sound: "" }] } } as never);
     const out = await runBeatPlanner(ctx());
     const beats = out.chapters[0].beats;
     expect(beats.every((b) => b.sceneDescription.length > 0)).toBe(true);
@@ -75,7 +81,7 @@ describe("longform/beat-planner", () => {
       const opts = allArgs[0] as { prompt?: string };
       captured = opts?.prompt ?? "";
       const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
-      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `a stick figure scene ${i}`, sound: "" })) } } as never;
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `a stick figure scene ${i}`, onScreenText: `hook ${i}`, sound: "" })) } } as never;
     });
     await runBeatPlanner({
       styleBible: getStylePreset("stick-figure-animated"),
@@ -101,7 +107,7 @@ describe("longform/beat-planner", () => {
       const opts = allArgs[0] as { prompt?: string };
       captured = opts?.prompt ?? "";
       const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
-      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, sound: "" })) } } as never;
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `cinematic scene ${i}`, onScreenText: `hook ${i}`, sound: "" })) } } as never;
     });
     await runBeatPlanner(ctx());
     expect(captured.toLowerCase()).toContain("documentary");
