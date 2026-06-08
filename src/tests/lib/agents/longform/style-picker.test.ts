@@ -28,18 +28,18 @@ const ctx = () => ({ topic: "The IRS is hiding this from you", angle: "a", playb
 
 describe("longform/style-picker", () => {
   it("resolves the chosen preset into a full style bible with the chosen music mood", async () => {
-    vi.mocked(generateObject).mockResolvedValue({ object: { presetId: "editorial-graphic", musicMood: "tense corporate", rationale: "a finance explainer reads cleaner as bold editorial graphics than photoreal footage." } } as never);
+    vi.mocked(generateObject).mockResolvedValue({ object: { presetId: "technical-illustration", musicMood: "tense corporate", rationale: "an engineering how-it-works topic reads cleaner as a clean labeled cutaway diagram." } } as never);
     const out = await runStylePicker(ctx());
-    expect(out.presetId).toBe("editorial-graphic");
-    expect(out.styleBible.presetId).toBe("editorial-graphic");
+    expect(out.presetId).toBe("technical-illustration");
+    expect(out.styleBible.presetId).toBe("technical-illustration");
     expect(out.styleBible.musicMood).toBe("tense corporate");
     expect(out.musicMood).toBe("tense corporate");
   });
 
-  it("falls back to cinematic-realistic when the model keeps failing", async () => {
+  it("falls back to naturalist-illustration when the model keeps failing", async () => {
     vi.mocked(generateObject).mockRejectedValueOnce(makeNoObjectErr()).mockRejectedValueOnce(makeNoObjectErr());
     const out = await runStylePicker(ctx());
-    expect(out.presetId).toBe("cinematic-realistic");
+    expect(out.presetId).toBe("naturalist-illustration");
     expect(out.styleBible.aspect).toBe("16:9");
   });
 
@@ -48,7 +48,7 @@ describe("longform/style-picker", () => {
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
       captured = opts?.prompt ?? "";
-      return { object: { presetId: "cinematic-realistic", musicMood: "calm bed", rationale: "a rationale comfortably past the minimum length validation." } } as never;
+      return { object: { presetId: "naturalist-illustration", musicMood: "calm bed", rationale: "a rationale comfortably past the minimum length validation." } } as never;
     });
     await runStylePicker(ctx());
     expect(captured).toContain("stick-figure-animated");
