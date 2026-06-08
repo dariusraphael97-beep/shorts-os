@@ -3,11 +3,14 @@
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
+import type { Band } from "@/lib/scoring/select";
+import { studioHref } from "@/lib/niches/studio-href";
 
 export interface BestNichePreview {
   clusterId: string;
   title: string;
   reason: string;
+  band?: Band;
 }
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
@@ -55,8 +58,17 @@ export function GenerateBestNiche({ pick }: { pick: BestNichePreview | null }) {
   }
 
   const handleGenerate = () => {
-    router.push(`/niches/studio?cluster=${pick.clusterId}`);
+    router.push(studioHref(pick.clusterId));
   };
+
+  // The pill labels the pick's band: only the first-mover ("unproven") band is
+  // dominatable; a fallback proven pick must not be mislabeled.
+  const bandLabel =
+    pick.band === "unproven"
+      ? "Dominatable"
+      : pick.band === "proven"
+        ? "Proven pick"
+        : null;
 
   return (
     <motion.div
@@ -86,9 +98,11 @@ export function GenerateBestNiche({ pick }: { pick: BestNichePreview | null }) {
               />
               Tool&apos;s top pick
             </span>
-            <span className="inline-flex items-center rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
-              Dominatable
-            </span>
+            {bandLabel && (
+              <span className="inline-flex items-center rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
+                {bandLabel}
+              </span>
+            )}
           </div>
 
           {/* The pick — the hero element of the page */}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { studioHref } from "@/lib/niches/studio-href";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,29 +93,12 @@ export function DetailActions({
   const router = useRouter();
   const [busy, setBusy] = useState<NicheAction | null>(null);
 
-  async function handleGenerate() {
+  function handleGenerate() {
     if (!canGenerate || busy) return;
-    setBusy("generated_from");
-    // The generate route records the `generated_from` action server-side, so we don't
-    // double-log it here.
-    try {
-      const res = await fetch(`/api/niches/${clusterId}/generate`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-      });
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (res.ok && body.ok) {
-        toast.success("Seeded a draft — finish it in the Lab", {
-          action: { label: "Open Lab", onClick: () => router.push("/lab") },
-        });
-      } else {
-        toast.error(body.error ?? `Generate failed (${res.status})`);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Generate request failed");
-    } finally {
-      setBusy(null);
-    }
+    // Route into the generation cockpit (which plans, records `generated_from`
+    // server-side, then redirects to the draft) — consistent with the niches
+    // feed and the "best niche" hero.
+    router.push(studioHref(clusterId));
   }
 
   async function handleAdd() {

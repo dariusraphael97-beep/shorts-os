@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NicheCard } from "@/components/compositions/niche-card";
+import { studioHref } from "@/lib/niches/studio-href";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
 
   const handleGenerate = useCallback(
     (id: string) => {
-      router.push(`/niches/studio?cluster=${id}`);
+      router.push(studioHref(id));
     },
     [router],
   );

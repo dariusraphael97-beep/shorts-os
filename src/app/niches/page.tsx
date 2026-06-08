@@ -42,7 +42,12 @@ export default async function NichesPage() {
     })),
   );
   const heroPick = pick
-    ? { clusterId: pick.cluster.id, title: pick.cluster.canonical_topic, reason: pick.reason }
+    ? {
+        clusterId: pick.cluster.id,
+        title: pick.cluster.canonical_topic,
+        reason: pick.reason,
+        band: pick.band,
+      }
     : null;
 
   const toCardData = (cluster: (typeof clusters)[number]): NicheCardData => ({
