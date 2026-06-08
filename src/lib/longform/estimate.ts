@@ -9,6 +9,7 @@ interface ModelProfile {
   secondsPerImage: number;
 }
 
+// Keys are Higgsfield model aliases (e.g. gpt_image_2 = Higgsfield's "GPT Image 2"), not provider SDK ids.
 const MODEL_PROFILES: Record<string, ModelProfile> = {
   gpt_image_2: { creditsPerImage: 0.75, secondsPerImage: 10 },
   flux_2: { creditsPerImage: 1, secondsPerImage: 16 },
@@ -23,7 +24,7 @@ const MODEL_PROFILES: Record<string, ModelProfile> = {
 };
 
 const DEFAULT_PROFILE: ModelProfile = { creditsPerImage: 1.5, secondsPerImage: 20 };
-const OVERHEAD_SECONDS = 90; // voice synth + sfx + ffmpeg mux, roughly constant.
+const OVERHEAD_SECONDS = 90; // ~30s voice synth + ~30s sfx + ~30s ffmpeg mux, roughly constant.
 
 export interface EstimateInput {
   beatCount: number;
@@ -39,7 +40,8 @@ export interface RenderEstimate {
 
 export function estimateRender({ beatCount, model, concurrency = 2 }: EstimateInput): RenderEstimate {
   const profile = MODEL_PROFILES[model] ?? DEFAULT_PROFILE;
-  const credits = Math.round(beatCount * profile.creditsPerImage);
+  // Round credits UP — an operator-facing cost estimate should never under-report.
+  const credits = Math.ceil(beatCount * profile.creditsPerImage);
   const batches = Math.ceil(beatCount / Math.max(1, concurrency));
   const seconds = batches * profile.secondsPerImage + OVERHEAD_SECONDS;
   const minutes = Math.round(seconds / 60);

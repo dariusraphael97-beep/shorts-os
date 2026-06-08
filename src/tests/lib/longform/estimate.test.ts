@@ -18,6 +18,12 @@ describe("estimateRender", () => {
   it("falls back to a default profile for an unknown model", () => {
     const e = estimateRender({ beatCount: 10, model: "mystery_model" });
     expect(e.credits).toBe(15);  // 10 * 1.5
-    expect(e.minutes).toBeGreaterThan(0);
+    expect(e.minutes).toBe(3);   // ceil(10/2)*20s + 90s = 190s → 3 min
+
+  });
+
+  it("rounds fractional credits UP so the estimate never under-reports", () => {
+    const e = estimateRender({ beatCount: 3, model: "gpt_image_2", concurrency: 2 });
+    expect(e.credits).toBe(3); // 3 * 0.75 = 2.25 → ceil 3 (not round 2)
   });
 });
