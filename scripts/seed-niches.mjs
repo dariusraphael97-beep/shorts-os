@@ -32,11 +32,17 @@ async function yt(path, params) {
   return j;
 }
 
+function iso8601ToSeconds(iso) {
+  const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso ?? '');
+  if (!m) return 0;
+  return (+(m[1] ?? 0)) * 3600 + (+(m[2] ?? 0)) * 60 + (+(m[3] ?? 0));
+}
+
 // 1. search → video ids
 const videoIds = new Set();
 for (const q of SEEDS) {
   try {
-    const j = await yt('search', { part: 'id', q, type: 'video', order: 'viewCount', publishedAfter: PUBLISHED_AFTER, maxResults: '50', regionCode: 'US', relevanceLanguage: 'en' });
+    const j = await yt('search', { part: 'id', q, type: 'video', order: 'viewCount', publishedAfter: PUBLISHED_AFTER, maxResults: '50', regionCode: 'US', relevanceLanguage: 'en', videoDuration: 'medium' });
     for (const it of j.items ?? []) if (it.id?.videoId) videoIds.add(it.id.videoId);
   } catch (e) { console.error(`search "${q}": ${e.message}`); }
   await sleep(40);
@@ -46,8 +52,8 @@ for (const q of SEEDS) {
 const vids = [];
 const idArr = [...videoIds];
 for (let i = 0; i < idArr.length; i += 50) {
-  const j = await yt('videos', { part: 'snippet,statistics', id: idArr.slice(i, i + 50).join(',') });
-  for (const it of j.items ?? []) vids.push({ id: it.id, title: it.snippet?.title ?? '', channelId: it.snippet?.channelId, views: +(it.statistics?.viewCount ?? 0), published: it.snippet?.publishedAt });
+  const j = await yt('videos', { part: 'snippet,statistics,contentDetails', id: idArr.slice(i, i + 50).join(',') });
+  for (const it of j.items ?? []) vids.push({ id: it.id, title: it.snippet?.title ?? '', channelId: it.snippet?.channelId, views: +(it.statistics?.viewCount ?? 0), published: it.snippet?.publishedAt, durationSeconds: iso8601ToSeconds(it.contentDetails?.duration) });
 }
 
 // 3. channels.list → subs, age (batched 50)
@@ -66,13 +72,13 @@ const byChannel = new Map();
 for (const v of vids) {
   const c = chan.get(v.channelId); if (!c) continue;
   const cur = byChannel.get(v.channelId);
-  if (!cur || v.views > cur.bestViews) byChannel.set(v.channelId, { ...c, channelId: v.channelId, bestViews: v.views, bestTitle: v.title, bestId: v.id });
+  if (!cur || v.views > cur.bestViews) byChannel.set(v.channelId, { ...c, channelId: v.channelId, bestViews: v.views, bestTitle: v.title, bestId: v.id, bestDurationSeconds: v.durationSeconds });
 }
 const cands = [];
 for (const c of byChannel.values()) {
   const ageDays = c.created ? (now - new Date(c.created).getTime()) / 86400000 : 99999;
   const ratio = c.subs > 0 ? c.bestViews / c.subs : (c.bestViews > 0 ? 999 : 0);
-  if (ageDays > 365 || c.bestViews < 300_000 || ratio < 3) continue;
+  if (ageDays > 365 || c.bestViews < 300_000 || ratio < 3 || (c.bestDurationSeconds ?? 0) < 240) continue;
   const recency = Math.max(0.2, 1 - ageDays / 365);
   const firstMover = Math.sqrt(squashRatio(ratio) * squashViews(c.bestViews)) * recency;
   cands.push({ ...c, ageDays, ratio, firstMover });
@@ -105,7 +111,7 @@ const rows = top.map((c, i) => ({
   production_fit: 'native',
   audience_signal: 'general',
   digest_rank: i + 1,
-  explainability_top_signals: { viewsToSubsRatio: Math.round(c.ratio), firstMoverScore: Number(c.firstMover.toFixed(3)), channelAgeDays: Math.round(c.ageDays) },
+  explainability_top_signals: { viewsToSubsRatio: Math.round(c.ratio), firstMoverScore: Number(c.firstMover.toFixed(3)), channelAgeDays: Math.round(c.ageDays), winnerDurationSeconds: Math.round(c.bestDurationSeconds ?? 0) },
 }));
 
 // Idempotent for the week: clear this week's seeded rows, then insert.
@@ -113,4 +119,4 @@ await supabase.from('niche_clusters').delete().eq('week_start', weekStart);
 const { error } = await supabase.from('niche_clusters').insert(rows);
 if (error) { console.error('insert failed:', error.message); process.exit(1); }
 console.log(`seeded ${rows.length} niches for week ${weekStart}:`);
-for (const r of rows) console.log(`  - ${r.canonical_topic} (views/subs ~${r.explainability_top_signals.viewsToSubsRatio}x, age ${r.explainability_top_signals.channelAgeDays}d)`);
+for (const r of rows) console.log(`  - ${r.canonical_topic} (views/subs ~${r.explainability_top_signals.viewsToSubsRatio}x, age ${r.explainability_top_signals.channelAgeDays}d, ~${Math.round(r.explainability_top_signals.winnerDurationSeconds / 60)}min)`);
