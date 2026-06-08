@@ -18,6 +18,7 @@ export const StyleBibleSchema = z.object({
   model: z.string().min(1),
   imageParams: z.record(z.string(), z.string()),
   referenceDriven: z.boolean().optional(),
+  soundEffectsEnabled: z.boolean().optional(),
 });
 
 export const VoiceChoiceSchema = z.object({

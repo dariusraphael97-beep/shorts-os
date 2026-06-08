@@ -4,7 +4,7 @@
 // bed, chapter markers. Idempotent per chapter so a failed chapter is resumable.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { join } from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { synthesizeChapterToWav } from '../lib/cartesia-longform.ts';
 import { generateImage } from '../lib/higgsfield.ts';
@@ -56,13 +56,15 @@ const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'cinematic-realistic': { hexA: '0b2027', hexB: '8a5a2b' },
   'editorial-graphic': { hexA: '121316', hexB: '2b6cb0' },
   'stick-figure-animated': { hexA: 'f7f7f2', hexB: 'e4e4dc' },
+  'naturalist-illustration': { hexA: 'f5f0e6', hexB: 'e0d8c8' },
+  'technical-illustration': { hexA: 'f2f2ef', hexB: 'e2e2dd' },
 };
 
 interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; sceneDescription?: string; imagePrompt: string; negativePrompt: string; soundEffect?: string }
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
-  styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string>; referenceDriven?: boolean };
+  styleBible: { kenBurnsZoom: number; model?: string; imageParams?: Record<string, string>; referenceDriven?: boolean; soundEffectsEnabled?: boolean };
   voice: { voiceId: string; speed: number; provider?: string };
   chapters: PlanChapter[];
 }
@@ -150,7 +152,7 @@ export async function runRenderLongform(
 
       // 3a. Generate all beat images CONCURRENTLY (bounded) — image gen is the ~30s/img bottleneck.
       //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
-      const imgPaths = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
+      const imgResults = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
         // Reference-driven styles: fetch a REAL photo of the beat's subject and draw FROM it
         // (accuracy). Best-effort — falls back to prompt-only if no photo is found.
@@ -162,19 +164,30 @@ export async function runRenderLongform(
             if (await downloadToFile(refUrl, refPath)) referenceImagePath = refPath;
           }
         }
-        const gen = await generateImage({
+        const genArgs = {
           prompt: beat.imagePrompt,
           negativePrompt: beat.negativePrompt,
           outputPath: imgPath,
-          aspect: '16:9',
+          aspect: '16:9' as const,
           presetId,
           model: plan.styleBible?.model,
           imageParams: plan.styleBible?.imageParams,
           referenceImagePath,
-        });
-        if (!gen.ok) await renderGradientStill({ ...gradient, outputPath: imgPath });
-        return imgPath;
+        };
+        let gen = await generateImage(genArgs);
+        if (!gen.ok) gen = await generateImage(genArgs); // one retry — image-gen rate limits are transient
+        return { imgPath, ok: gen.ok };
       });
+      // Replace any failed frame by reusing the nearest previous good frame (no jarring gradient
+      // "dead space"); only the very first frames, if they fail, get a style gradient still.
+      const imgPaths: string[] = [];
+      let lastGood: string | null = null;
+      for (const r of imgResults) {
+        if (r.ok) lastGood = r.imgPath;
+        else if (lastGood) await copyFile(lastGood, r.imgPath);
+        else await renderGradientStill({ ...gradient, outputPath: r.imgPath });
+        imgPaths.push(r.imgPath);
+      }
 
       // 3b. Render each still into its clip, in beat order (local ffmpeg — fast).
       const beatClipPaths: string[] = [];
@@ -212,7 +225,9 @@ export async function runRenderLongform(
       //     start time, UNDER the narration. Capped per chapter to control cost; best-effort.
       let cum = 0;
       const beatStarts = beatDurations.map((d) => { const s = cum; cum += d; return s; });
-      const sfxBeats = beats
+      // SFX on by default; off for styles that opt out (e.g. engine sounds can't be authentic via text-to-SFX).
+      const sfxEnabled = plan.styleBible?.soundEffectsEnabled !== false;
+      const sfxBeats = (sfxEnabled ? beats : [])
         .map((b, i) => ({ cue: b.soundEffect, startSec: beatStarts[i], dur: beatDurations[i] }))
         .filter((x): x is { cue: string; startSec: number; dur: number } => !!x.cue)
         .slice(0, MAX_SFX_PER_CHAPTER);

@@ -35,6 +35,9 @@ export interface StyleBible {
   /** When true, the renderer first fetches a REAL reference photo of each beat's subject
    *  (Google image search) and draws from it, so parts are accurate to the real thing. */
   referenceDriven?: boolean;
+  /** Whether to generate scene SFX. Off for styles where text-to-SFX can't be authentic
+   *  (e.g. specific engine sounds) — fake SFX is worse than none. */
+  soundEffectsEnabled?: boolean;
 }
 
 const NEG_COMMON =
@@ -139,21 +142,23 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
   "technical-illustration": {
     presetId: "technical-illustration",
     positivePrefix:
-      "a detailed hand-drawn technical illustration in a clean engineering field-guide / cutaway style, " +
-      "fine inked linework with light shading and clear labels where helpful, the subject drawn accurately " +
-      "from the reference photo with a partial cutaway revealing how it works, legible and uncluttered, " +
-      "soft muted colors, clean light background — NOT a photograph, an illustration",
-    negativePrompt: `${NEG_COMMON}, photograph, photorealistic, 3d render, doodle, childish drawing, flat vector`,
+      "a clean, SIMPLE hand-drawn illustration with ONE clear subject, bold and instantly readable at a " +
+      "glance, drawn accurately from the reference photo, minimal or NO labels (at most one short word), " +
+      "lots of clean open space, soft muted colors on a light background — simple and uncluttered, " +
+      "NOT a busy diagram, NOT text-heavy, NOT photorealistic, an illustration",
+    negativePrompt: `${NEG_COMMON}, photograph, photorealistic, 3d render, busy, cluttered, many labels, ` +
+      `text-heavy, dense diagram, tiny detail, doodle, childish drawing`,
     lighting: "even, clear, illustrative — no dramatic photographic lighting",
-    palette: "soft muted technical-illustration colors, clean fills",
-    framing: "a single component as the clear hero, partial cutaway / exploded view to show internals, generous space",
+    palette: "soft muted illustration colors, clean fills",
+    framing: "ONE single clear subject, large and centered, generous empty space, instantly readable, no clutter",
     aspect: "16:9",
     kenBurnsZoom: 0,
-    targetBeatSeconds: 3.5,
+    targetBeatSeconds: 4, // a touch slower so each clean image has time to land
     musicMood: "driving, focused, understated electronic bed",
     model: "nano_banana_2",
     imageParams: { resolution: "2k" },
     referenceDriven: true,
+    soundEffectsEnabled: false, // engine sounds can't be made authentic via text-to-SFX — don't bother
   },
 };
 

@@ -6,13 +6,16 @@ describe("longform/style-presets", () => {
     expect(PRESET_IDS).toEqual(["cinematic-realistic", "editorial-graphic", "stick-figure-animated", "naturalist-illustration", "technical-illustration"]);
   });
 
-  it("technical-illustration is an illustrated (not photoreal) reference-driven cutaway style", () => {
+  it("technical-illustration is a SIMPLE illustrated (not photoreal) reference-driven style, SFX off", () => {
     const p = getStylePreset("technical-illustration");
     const pre = p.positivePrefix.toLowerCase();
-    expect(pre).toMatch(/illustration|cutaway|field-guide/);
+    expect(pre).toMatch(/illustration/);
+    expect(pre).toMatch(/simple/); // simplified — one clear subject, not a busy diagram
     expect(pre).toMatch(/reference/); // draws from a real reference photo
     expect(p.negativePrompt.toLowerCase()).toMatch(/photograph|photorealistic/); // NOT photoreal
+    expect(p.negativePrompt.toLowerCase()).toMatch(/busy|cluttered|text-heavy/); // suppress clutter
     expect(p.referenceDriven).toBe(true);
+    expect(p.soundEffectsEnabled).toBe(false); // engine SFX can't be authentic via text-to-SFX
     expect(p.model).toBe("nano_banana_2");
   });
 
