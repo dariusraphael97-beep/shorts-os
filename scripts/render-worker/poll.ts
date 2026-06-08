@@ -58,7 +58,12 @@ async function main(): Promise<void> {
       console.error('[worker] claim error:', e instanceof Error ? e.message : e);
     }
     if (job) {
-      await processJob(supabase, job);
+      // Never let a single job's failure (including failure-handling DB blips) kill the daemon.
+      try {
+        await processJob(supabase, job);
+      } catch (e) {
+        console.error(`[worker] unhandled error processing job ${job.id}:`, e instanceof Error ? e.stack ?? e.message : e);
+      }
     } else {
       await new Promise((r) => setTimeout(r, IDLE_POLL_MS));
     }
