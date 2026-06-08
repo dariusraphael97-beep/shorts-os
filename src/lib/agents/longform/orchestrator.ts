@@ -19,6 +19,13 @@ export interface LongformPipelineArgs {
   channelId: string;
   /** When set, the operator forced this preset in the UI — skip the style-picker LLM and lock it. */
   presetId?: PresetId;
+  /** When true, persist the draft + plan but do NOT enqueue a render job (operator checkpoint). */
+  planOnly?: boolean;
+}
+
+/** The single planOnly decision — extracted so it is testable in isolation. */
+export function shouldEnqueueRender(args: { planOnly?: boolean }): boolean {
+  return !args.planOnly;
 }
 
 // Resolve a forced preset into a StylePickerResult without calling the LLM.
@@ -104,7 +111,9 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
 
     const draft = await deps.createDraft({ channelId: args.channelId, topic: args.topic, targetDurationSeconds: target, presetId: style.presetId, plan, description: null });
     await deps.recordLedger(buildLongformLedgerRows(plan, { jobId: job.id, yourVideoId: draft.id }));
-    await deps.enqueueRender({ yourVideoId: draft.id });
+    if (shouldEnqueueRender(args)) {
+      await deps.enqueueRender({ yourVideoId: draft.id });
+    }
     await deps.finishJob(job.id);
     yield { type: "job_completed", data: { videoId: draft.id } };
   } catch (err) {
