@@ -6,6 +6,8 @@
 export interface LongformTopicClusterInput {
   canonical_topic: string;
   production_fit: string;
+  /** Duration (seconds) of the niche's proven winning video, if known. Sets the target length. */
+  winnerDurationSeconds?: number | null;
 }
 
 export interface LongformPipelineInput {
@@ -20,6 +22,18 @@ export interface LongformPipelineInput {
  */
 export const DEFAULT_LONGFORM_DURATION_SECONDS = 480;
 
+/** Min/max target for a niche longform video: 7–15 min. */
+const MIN_NICHE_TARGET_SECONDS = 420;
+const MAX_NICHE_TARGET_SECONDS = 900;
+
+/** Target length for a niche video: match the proven winner, clamped to 7–15 min; else the default. */
+export function targetFromWinnerDuration(winnerDurationSeconds?: number | null): number {
+  if (winnerDurationSeconds == null || !Number.isFinite(winnerDurationSeconds)) {
+    return DEFAULT_LONGFORM_DURATION_SECONDS;
+  }
+  return Math.min(MAX_NICHE_TARGET_SECONDS, Math.max(MIN_NICHE_TARGET_SECONDS, Math.round(winnerDurationSeconds)));
+}
+
 export function clusterToLongformInput(c: LongformTopicClusterInput): LongformPipelineInput {
   if (c.production_fit !== "native") {
     throw new Error(
@@ -28,6 +42,6 @@ export function clusterToLongformInput(c: LongformTopicClusterInput): LongformPi
   }
   return {
     topic: c.canonical_topic.trim(),
-    targetDurationSeconds: DEFAULT_LONGFORM_DURATION_SECONDS,
+    targetDurationSeconds: targetFromWinnerDuration(c.winnerDurationSeconds),
   };
 }
