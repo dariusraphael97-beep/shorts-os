@@ -30,13 +30,17 @@ lighting, or quality words (those are added automatically), and do NOT put on-sc
 illustrates what is said at that moment (no random images, no collage). Subjects centered. Think like a
 ${styleBible.presetId} documentary. Describe the subject and setting only — do NOT include style/lighting/quality
 words (those are added automatically) and do NOT put on-screen text in the scene. Keep each scene one vivid sentence.`;
+  const frequency =
+    styleBible.onScreenTextMode === "additive"
+      ? `Keep it clean: leave onScreenText "" on most beats — add a short hook ONLY on the few beats where a key stat or turning point really lands.`
+      : `Most beats should have text; use "" only when a clean wordless image is clearly stronger.`;
   return `You are the Beat Planner. ${guidance}
 
 For each beat also write ON-SCREEN TEXT ("onScreenText"): the ONE thing the viewer should absorb from that
 moment — a punchy stat, a bold claim, a question, or a key phrase (≤ ~5 words), pulled from the narration so
 it reinforces what is being said and drives retention. It must NEVER be an encyclopedic label — no species or
 Latin names, no "Fig. N" captions, no figure numbers. Put on-screen text ONLY in this field, never inside
-"scene". Most beats should have text; use "" only when a clean wordless image is clearly stronger.
+"scene". ${frequency}
 
 Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt for a real-world
 sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees", "wings flapping",

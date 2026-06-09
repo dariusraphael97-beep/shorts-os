@@ -114,4 +114,36 @@ describe("longform/beat-planner", () => {
     await runBeatPlanner(ctx());
     expect(captured.toLowerCase()).toContain("documentary");
   });
+
+  it("uses sparse caption guidance for additive (technical) styles", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `tech scene ${i}`, onScreenText: "", sound: "" })) } } as never;
+    });
+    await runBeatPlanner({
+      styleBible: getStylePreset("technical-illustration"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "The block", narration: "The block is aluminum. The bores are sleeved. It does not flex under boost." }],
+    });
+    const p = captured.toLowerCase();
+    expect(p).toContain("keep it clean");
+    expect(p).toMatch(/only on the few beats/);
+    expect(p).not.toContain("most beats should have text");
+  });
+
+  it("uses frequent caption guidance for exclusive (default) styles", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `scene ${i}`, onScreenText: `hook ${i}`, sound: "" })) } } as never;
+    });
+    await runBeatPlanner(ctx()); // cinematic-realistic = exclusive default
+    const p = captured.toLowerCase();
+    expect(p).toContain("most beats should have text");
+  });
 });
