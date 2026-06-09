@@ -38,6 +38,11 @@ export interface StyleBible {
   /** Whether to generate scene SFX. Off for styles where text-to-SFX can't be authentic
    *  (e.g. specific engine sounds) — fake SFX is worse than none. */
   soundEffectsEnabled?: boolean;
+  /** How on-screen text relates to the rest of the image:
+   *  "exclusive" (default) — the caption is the ONLY text; everything else is suppressed.
+   *  "additive" — the caption is a headline that COEXISTS with the scene's own labels / diagram
+   *  text (e.g. technical diagrams whose internal text is the content). */
+  onScreenTextMode?: "exclusive" | "additive";
 }
 
 const NEG_COMMON =
@@ -146,7 +151,8 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "a clean, SIMPLE hand-drawn illustration with ONE clear subject, bold and instantly readable at a " +
       "glance, drawn accurately from the reference photo, minimal or NO labels (at most one short word), " +
       "lots of clean open space, soft muted colors on a light background — simple and uncluttered, " +
-      "NOT a busy diagram, NOT text-heavy, NOT photorealistic, an illustration",
+      "NOT a busy diagram, NOT text-heavy, NOT photorealistic, an illustration in a consistent fine " +
+      "hand-inked line-art style, not cel-shaded, not flat cartoon",
     negativePrompt: `${NEG_COMMON}, photograph, photorealistic, 3d render, busy, cluttered, many labels, ` +
       `text-heavy, dense diagram, tiny detail, doodle, childish drawing`,
     lighting: "even, clear, illustrative — no dramatic photographic lighting",
@@ -160,6 +166,7 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     imageParams: { resolution: "2k" },
     referenceDriven: true,
     soundEffectsEnabled: false, // engine sounds can't be made authentic via text-to-SFX — don't bother
+    onScreenTextMode: "additive", // technical diagrams keep their own text; the caption is an added headline
   },
 };
 

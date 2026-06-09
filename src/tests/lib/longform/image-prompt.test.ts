@@ -31,4 +31,24 @@ describe("longform/image-prompt", () => {
     const out = assembleImagePrompt({ sceneDescription: "a misty forest at dawn", styleBible: bible });
     expect(out.prompt).toContain("no on-screen text");
   });
+
+  it("additive mode: the caption coexists with the scene's own labels (not 'only text')", () => {
+    const tech = getStylePreset("technical-illustration");
+    const out = assembleImagePrompt({ sceneDescription: "a labeled dyno chart", styleBible: tech, onScreenText: "550 hp wall" });
+    expect(out.prompt).toContain('reading exactly "550 hp wall"');
+    expect(out.prompt).toContain("alongside any labels");
+    expect(out.prompt).not.toContain("the only text in the image");
+  });
+
+  it("additive mode with no caption adds no text instruction (diagram text stands)", () => {
+    const tech = getStylePreset("technical-illustration");
+    const out = assembleImagePrompt({ sceneDescription: "an invoice with line items", styleBible: tech });
+    expect(out.prompt).not.toContain("no on-screen text");
+    expect(out.prompt).not.toContain("reading exactly");
+  });
+
+  it("technical-illustration is additive; naturalist defaults to exclusive", () => {
+    expect(getStylePreset("technical-illustration").onScreenTextMode).toBe("additive");
+    expect(getStylePreset("naturalist-illustration").onScreenTextMode).toBeUndefined();
+  });
 });
