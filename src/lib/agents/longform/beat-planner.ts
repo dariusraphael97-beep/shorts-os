@@ -12,9 +12,10 @@ export interface BeatPlannerRunContext {
   styleBible: StyleBible;
   playbook: LongformPlaybook;
   chapters: { index: number; title: string; narration: string }[];
+  grounding?: string;
 }
 
-function scenePrompt(styleBible: StyleBible, chapterTitle: string, slices: string[]): string {
+function scenePrompt(styleBible: StyleBible, chapterTitle: string, slices: string[], grounding: string): string {
   const numbered = slices.map((s, i) => `${i + 1}. ${s}`).join("\n");
   const guidance =
     styleBible.presetId === "stick-figure-animated"
@@ -34,19 +35,20 @@ words (those are added automatically) and do NOT put on-screen text in the scene
     styleBible.onScreenTextMode === "additive"
       ? `Keep it clean: leave onScreenText "" on most beats — add a short hook ONLY on the few beats where a key stat or turning point really lands.`
       : `Most beats should have text; use "" only when a clean wordless image is clearly stronger.`;
+  const groundingBlock = grounding ? `\n${grounding}\n` : "";
   return `You are the Beat Planner. ${guidance}
 
 For each beat also write ON-SCREEN TEXT ("onScreenText"): the ONE thing the viewer should absorb from that
 moment — a punchy stat, a bold claim, a question, or a key phrase (≤ ~5 words), pulled from the narration so
 it reinforces what is being said and drives retention. It must NEVER be an encyclopedic label — no species or
 Latin names, no "Fig. N" captions, no figure numbers. Put on-screen text ONLY in this field, never inside
-"scene". ${frequency}
+"scene". ${frequency} ACCURACY: if onScreenText states any number (cost, price, hp, spec, date), it MUST match the verified facts / narration — NEVER invent a figure for a caption; when unsure use a qualitative phrase or leave it "".
 
 Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt for a real-world
 sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees", "wings flapping",
 "a heartbeat thudding", "soft rain"). Use a sound on the beats where one clearly belongs; use an EMPTY
 string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few words, concrete, single.
-
+${groundingBlock}
 Chapter: "${chapterTitle}"
 Return EXACTLY ${slices.length} items, in order, as JSON: { "items": [{ "scene": string, "onScreenText": string, "sound": string }] }.
 Beats:
@@ -55,8 +57,8 @@ ${numbered}`;
 
 interface SceneItem { scene: string; onScreenText: string; sound: string }
 
-async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: string[]): Promise<SceneItem[]> {
-  const prompt = scenePrompt(styleBible, chapterTitle, slices);
+async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: string[], grounding: string): Promise<SceneItem[]> {
+  const prompt = scenePrompt(styleBible, chapterTitle, slices, grounding);
   const run = async () => {
     const result = await generateObject({ model: getClaudeModel("claude-sonnet-4-5"), schema: SceneItemsSchema, prompt });
     return SceneItemsSchema.parse(result.object).items;
@@ -85,7 +87,7 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
       wordsPerSecond: WORDS_PER_SECOND,
     });
     const sliceTexts = slices.map((s) => s.text);
-    const items = await sceneItems(ctx.styleBible, ch.title, sliceTexts);
+    const items = await sceneItems(ctx.styleBible, ch.title, sliceTexts, ctx.grounding ?? "");
     const beats = slices.map((slice, i) => {
       const { prompt, negativePrompt } = assembleImagePrompt({
         sceneDescription: items[i].scene,

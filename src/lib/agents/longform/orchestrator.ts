@@ -7,6 +7,7 @@ import { EMPTY_LONGFORM_PLAYBOOK } from "@/lib/agents/longform/playbook";
 import { runLongformWriter } from "@/lib/agents/longform/writer";
 import { runStylePicker, type StylePickerResult } from "@/lib/agents/longform/style-picker";
 import { runBeatPlanner } from "@/lib/agents/longform/beat-planner";
+import { renderFactSheet } from "@/lib/agents/longform/researcher";
 import { pickLongformVoice } from "@/lib/agents/voice-coach";
 import { getStylePreset, type PresetId } from "@/lib/longform/style-presets";
 
@@ -79,6 +80,7 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
       styleBible: style.styleBible,
       playbook,
       chapters: writer.chapters.map((c, i) => ({ index: i, title: c.title, narration: c.narration })),
+      grounding: renderFactSheet(writer.factSheet),
     });
     yield { type: "agent_output", data: { agent: "beat_planner", output: { beatCount: beatPlan.chapters.flatMap((c) => c.beats).length } } };
     yield { type: "agent_done", data: { agent: "beat_planner", durationMs: 0 } };
