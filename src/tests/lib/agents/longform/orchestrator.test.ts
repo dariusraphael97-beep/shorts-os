@@ -72,4 +72,10 @@ describe("longform/orchestrator", () => {
     await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1" }, d));
     expect(d.runStylePicker).toHaveBeenCalledOnce();
   });
+
+  it("passes trustedFacts through to the writer", async () => {
+    const d = deps();
+    await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1", trustedFacts: ["800whp on stock ~$5-10k"] }, d));
+    expect(d.runWriter).toHaveBeenCalledWith(expect.objectContaining({ trustedFacts: ["800whp on stock ~$5-10k"] }));
+  });
 });

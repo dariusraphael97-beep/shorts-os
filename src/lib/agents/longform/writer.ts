@@ -14,6 +14,8 @@ export interface WriterRunContext {
   topic: string;
   targetDurationSeconds: number;
   playbook: LongformPlaybook;
+  /** Operator-verified ground-truth facts forwarded to the researcher; they override conflicting web sources. */
+  trustedFacts?: string[];
 }
 
 const FORMAT_RULES = `FORMAT (match a top-tier faceless documentary channel like Fern/Blackfiles):
@@ -101,7 +103,7 @@ export async function runLongformWriter(ctx: WriterRunContext): Promise<WriterOu
   }
 
   // Research: ground the narration in real, sourced facts (best-effort — empty on any failure).
-  const factSheet: FactSheet = await runResearcher({ topic: ctx.topic, outline });
+  const factSheet: FactSheet = await runResearcher({ topic: ctx.topic, outline, trustedFacts: ctx.trustedFacts });
   const grounding = renderFactSheet(factSheet);
 
   // Pass 3: narration per chapter.

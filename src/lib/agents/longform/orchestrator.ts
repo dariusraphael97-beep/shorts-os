@@ -23,6 +23,8 @@ export interface LongformPipelineArgs {
   planOnly?: boolean;
   /** The niche cluster this video was generated from, for outcome measurement + regenerate. */
   sourceNicheClusterId?: string;
+  /** Operator/expert ground-truth facts threaded to the writer → researcher; they override web sources. */
+  trustedFacts?: string[];
 }
 
 /** The single planOnly decision — extracted so it is testable in isolation. */
@@ -59,7 +61,7 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
   try {
     // 1. Writer
     yield { type: "agent_state", data: { agent: "writer", state: "working" } };
-    const writer = await deps.runWriter({ topic: args.topic, targetDurationSeconds: target, playbook });
+    const writer = await deps.runWriter({ topic: args.topic, targetDurationSeconds: target, playbook, trustedFacts: args.trustedFacts });
     yield { type: "agent_output", data: { agent: "writer", output: writer } };
     yield { type: "agent_done", data: { agent: "writer", durationMs: 0 } };
 

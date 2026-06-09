@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown; planOnly?: unknown };
+  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown; planOnly?: unknown; trustedFacts?: unknown };
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   const targetDurationSeconds =
     typeof body.targetDurationSeconds === "number" ? body.targetDurationSeconds : 540;
@@ -21,6 +21,10 @@ export async function POST(req: Request): Promise<Response> {
       : undefined;
   // When true, plan + persist the draft but do NOT enqueue a render — preview before spending credits.
   const planOnly = body.planOnly === true;
+  // Operator/expert ground-truth facts that override web sources; accept only a clean string[] .
+  const trustedFacts = Array.isArray(body.trustedFacts) && body.trustedFacts.every((f) => typeof f === "string")
+    ? (body.trustedFacts as string[])
+    : undefined;
 
   if (!topic) {
     return new Response(
@@ -41,7 +45,7 @@ export async function POST(req: Request): Promise<Response> {
     async start(controller) {
       try {
         for await (const event of runLongformPipeline(
-          { topic, targetDurationSeconds, channelId, presetId, planOnly },
+          { topic, targetDurationSeconds, channelId, presetId, planOnly, trustedFacts },
           deps,
         )) {
           controller.enqueue(encodeSseEvent(event));

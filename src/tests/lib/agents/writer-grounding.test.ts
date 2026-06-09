@@ -42,4 +42,14 @@ describe("runLongformWriter grounding", () => {
     const narrationCall = generateObject.mock.calls[2];
     expect(narrationCall[0].prompt).toMatch(/do NOT (state|invent)/i);
   });
+
+  it("forwards trustedFacts to the researcher", async () => {
+    runResearcher.mockResolvedValue({ facts: [], uncertain: [] });
+    generateObject
+      .mockResolvedValueOnce({ object: { angle: "the sharp angle for this video", hook: "the hook goes here and is long enough" } })
+      .mockResolvedValueOnce({ object: { chapters: [{ title: "T1", purpose: "p1" }] } })
+      .mockResolvedValueOnce({ object: { narration: "narration text ".repeat(10) } });
+    await runLongformWriter({ topic: "x", targetDurationSeconds: 300, playbook, trustedFacts: ["fact A"] });
+    expect(runResearcher).toHaveBeenCalledWith(expect.objectContaining({ trustedFacts: ["fact A"] }));
+  });
 });
