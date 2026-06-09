@@ -55,6 +55,27 @@ async function searchGoogleCse(query: string): Promise<string | null> {
   }
 }
 
+// Multiple candidate image URLs for vetting (vs searchImageUrl which returns just the first).
+export async function searchImageCandidates(query: string, num = 5): Promise<string[]> {
+  if (!query.trim() || !process.env.SERPER_API_KEY) return [];
+  try {
+    const res = await fetch('https://google.serper.dev/images', {
+      method: 'POST',
+      headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, num }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return [];
+    const j = (await res.json()) as { images?: Array<{ imageUrl?: string }> };
+    return (j.images ?? [])
+      .map((it) => it.imageUrl)
+      .filter((u): u is string => !!u && /^https?:\/\//.test(u))
+      .slice(0, num);
+  } catch {
+    return [];
+  }
+}
+
 export async function downloadToFile(url: string, outputPath: string): Promise<boolean> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(30_000), headers: { 'User-Agent': 'Mozilla/5.0' } });

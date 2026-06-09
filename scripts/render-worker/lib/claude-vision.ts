@@ -59,3 +59,29 @@ export async function describeClipFromFrames(args: {
   });
   return result.object;
 }
+
+const PhotoVetSchema = z.object({ usable: z.boolean(), reason: z.string() });
+
+// Vision check: is this downloaded candidate a real, clean, relevant photo usable as a full-frame 16:9 background?
+export async function vetPhoto(args: { imagePath: string; subject: string }): Promise<{ usable: boolean; reason: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return { usable: false, reason: 'no api key' };
+  try {
+    const anthropic = createAnthropic({ apiKey });
+    const buf = await readFile(args.imagePath);
+    const result = await generateObject({
+      model: anthropic('claude-haiku-4-5'),
+      schema: PhotoVetSchema,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `Is this a REAL photograph (NOT a 3D render, illustration, diagram, logo, collage, screenshot, or watermarked stock thumbnail) that clearly shows "${args.subject}" as a single, centered, full-frame subject usable as a 16:9 video background? Reject if it is irrelevant to the subject, low-resolution/thumbnail, a multi-panel collage, heavily watermarked, or not actually a photo. Return JSON { "usable": boolean, "reason": string }.` },
+          { type: 'image' as const, image: buf },
+        ],
+      }],
+    });
+    return PhotoVetSchema.parse(result.object);
+  } catch (e) {
+    return { usable: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
