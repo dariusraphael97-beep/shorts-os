@@ -69,7 +69,7 @@ async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: 
       items = slices.map((s) => ({ scene: s, onScreenText: "", sound: "" })); // fallback: slice as scene, no SFX
     }
   }
-  // Repair count mismatch: pad with the slice text (no sound), truncate extras.
+  // Repair count mismatch: pad with the slice text (no on-screen text, no sound), truncate extras.
   return slices.map((slice, i) => items[i] ?? { scene: slice, onScreenText: "", sound: "" });
 }
 

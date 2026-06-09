@@ -94,7 +94,9 @@ describe("longform/beat-planner", () => {
     expect(p).toMatch(/vary|varied|different|fresh/); // visual variety — not the same picture every time
     expect(p).toMatch(/diagram|chart|metaphor|close-?up|object/); // varied visual approaches, not just "person in a room"
     expect(p).toContain("on-screen text"); // Zenn-style words to aid comprehension
-    expect(p).toMatch(/few words|short phrase|not.*exactly one/); // flexible length, not a rigid single word
+    // the prompt asks for a retention-hook onScreenText that is never an encyclopedic label
+    expect(p).toContain("onscreentext");
+    expect(p).toMatch(/latin names|figure numbers|encyclopedic/i);
     expect(p).toContain("collage"); // must still forbid collages
     expect(p).not.toContain("documentary");
     expect(p).toMatch(/background|setting/);
