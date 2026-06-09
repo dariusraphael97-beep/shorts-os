@@ -16,7 +16,7 @@ describe("runLongformWriter grounding", () => {
   it("passes the fact sheet into the narration prompt and returns it on output", async () => {
     runResearcher.mockResolvedValue({ facts: [{ claim: "800whp on stock block", detail: "~$6-10k" }], uncertain: [] });
     generateObject
-      .mockResolvedValueOnce({ object: { angle: "a", hook: "the hook goes here and is long enough" } })
+      .mockResolvedValueOnce({ object: { angle: "the sharp angle for this video", hook: "the hook goes here and is long enough" } })
       .mockResolvedValueOnce({ object: { chapters: [{ title: "T1", purpose: "p1" }, { title: "T2", purpose: "p2" }] } })
       .mockResolvedValueOnce({ object: { narration: "grounded narration one ".repeat(10) } })
       .mockResolvedValueOnce({ object: { narration: "grounded narration two ".repeat(10) } });
@@ -34,7 +34,7 @@ describe("runLongformWriter grounding", () => {
   it("still includes the no-invention rule when the fact sheet is empty", async () => {
     runResearcher.mockResolvedValue({ facts: [], uncertain: [] });
     generateObject
-      .mockResolvedValueOnce({ object: { angle: "a", hook: "the hook goes here and is long enough" } })
+      .mockResolvedValueOnce({ object: { angle: "the sharp angle for this video", hook: "the hook goes here and is long enough" } })
       .mockResolvedValueOnce({ object: { chapters: [{ title: "T1", purpose: "p1" }] } })
       .mockResolvedValueOnce({ object: { narration: "narration text ".repeat(10) } });
 

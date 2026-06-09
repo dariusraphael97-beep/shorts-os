@@ -44,7 +44,7 @@ export type FactSheet = z.infer<typeof FactSheetSchema>;
 
 // --- Writer (multi-pass) ---
 export const WriterHookSchema = z.object({
-  angle: z.string().min(1).max(600),
+  angle: z.string().min(10).max(600),
   hook: z.string().min(20).max(900),
 });
 export const WriterOutlineSchema = z.object({
