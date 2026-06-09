@@ -191,7 +191,9 @@ export async function runRenderLongform(
       // "dead space"); only the very first frames, if they fail, get a style gradient still.
       const imgPaths: string[] = [];
       const isPhotos: boolean[] = [];
-      let lastGood: string | null = null;
+      // Seed with the chapter's FIRST good frame so a failed LEADING beat reuses a real image
+      // instead of a blank gradient. A gradient now only appears if an ENTIRE chapter fails.
+      let lastGood: string | null = imgResults.find((r) => r.ok)?.imgPath ?? null;
       for (const r of imgResults) {
         if (r.ok) lastGood = r.imgPath;
         else if (lastGood) await copyFile(lastGood, r.imgPath);
