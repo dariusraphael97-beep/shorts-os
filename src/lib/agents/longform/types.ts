@@ -51,6 +51,20 @@ export const WriterOutputSchema = z.object({
 });
 export type WriterOutput = z.infer<typeof WriterOutputSchema>;
 
+// --- Researcher (fact-grounding) ---
+export const FactSheetItemSchema = z.object({
+  claim: z.string().min(1),
+  detail: z.string().min(1),
+  sourceUrl: z.string().url().optional(),
+});
+export type FactSheetItem = z.infer<typeof FactSheetItemSchema>;
+
+export const FactSheetSchema = z.object({
+  facts: z.array(FactSheetItemSchema).default([]),
+  uncertain: z.array(z.string()).default([]),
+});
+export type FactSheet = z.infer<typeof FactSheetSchema>;
+
 // --- Style picker ---
 export const StylePickerOutputSchema = z.object({
   presetId: PresetIdSchema,
