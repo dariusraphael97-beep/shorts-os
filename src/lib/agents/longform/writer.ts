@@ -6,6 +6,8 @@ import {
   WriterHookSchema, WriterOutlineSchema, WriterChapterNarrationSchema,
   WriterOutputSchema, type WriterOutput,
 } from "@/lib/agents/longform/types";
+import { runResearcher, renderFactSheet } from "@/lib/agents/longform/researcher";
+import type { FactSheet } from "@/lib/agents/longform/types";
 import type { LongformPlaybook } from "@/lib/agents/longform/playbook";
 
 export interface WriterRunContext {
@@ -46,13 +48,16 @@ ${FORMAT_RULES}
 Return JSON: { "chapters": [{ "title": string, "purpose": string }] } with exactly ${chapterCount} items.`;
 }
 
-function narrationPrompt(ctx: WriterRunContext, chapter: { title: string; purpose: string }, wordBudget: number): string {
+function narrationPrompt(ctx: WriterRunContext, chapter: { title: string; purpose: string }, wordBudget: number, grounding: string): string {
+  const groundingBlock = grounding ? `\n${grounding}\n` : "";
   return `PASS:NARRATION
 You are the Writer. Topic: "${ctx.topic}". Angle is set.
 Write the spoken NARRATION for this chapter only.
 Chapter: "${chapter.title}" — purpose: ${chapter.purpose}
 Target ~${wordBudget} words. ${FORMAT_RULES}
 Do not restate the title. Flow naturally from the prior chapter and set up the next with a turn-word.
+${groundingBlock}
+ACCURACY (critical): Every number you state — cost, price, horsepower, torque, dimension, date, quantity — MUST match the VERIFIED FACTS above. If a number you want is not in the verified facts, do NOT invent it: speak qualitatively (omit the figure) rather than guess. Never state a precise dollar amount or spec that isn't grounded.
 
 Return JSON: { "narration": string }.`;
 }
@@ -95,13 +100,17 @@ export async function runLongformWriter(ctx: WriterRunContext): Promise<WriterOu
     }));
   }
 
+  // Research: ground the narration in real, sourced facts (best-effort — empty on any failure).
+  const factSheet: FactSheet = await runResearcher({ topic: ctx.topic, outline });
+  const grounding = renderFactSheet(factSheet);
+
   // Pass 3: narration per chapter.
   const perChapterBudget = Math.max(40, Math.round(wordBudget / outline.length));
   const chapters = [];
   for (const ch of outline) {
     let narration: string;
     try {
-      narration = (await callObject(opus, WriterChapterNarrationSchema, narrationPrompt(ctx, ch, perChapterBudget))).narration;
+      narration = (await callObject(opus, WriterChapterNarrationSchema, narrationPrompt(ctx, ch, perChapterBudget, grounding))).narration;
     } catch (err) {
       if (!NoObjectGeneratedError.isInstance(err)) throw err;
       narration = `${ch.purpose}. ${ctx.topic}.`; // safe non-empty fallback so render never hard-fails
@@ -110,5 +119,5 @@ export async function runLongformWriter(ctx: WriterRunContext): Promise<WriterOu
   }
 
   const estimatedWords = chapters.reduce((sum, c) => sum + countWords(c.narration), 0) + countWords(hookOut.hook);
-  return WriterOutputSchema.parse({ angle: hookOut.angle, hook: hookOut.hook, estimatedWords, chapters });
+  return WriterOutputSchema.parse({ angle: hookOut.angle, hook: hookOut.hook, estimatedWords, chapters, factSheet });
 }

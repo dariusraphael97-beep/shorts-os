@@ -28,9 +28,23 @@ export const VoiceChoiceSchema = z.object({
   stability: z.number().min(0).max(1),
 });
 
+// --- Researcher (fact-grounding) ---
+export const FactSheetItemSchema = z.object({
+  claim: z.string().min(1),
+  detail: z.string().min(1),
+  sourceUrl: z.string().url().optional(),
+});
+export type FactSheetItem = z.infer<typeof FactSheetItemSchema>;
+
+export const FactSheetSchema = z.object({
+  facts: z.array(FactSheetItemSchema).default([]),
+  uncertain: z.array(z.string()).default([]),
+});
+export type FactSheet = z.infer<typeof FactSheetSchema>;
+
 // --- Writer (multi-pass) ---
 export const WriterHookSchema = z.object({
-  angle: z.string().min(10).max(600),
+  angle: z.string().min(1).max(600),
   hook: z.string().min(20).max(900),
 });
 export const WriterOutlineSchema = z.object({
@@ -48,22 +62,9 @@ export const WriterOutputSchema = z.object({
     purpose: z.string().min(1),
     narration: z.string().min(1),
   })).min(1),
+  factSheet: FactSheetSchema.default({ facts: [], uncertain: [] }),
 });
 export type WriterOutput = z.infer<typeof WriterOutputSchema>;
-
-// --- Researcher (fact-grounding) ---
-export const FactSheetItemSchema = z.object({
-  claim: z.string().min(1),
-  detail: z.string().min(1),
-  sourceUrl: z.string().url().optional(),
-});
-export type FactSheetItem = z.infer<typeof FactSheetItemSchema>;
-
-export const FactSheetSchema = z.object({
-  facts: z.array(FactSheetItemSchema).default([]),
-  uncertain: z.array(z.string()).default([]),
-});
-export type FactSheet = z.infer<typeof FactSheetSchema>;
 
 // --- Style picker ---
 export const StylePickerOutputSchema = z.object({

@@ -4,7 +4,7 @@ import { getStylePreset } from "@/lib/longform/style-presets";
 
 function deps(): LongformPipelineDeps {
   return {
-    runWriter: vi.fn(async () => ({ angle: "a", hook: "h", estimatedWords: 100, chapters: [{ title: "C1", purpose: "p", narration: "A man walks on. The lights dim." }] })),
+    runWriter: vi.fn(async () => ({ angle: "a", hook: "h", estimatedWords: 100, chapters: [{ title: "C1", purpose: "p", narration: "A man walks on. The lights dim." }], factSheet: { facts: [], uncertain: [] } })),
     runStylePicker: vi.fn(async () => ({ presetId: "cinematic-realistic" as const, musicMood: "cinematic", rationale: "r", styleBible: getStylePreset("cinematic-realistic") })),
     runBeatPlanner: vi.fn(async () => ({ chapters: [{ chapterIndex: 0, beats: [{ index: 0, narrationSlice: "A man walks on.", estDurationSeconds: 4, sceneDescription: "s", imagePrompt: "ip", negativePrompt: "no text" }] }] })),
     pickVoice: vi.fn(async () => ({ voiceId: "5ee9feff-1265-424a-9d7f-8e4d431a12c7" as const, provider: "cartesia" as const, speed: 0.95, stability: 0.6, rationale: "r" })),
