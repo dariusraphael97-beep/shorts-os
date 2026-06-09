@@ -5,8 +5,25 @@ import { runFfmpeg } from './ffmpeg-commands.ts';
 import { buildKenBurnsFilter, type KenBurnsDirection } from './ken-burns.ts';
 import { buildConcatList } from './chapters.ts';
 import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 const FPS = 30;
+
+const CAPTION_FONT = fileURLToPath(new URL('../assets/DejaVuSans-Bold.ttf', import.meta.url));
+
+/** Draw a clean bold caption (lower third, centered, dark box for legibility) onto a beat clip.
+ *  Photo beats use this because a real photo has no baked-in caption. Empty caption → passthrough copy. */
+export async function overlayCaption(args: { videoPath: string; caption: string; outputPath: string }): Promise<void> {
+  const caption = args.caption.trim();
+  if (!caption) {
+    await runFfmpeg(['-y', '-i', args.videoPath, '-c', 'copy', args.outputPath]);
+    return;
+  }
+  const txtPath = `${args.outputPath}.caption.txt`;
+  await writeFile(txtPath, caption, 'utf8');
+  const vf = `drawtext=fontfile='${CAPTION_FONT}':textfile='${txtPath}':fontcolor=white:fontsize=h*0.055:box=1:boxcolor=black@0.55:boxborderw=22:x=(w-text_w)/2:y=h*0.80`;
+  await runFfmpeg(['-y', '-i', args.videoPath, '-vf', vf, '-r', '30', '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', args.outputPath]);
+}
 
 /** Style-consistent 1920x1080 gradient PNG (degraded fallback when image-gen is unavailable). */
 export async function renderGradientStill(args: { hexA: string; hexB: string; outputPath: string }): Promise<void> {

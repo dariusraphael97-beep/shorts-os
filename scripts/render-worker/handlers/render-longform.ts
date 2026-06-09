@@ -8,7 +8,8 @@ import { mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { synthesizeChapterToWav } from '../lib/cartesia-longform.ts';
 import { generateImage } from '../lib/higgsfield.ts';
-import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed, muxSoundEffects } from '../lib/ffmpeg-longform.ts';
+import { findUsablePhoto } from '../lib/find-photo.ts';
+import { renderGradientStill, renderKenBurnsClip, renderStaticClip, muxChapterAudio, concatChapterClips, muxMusicBed, muxSoundEffects, overlayCaption } from '../lib/ffmpeg-longform.ts';
 import { generateSoundEffect } from '../lib/elevenlabs-sfx.ts';
 import { searchImageUrl, downloadToFile } from '../lib/image-search.ts';
 import { runFfmpeg } from '../lib/ffmpeg-commands.ts';
@@ -60,7 +61,7 @@ const GRADIENT_COLORS: Record<string, { hexA: string; hexB: string }> = {
   'technical-illustration': { hexA: 'f2f2ef', hexB: 'e2e2dd' },
 };
 
-interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; sceneDescription?: string; imagePrompt: string; negativePrompt: string; soundEffect?: string }
+interface PlanBeat { index: number; estDurationSeconds: number; narrationSlice: string; sceneDescription?: string; imagePrompt: string; negativePrompt: string; soundEffect?: string; visualKind?: string; photoQuery?: string; onScreenText?: string }
 interface PlanChapter { index: number; title: string; narration: string; beats: PlanBeat[] }
 interface LongformPlan {
   presetId: string;
@@ -154,6 +155,14 @@ export async function runRenderLongform(
       //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
       const imgResults = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
+        // Photo beats: use a real, vision-vetted web photo directly (Ken-Burns cover-crops it).
+        if (beat.visualKind === 'photo') {
+          const q = (beat.photoQuery && beat.photoQuery.trim()) ? beat.photoQuery : beat.sceneDescription;
+          if (q) {
+            const photo = await findUsablePhoto({ query: q, subject: q, workDir, beatKey: `ch${chapter.index}_beat${beat.index}` });
+            if (photo) return { imgPath: photo, ok: true, isPhoto: true };
+          }
+        }
         // Reference-driven styles: fetch a REAL photo of the beat's subject and draw FROM it
         // (accuracy). Best-effort — falls back to prompt-only if no photo is found.
         let referenceImagePath: string | undefined;
@@ -176,17 +185,20 @@ export async function runRenderLongform(
         };
         let gen = await generateImage(genArgs);
         if (!gen.ok) gen = await generateImage(genArgs); // one retry — image-gen rate limits are transient
-        return { imgPath, ok: gen.ok };
+        return { imgPath, ok: gen.ok, isPhoto: false };
       });
       // Replace any failed frame by reusing the nearest previous good frame (no jarring gradient
       // "dead space"); only the very first frames, if they fail, get a style gradient still.
       const imgPaths: string[] = [];
+      const isPhotos: boolean[] = [];
       let lastGood: string | null = null;
       for (const r of imgResults) {
         if (r.ok) lastGood = r.imgPath;
         else if (lastGood) await copyFile(lastGood, r.imgPath);
         else await renderGradientStill({ ...gradient, outputPath: r.imgPath });
         imgPaths.push(r.imgPath);
+        // Reused/gradient frames are not photos — only an ok photo result counts as one.
+        isPhotos.push(r.ok ? !!r.isPhoto : false);
       }
 
       // 3b. Render each still into its clip, in beat order (local ffmpeg — fast).
@@ -207,7 +219,14 @@ export async function runRenderLongform(
           // zoom == 0 (e.g. stick-figure): static hold, zero zoompan jitter.
           await renderStaticClip({ imagePath: imgPaths[i], durationSeconds: beatDur, outputPath: clip });
         }
-        beatClipPaths.push(clip);
+        // Photo beats can't bake a caption into the image, so overlay it onto the clip via drawtext.
+        if (isPhotos[i] && beats[i].onScreenText && beats[i].onScreenText!.trim()) {
+          const captioned = join(workDir, `ch${chapter.index}_beat${beat.index}_cap.mp4`);
+          await overlayCaption({ videoPath: clip, caption: beats[i].onScreenText!, outputPath: captioned });
+          beatClipPaths.push(captioned);
+        } else {
+          beatClipPaths.push(clip);
+        }
       }
       log(`chapter ${chapter.index} rendered ${beatClipPaths.length} beats`);
 
