@@ -9,8 +9,8 @@ const plan: LongformPlan = {
   styleBible: { presetId: "cinematic-realistic", positivePrefix: "x", negativePrompt: "no text", lighting: "l", palette: "teal", framing: "f", aspect: "16:9", kenBurnsZoom: 0.06, targetBeatSeconds: 4.5, musicMood: "cinematic", model: "text2image_soul_v2", imageParams: { quality: "2k" } },
   chapters: [
     { index: 0, title: "A", purpose: "p", narration: "n", beats: [
-      { index: 0, narrationSlice: "n", estDurationSeconds: 4, sceneDescription: "s", imagePrompt: "ip", negativePrompt: "no text" },
-      { index: 1, narrationSlice: "n2", estDurationSeconds: 5, sceneDescription: "s2", imagePrompt: "ip2", negativePrompt: "no text" },
+      { index: 0, narrationSlice: "n", estDurationSeconds: 4, sceneDescription: "s", imagePrompt: "ip", negativePrompt: "no text", visualKind: "illustration", photoQuery: "" },
+      { index: 1, narrationSlice: "n2", estDurationSeconds: 5, sceneDescription: "s2", imagePrompt: "ip2", negativePrompt: "no text", visualKind: "illustration", photoQuery: "" },
     ] },
   ],
 };

@@ -48,14 +48,16 @@ Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX promp
 sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees", "wings flapping",
 "a heartbeat thudding", "soft rain"). Use a sound on the beats where one clearly belongs; use an EMPTY
 string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few words, concrete, single.
+
+For each beat also decide VISUAL SOURCE. Set "visualKind" to "photo" when the beat depicts a CONCRETE real-world subject that a real stock photograph would show accurately (a specific engine, a car part, a named car, a tool, a place) — and give a precise "photoQuery" to find that photo (e.g. "BMW B58 engine bare block on engine stand"). Set "visualKind" to "illustration" (and photoQuery "") when the beat is an abstract idea, a comparison, a metaphor, a diagram/chart, or a composite that no single real photo captures. Prefer "photo" for concrete hardware; prefer "illustration" for concepts.
 ${groundingBlock}
 Chapter: "${chapterTitle}"
-Return EXACTLY ${slices.length} items, in order, as JSON: { "items": [{ "scene": string, "onScreenText": string, "sound": string }] }.
+Return EXACTLY ${slices.length} items, in order, as JSON: { "items": [{ "scene": string, "onScreenText": string, "sound": string, "visualKind": "photo" | "illustration", "photoQuery": string }] }.
 Beats:
 ${numbered}`;
 }
 
-interface SceneItem { scene: string; onScreenText: string; sound: string }
+interface SceneItem { scene: string; onScreenText: string; sound: string; visualKind: "photo" | "illustration"; photoQuery: string }
 
 async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: string[], grounding: string): Promise<SceneItem[]> {
   const prompt = scenePrompt(styleBible, chapterTitle, slices, grounding);
@@ -72,11 +74,11 @@ async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: 
       items = await run();
     } catch (retryErr) {
       if (!NoObjectGeneratedError.isInstance(retryErr)) throw retryErr;
-      items = slices.map((s) => ({ scene: s, onScreenText: "", sound: "" })); // fallback: slice as scene, no SFX
+      items = slices.map((s) => ({ scene: s, onScreenText: "", sound: "", visualKind: "illustration", photoQuery: "" })); // fallback: slice as scene, no SFX
     }
   }
   // Repair count mismatch: pad with the slice text (no on-screen text, no sound), truncate extras.
-  return slices.map((slice, i) => items[i] ?? { scene: slice, onScreenText: "", sound: "" });
+  return slices.map((slice, i) => items[i] ?? { scene: slice, onScreenText: "", sound: "", visualKind: "illustration", photoQuery: "" });
 }
 
 export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPlannerOutput> {
@@ -101,6 +103,8 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
         estDurationSeconds: slice.estDurationSeconds,
         sceneDescription: items[i].scene,
         onScreenText: items[i].onScreenText,
+        visualKind: items[i].visualKind,
+        photoQuery: items[i].photoQuery,
         imagePrompt: prompt,
         negativePrompt,
         ...(sound ? { soundEffect: sound } : {}),

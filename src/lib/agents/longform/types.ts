@@ -84,6 +84,10 @@ export const BeatSchema = z.object({
   negativePrompt: z.string().min(1),
   /** The single retention-hook caption rendered on-screen for this beat ("" = no text). */
   onScreenText: z.string().optional(),
+  /** Whether this beat should use a real web photo or a generated illustration. */
+  visualKind: z.enum(["photo", "illustration"]).default("illustration"),
+  /** Search query for a real photo when visualKind === "photo" (else ""). */
+  photoQuery: z.string().default(""),
   /** Optional short text-to-SFX prompt for this moment (e.g. "a hawk screech"); empty = no sound. */
   soundEffect: z.string().optional(),
 });
@@ -96,7 +100,13 @@ export type BeatPlannerOutput = z.infer<typeof BeatPlannerOutputSchema>;
 // The per-chapter LLM call returns, per beat, a visual scene + an optional short sound-effect cue
 // ("" when no real-world sound fits). Pure code assembles the image prompt; the sound drives SFX.
 export const SceneItemsSchema = z.object({
-  items: z.array(z.object({ scene: z.string().min(1), onScreenText: z.string(), sound: z.string() })).min(1),
+  items: z.array(z.object({
+    scene: z.string().min(1),
+    onScreenText: z.string(),
+    sound: z.string(),
+    visualKind: z.enum(["photo", "illustration"]).default("illustration"),
+    photoQuery: z.string().default(""),
+  })).min(1),
 });
 // (legacy) scenes-only shape, kept for any callers that only need descriptions.
 export const SceneDescriptionsSchema = z.object({ scenes: z.array(z.string().min(1)).min(1) });
