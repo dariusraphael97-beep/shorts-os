@@ -14,6 +14,12 @@ describe("longform/image-prompt", () => {
     expect(out.negativePrompt).toBe(bible.negativePrompt);
   });
 
+  it("includes a faithfulness clause (one subject, no merging/inventing, reproduce reference)", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a BMW B58 engine on a stand", styleBible: bible });
+    expect(out.prompt).toContain("EXACTLY ONE");
+    expect(out.prompt).toContain("faithfully");
+  });
+
   it("trims and collapses whitespace in the scene description", () => {
     const bible = getStylePreset("editorial-graphic");
     const out = assembleImagePrompt({ sceneDescription: "  an   opening   vault  ", styleBible: bible });

@@ -34,6 +34,7 @@ export function assembleImagePrompt({ sceneDescription, styleBible, onScreenText
   const prompt = [
     styleBible.positivePrefix,
     scene,
+    "Depict EXACTLY ONE clear subject — never merge two different objects into a single hybrid, never invent or attach parts that don't belong; if a reference image is provided, reproduce its subject faithfully",
     styleBible.framing,
     styleBible.lighting,
     styleBible.palette,
