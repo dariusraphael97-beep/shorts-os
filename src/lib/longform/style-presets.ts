@@ -122,9 +122,10 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "detailed naturalist storybook illustration, fine hand-inked linework with delicate crosshatching " +
       "and texture detail, soft muted watercolor fills, the subject rendered realistically and anatomically " +
       "accurate as the large central hero of the frame, atmospheric natural setting with real depth, " +
-      "gentle ambient light, beautiful and polished, the look of a high-end illustrated field guide",
+      "gentle ambient light, beautiful and polished, the polished look of a fine hand-illustrated nature storybook plate",
     negativePrompt: `${NEG_COMMON}, doodle, stick figure, childish drawing, flat vector, cartoon, ` +
-      `3d render, photograph, low effort, sketchy`,
+      `3d render, photograph, low effort, sketchy, latin names, species labels, scientific names, ` +
+      `figure numbers, multiple text labels, encyclopedic captions`,
     lighting: "soft natural ambient light, gentle atmospheric glow, subtle depth",
     palette: "soft muted watercolor, warm earth tones with cool atmospheric accents",
     framing: "a single hero subject, large and centered, with an atmospheric natural background and cinematic depth",
