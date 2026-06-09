@@ -3,15 +3,15 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { encodeSseEvent } from "@/lib/sse";
 import { runLongformPipeline } from "@/lib/agents/longform/orchestrator";
 import { buildLongformDeps } from "@/lib/agents/longform/deps";
+import { getDefaultChannel } from "@/lib/supabase/repositories/channels";
 import { PRESET_IDS, type PresetId } from "@/lib/longform/style-presets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown };
+  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown; planOnly?: unknown };
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
-  const channelId = typeof body.channelId === "string" ? body.channelId : "";
   const targetDurationSeconds =
     typeof body.targetDurationSeconds === "number" ? body.targetDurationSeconds : 540;
   // Optional operator override; "auto" / anything unrecognized falls through to the style-picker LLM.
@@ -19,22 +19,29 @@ export async function POST(req: Request): Promise<Response> {
     typeof body.presetId === "string" && (PRESET_IDS as readonly string[]).includes(body.presetId)
       ? (body.presetId as PresetId)
       : undefined;
+  // When true, plan + persist the draft but do NOT enqueue a render — preview before spending credits.
+  const planOnly = body.planOnly === true;
 
-  if (!topic || !channelId) {
+  if (!topic) {
     return new Response(
-      JSON.stringify({ error: "topic and channelId are required" }),
+      JSON.stringify({ error: "topic is required" }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
   const supabase = getServiceClient();
+  // channelId is optional — fall back to the default channel (mirrors the niches studio flow).
+  const channelId =
+    typeof body.channelId === "string" && body.channelId
+      ? body.channelId
+      : (await getDefaultChannel(supabase)).id;
   const deps = buildLongformDeps(supabase);
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const event of runLongformPipeline(
-          { topic, targetDurationSeconds, channelId, presetId },
+          { topic, targetDurationSeconds, channelId, presetId, planOnly },
           deps,
         )) {
           controller.enqueue(encodeSseEvent(event));
