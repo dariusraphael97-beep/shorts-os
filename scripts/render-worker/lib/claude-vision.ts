@@ -75,7 +75,13 @@ export async function vetPhoto(args: { imagePath: string; subject: string }): Pr
       messages: [{
         role: 'user',
         content: [
-          { type: 'text', text: `Is this a REAL photograph (NOT a 3D render, illustration, diagram, logo, collage, screenshot, or watermarked stock thumbnail) that clearly shows "${args.subject}" as a single, centered, full-frame subject usable as a 16:9 video background? Reject if it is irrelevant to the subject, low-resolution/thumbnail, a multi-panel collage, heavily watermarked, or not actually a photo. Return JSON { "usable": boolean, "reason": string }.` },
+          { type: 'text', text: `You are vetting a web image to use as a full-screen visual in a documentary video about "${args.subject}". The video will crop and slowly pan/zoom across it, so framing and background do NOT need to be perfect.
+
+Return usable=true if it is a REAL PHOTOGRAPH that clearly and recognizably shows ${args.subject}, at a reasonable resolution. Minor imperfections are FINE and should NOT be rejected: a workshop or garage background, an engine stand or jack, tools, hands, imperfect or off-center framing, extra context around the subject, or light branding.
+
+Return usable=false ONLY if one of these is true: (a) it is NOT a real photo (a 3D render, illustration, drawing, diagram, chart, or logo); (b) it does not actually show ${args.subject}; (c) it is a tiny or very blurry thumbnail; (d) it is a multi-image collage; (e) it is a video screenshot with UI overlays (play button, captions); or (f) it is mostly covered by watermark/text.
+
+Be LENIENT — when a real, relevant, decent-resolution photo is in front of you, pass it. Return JSON { "usable": boolean, "reason": string }.` },
           { type: 'image' as const, image: buf },
         ],
       }],
