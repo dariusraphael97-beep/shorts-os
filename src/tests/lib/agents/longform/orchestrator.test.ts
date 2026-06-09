@@ -35,6 +35,19 @@ describe("longform/orchestrator", () => {
     expect(d.enqueueRender).toHaveBeenCalledWith(expect.objectContaining({ yourVideoId: "yv1" }));
   });
 
+  it("threads the writer's fact sheet onto the persisted plan (audit trail)", async () => {
+    const d = deps();
+    (d.runWriter as ReturnType<typeof vi.fn>).mockResolvedValue({
+      angle: "a", hook: "h", estimatedWords: 100,
+      chapters: [{ title: "C1", purpose: "p", narration: "A man walks on. The lights dim." }],
+      factSheet: { facts: [{ claim: "800whp on stock block", detail: "~$6-10k", sourceUrl: "https://x.com/a" }], uncertain: [] },
+    });
+    await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1" }, d));
+    expect(d.createDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: expect.objectContaining({ factSheet: expect.objectContaining({ facts: [expect.objectContaining({ detail: "~$6-10k" })] }) }) }),
+    );
+  });
+
   it("emits job_failed and calls failJob if an agent throws", async () => {
     const d = deps();
     (d.runWriter as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("writer boom"));

@@ -109,6 +109,7 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
         narration: c.narration,
         beats: beatPlan.chapters.find((bp) => bp.chapterIndex === i)?.beats ?? [],
       })),
+      factSheet: writer.factSheet,
     });
 
     const draft = await deps.createDraft({ channelId: args.channelId, topic: args.topic, targetDurationSeconds: target, presetId: style.presetId, plan, description: null, sourceNicheClusterId: args.sourceNicheClusterId ?? null });

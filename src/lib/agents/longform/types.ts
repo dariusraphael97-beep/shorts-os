@@ -121,5 +121,8 @@ export const LongformPlanSchema = z.object({
   estimatedWords: z.number().int().nonnegative(),
   captionsEnabled: z.boolean(),
   chapters: z.array(PlanChapterSchema).min(1),
+  // The sourced fact sheet that grounded this video's narration (audit trail). Optional for
+  // back-compat with plans written before fact-grounding existed.
+  factSheet: FactSheetSchema.optional(),
 });
 export type LongformPlan = z.infer<typeof LongformPlanSchema>;
