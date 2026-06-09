@@ -37,4 +37,28 @@ describe("runResearcher", () => {
     const fs = await runResearcher({ topic: "x", outline });
     expect(fs).toEqual({ facts: [], uncertain: [] });
   });
+
+  it("injects trusted facts and grounds even when web search returns nothing", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({ object: { queries: ["q1"] } } as any);
+    vi.mocked(webSearch).mockResolvedValue([]);
+    const fs = await runResearcher({ topic: "B58", outline, trustedFacts: ["800whp on stock internals costs ~$5-10k; forged is overkill"] });
+    expect(fs.facts).toHaveLength(1);
+    expect(fs.facts[0].claim).toContain("800whp on stock internals");
+    // no extraction LLM call when there were no results (only the query-derivation call ran)
+    expect(vi.mocked(generateObject).mock.calls.length).toBe(1);
+  });
+
+  it("prepends trusted facts before extracted facts and passes override + forum-downweight instructions to the extractor", async () => {
+    vi.mocked(generateObject)
+      .mockResolvedValueOnce({ object: { queries: ["q1"] } } as any)
+      .mockResolvedValueOnce({ object: { facts: [{ claim: "Stage 1 ~410whp", detail: "bolt-ons", sourceUrl: "https://x/a" }], uncertain: [] } } as any);
+    vi.mocked(webSearch).mockResolvedValue([{ title: "t", snippet: "s", link: "https://x/a" }]);
+    const fs = await runResearcher({ topic: "B58", outline, trustedFacts: ["forged is overkill for 800whp"] });
+    expect(fs.facts[0].claim).toBe("forged is overkill for 800whp"); // trusted first
+    expect(fs.facts[1].claim).toBe("Stage 1 ~410whp");
+    const extractPrompt = vi.mocked(generateObject).mock.calls[1][0].prompt as string;
+    expect(extractPrompt).toContain("forged is overkill for 800whp");
+    expect(extractPrompt).toMatch(/OVERRIDE|ground truth/i);
+    expect(extractPrompt).toMatch(/forum/i); // down-weight forums instruction present
+  });
 });
