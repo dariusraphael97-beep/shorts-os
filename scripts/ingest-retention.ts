@@ -18,7 +18,10 @@ function flag(name: string): boolean {
 }
 function numArg(name: string): number | undefined {
   const v = arg(name);
-  return v === undefined ? undefined : Number(v);
+  if (v === undefined) return undefined;
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw new Error(`--${name} must be a number (got "${v}")`);
+  return n;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
