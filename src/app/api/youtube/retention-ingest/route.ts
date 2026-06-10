@@ -89,7 +89,12 @@ export async function POST(req: Request): Promise<Response> {
   );
   if (!video) {
     return Response.json(
-      { error: 'video_not_found', externalVideoId: body.externalVideoId, yourVideoId: body.yourVideoId },
+      {
+        error: 'video_not_found',
+        detail: 'No posted video matches that id — register/post the video first.',
+        externalVideoId: body.externalVideoId,
+        yourVideoId: body.yourVideoId,
+      },
       { status: 404 },
     );
   }

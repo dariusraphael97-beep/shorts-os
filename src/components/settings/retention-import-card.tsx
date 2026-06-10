@@ -18,8 +18,8 @@ function Sparkline({ points }: { points: ParsedRetentionPoint[] }) {
       .join(' ');
   }, [points]);
   return (
-    <svg viewBox="0 0 100 30" className="w-full h-16" preserveAspectRatio="none">
-      <path d={d} fill="none" stroke="currentColor" strokeWidth={1} className="text-accent-electric" />
+    <svg viewBox="0 0 100 30" className="w-full h-16" preserveAspectRatio="none" role="img" aria-label="Retention curve preview">
+      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-[var(--accent-electric)]" />
     </svg>
   );
 }
@@ -41,7 +41,11 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
     }
   }, [raw]);
 
-  const num = (s: string) => (s.trim() === '' ? undefined : Number(s));
+  const num = (s: string) => {
+    if (s.trim() === '') return undefined;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : undefined;
+  };
 
   async function save() {
     setSaving(true);
@@ -82,10 +86,10 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
   const canSave = !!videoId && parsed !== null && 'points' in parsed && !saving;
 
   return (
-    <section className="rounded-lg border border-subtle bg-surface p-4 space-y-3">
+    <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-3">
       <div>
         <h2 className="text-sm font-medium text-text-primary">Audience retention — manual import</h2>
-        <p className="text-xs text-text-muted mt-1">
+        <p className="text-xs text-text-tertiary mt-1">
           YouTube withholds the retention curve from the API until a video has enough views, so paste it from
           YT Studio (Analytics → Engagement → Audience retention) as CSV or JSON. The first-30s hold this
           computes is the L2 playbook&apos;s primary ranking signal.
@@ -93,7 +97,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
       </div>
 
       {videos.length === 0 ? (
-        <p className="text-xs text-text-muted">No posted videos yet.</p>
+        <p className="text-xs text-text-tertiary">No posted videos yet.</p>
       ) : (
         <>
           <label className="block text-xs text-text-secondary">
@@ -101,7 +105,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
             <select
               value={videoId}
               onChange={(e) => setVideoId(e.target.value)}
-              className="mt-1 w-full rounded border border-subtle bg-app px-2 py-1.5 text-xs text-text-primary"
+              className="mt-1 w-full rounded border border-[var(--border-subtle)] bg-[var(--bg)] px-2 py-1.5 text-xs text-text-primary"
             >
               {videos.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -118,19 +122,19 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
               onChange={(e) => setRaw(e.target.value)}
               rows={6}
               placeholder={'0,100\n25,68\n50,42\n75,31\n100,18'}
-              className="mt-1 w-full rounded border border-subtle bg-app px-2 py-1.5 font-mono text-xs text-text-primary"
+              className="mt-1 w-full rounded border border-[var(--border-subtle)] bg-[var(--bg)] px-2 py-1.5 font-mono text-xs text-text-primary"
             />
           </label>
 
-          {parsed && 'error' in parsed && <p className="text-xs text-accent-red">⚠ {parsed.error}</p>}
+          {parsed && 'error' in parsed && <p className="text-xs text-[var(--danger)]">⚠ {parsed.error}</p>}
           {parsed && 'points' in parsed && (
             <div className="space-y-1">
-              <p className="text-xs text-text-muted">{parsed.points.length} points parsed</p>
+              <p className="text-xs text-text-tertiary">{parsed.points.length} points parsed</p>
               <Sparkline points={parsed.points} />
             </div>
           )}
 
-          <button type="button" onClick={() => setShowMetrics((s) => !s)} className="text-xs text-text-muted underline">
+          <button type="button" onClick={() => setShowMetrics((s) => !s)} className="text-xs text-text-tertiary underline">
             {showMetrics ? 'Hide' : 'Add'} headline metrics (optional)
           </button>
           {showMetrics && (
@@ -149,7 +153,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
                     inputMode="decimal"
                     value={metrics[k]}
                     onChange={(e) => setMetrics((m) => ({ ...m, [k]: e.target.value }))}
-                    className="mt-1 w-full rounded border border-subtle bg-app px-2 py-1.5 text-xs text-text-primary"
+                    className="mt-1 w-full rounded border border-[var(--border-subtle)] bg-[var(--bg)] px-2 py-1.5 text-xs text-text-primary"
                   />
                 </label>
               ))}
@@ -161,12 +165,12 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
               type="button"
               disabled={!canSave}
               onClick={save}
-              className="px-4 py-2 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90 disabled:opacity-40"
+              className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-foreground)] text-xs font-medium hover:opacity-90 disabled:opacity-40"
             >
               {saving ? 'Saving…' : 'Save retention curve'}
             </button>
             {status && (
-              <span className={`text-xs ${status.kind === 'ok' ? 'text-text-secondary' : 'text-accent-red'}`}>
+              <span className={`text-xs ${status.kind === 'ok' ? 'text-text-secondary' : 'text-[var(--danger)]'}`}>
                 {status.kind === 'ok' ? '✓ ' : '✗ '}
                 {status.msg}
               </span>
