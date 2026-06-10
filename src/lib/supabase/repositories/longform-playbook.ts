@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PresetId } from "@/lib/longform/style-presets";
 import { EMPTY_LONGFORM_PLAYBOOK, type LongformPlaybook } from "@/lib/agents/longform/playbook";
 import { distillPlaybook, type VideoOutcome } from "@/lib/agents/longform/playbook-distiller";
+import { summarizeOpeningRetention, type RetentionCurvePoint } from "@/lib/longform/retention";
 
 /** One row of longform_decision_outcomes (decision ⨝ video ⨝ latest analytics). */
 interface OutcomeViewRow {
@@ -21,10 +22,14 @@ interface OutcomeViewRow {
   title: string | null;
   ctr_pct: number | null;
   views: number | null;
-  // Added by the L2 retention migration; absent (→ undefined → null) before it is applied.
+  // Added by the L2 retention migrations; absent (→ undefined → null) before they are applied.
   first_30s_retention?: number | null;
   first_60s_retention?: number | null;
   relative_retention_opening?: number | null;
+  duration_seconds?: number | null;
+  /** Raw curve — lets us derive opening retention when the scalar columns weren't pre-computed
+   *  (e.g. a manual YT-Studio paste, which writes the curve but not the derived scalars). */
+  retention_curve_jsonb?: RetentionCurvePoint[] | null;
 }
 
 const numOrNull = (x: unknown): number | null => (typeof x === "number" ? x : null);
@@ -55,6 +60,19 @@ function foldVideo(rows: OutcomeViewRow[], genre: string | null): VideoOutcome {
   const voice = chosenOf("voice_coach");
   const beat = chosenOf("beat_planner");
   const any = rows[0];
+
+  // Prefer the pre-computed scalar columns (the cron path). Fall back to deriving them from the raw
+  // curve (the manual-paste path writes the curve but not the scalars) so the engine learns either way.
+  let first30 = numOrNull(any.first_30s_retention);
+  let first60 = numOrNull(any.first_60s_retention);
+  let relOpen = numOrNull(any.relative_retention_opening);
+  if (first30 == null && Array.isArray(any.retention_curve_jsonb) && any.retention_curve_jsonb.length > 0) {
+    const o = summarizeOpeningRetention(any.retention_curve_jsonb, numOrNull(any.duration_seconds));
+    first30 = o.first30sRetention;
+    first60 = o.first60sRetention;
+    relOpen = o.relativeRetentionOpening;
+  }
+
   return {
     videoId: any.your_video_id ?? "",
     genre,
@@ -64,9 +82,9 @@ function foldVideo(rows: OutcomeViewRow[], genre: string | null): VideoOutcome {
     angle: strOrNull(writer.angle),
     title: strOrNull(any.title),
     thumbnailWords: null, // no thumbnail-text field tracked yet
-    first30sRetention: numOrNull(any.first_30s_retention),
-    first60sRetention: numOrNull(any.first_60s_retention),
-    relativeRetentionOpening: numOrNull(any.relative_retention_opening),
+    first30sRetention: first30,
+    first60sRetention: first60,
+    relativeRetentionOpening: relOpen,
     ctrPct: numOrNull(any.ctr_pct),
     views: numOrNull(any.views),
     avgBeatSeconds: numOrNull(beat.avgBeatSeconds),
@@ -92,7 +110,7 @@ export async function loadLongformPlaybook(
     // 2) Their decision-ledger rows joined to the latest analytics snapshot.
     const { data: rows, error: rowErr } = await supabase
       .from("longform_decision_outcomes")
-      .select("agent_id, chosen, your_video_id, title, ctr_pct, views, first_30s_retention, first_60s_retention, relative_retention_opening")
+      .select("agent_id, chosen, your_video_id, title, ctr_pct, views, first_30s_retention, first_60s_retention, relative_retention_opening, duration_seconds, retention_curve_jsonb")
       .in("your_video_id", ids);
     if (rowErr) throw rowErr;
 

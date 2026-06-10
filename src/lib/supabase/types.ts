@@ -2253,6 +2253,7 @@ export type Database = {
           first_60s_retention: number | null
           posted_at: string | null
           relative_retention_opening: number | null
+          retention_curve_jsonb: Json | null
           status: string | null
           title: string | null
           views: number | null

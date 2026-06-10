@@ -53,6 +53,32 @@ describe("loadLongformPlaybook", () => {
     expect(pb.retention.bestFirst30sRetention).toBeCloseTo(0.7, 5);
   });
 
+  it("derives opening retention from the raw curve when the scalar columns are null (manual-paste path)", async () => {
+    // Mirrors B58 after a manual YT-Studio paste: curve present, derived scalars NOT pre-computed.
+    const curveRows = [
+      { agent_id: "writer", chosen: { hook: "pasted-curve hook", angle: "pasted angle" }, your_video_id: "v1", title: "T", ctr_pct: 2.9, views: 16,
+        first_30s_retention: null, first_60s_retention: null, relative_retention_opening: null,
+        duration_seconds: 500,
+        // 30s == ratio 0.06 → ~0.62 still watching; 60s == 0.12 → ~0.5
+        retention_curve_jsonb: [
+          { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0 },
+          { elapsedVideoTimeRatio: 0.06, audienceWatchRatio: 0.62 },
+          { elapsedVideoTimeRatio: 0.12, audienceWatchRatio: 0.5 },
+          { elapsedVideoTimeRatio: 1, audienceWatchRatio: 0.1 },
+        ] },
+    ];
+    const supabase = fakeSupabase({
+      your_videos: { data: [{ id: "v1" }], error: null },
+      longform_decision_outcomes: { data: curveRows, error: null },
+      channels: { data: { niche: { slug: "cars" } }, error: null },
+    });
+    const pb = await loadLongformPlaybook(supabase, "ch1");
+    expect(pb.retention.sampleSize).toBe(1);
+    expect(pb.retention.bestFirst30sRetention).toBeCloseTo(0.62, 5);
+    // 0.62 clears the 0.5 winner floor → it teaches the hook
+    expect(pb.writer.exemplarHooks).toEqual(["pasted-curve hook"]);
+  });
+
   it("falls back to EMPTY on any read error (back-compat with L1)", async () => {
     const supabase = fakeSupabase({ your_videos: { data: null, error: { message: "boom" } } });
     expect(await loadLongformPlaybook(supabase, "ch1")).toEqual(EMPTY_LONGFORM_PLAYBOOK);
