@@ -15,6 +15,14 @@ const envSchema = z.object({
   REDDIT_USER_AGENT: z.string().min(1).optional(),
   TIKAPI_KEY: z.string().min(1).optional(),
 
+  // Google OAuth (YouTube upload + Analytics). Read directly with `!` in routes/crons;
+  // declared here so a half-configured set surfaces. Set in Vercel prod.
+  GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  OAUTH_TOKEN_ENCRYPTION_KEY_V1: z.string().length(64).optional(),
+  OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION: z.string().min(1).optional(),
+  ANALYTICS_SYNC_WINDOW_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+
   // Cockpit auth (Plan #2)
   COCKPIT_PASSWORD: z.string().min(20),
   COCKPIT_SESSION_SECRET: z.string().min(32),
