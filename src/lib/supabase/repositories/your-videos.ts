@@ -301,6 +301,23 @@ export async function getYourVideoById(
   return (data as StudioDraft | null) ?? null;
 }
 
+export async function getVideoForRetentionIngest(
+  supabase: SupabaseClient,
+  ref: { externalVideoId?: string; yourVideoId?: string },
+): Promise<{ id: string; durationSeconds: number | null } | null> {
+  const builder = supabase.from("your_videos").select("id, duration_seconds");
+  const query = ref.yourVideoId
+    ? builder.eq("id", ref.yourVideoId)
+    : builder.eq("external_video_id", ref.externalVideoId ?? "");
+  const { data, error } = await query.maybeSingle();
+  if (error && (error as { code?: string }).code !== "PGRST116") {
+    throw new Error(`getVideoForRetentionIngest: ${error.message}`);
+  }
+  if (!data) return null;
+  const row = data as { id: string; duration_seconds: number | null };
+  return { id: row.id, durationSeconds: row.duration_seconds };
+}
+
 export interface ClaimedRow {
   id: string;
   channel_id: string;
