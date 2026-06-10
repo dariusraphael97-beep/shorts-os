@@ -4,6 +4,8 @@
 **Branch:** `feat/niche-finder-dominatable` (work may move to its own branch)
 **Status:** approved scope (paste path + API hardening), in-app UI surface
 
+> **Update (post-`233d27f`):** while this spec was being written, commit `233d27f` (Phase L2 playbook store) landed in parallel — it built the curve's *consumer* (`summarizeOpeningRetention`, derived `first_30s_retention`/`first_60s_retention`/`relative_retention_opening` columns written by `upsertVideoAnalytics`, the `longform_playbooks` table + distiller; migration already applied to prod). The implementation plan (`docs/superpowers/plans/2026-06-10-retention-curve-ingest.md`) is reconciled against it: the manual ingest now ALSO computes + stores the derived opening-hold columns (so a pasted curve feeds the distiller), the parser keeps a 2-field type that is a structural subset of L2's `RetentionCurvePoint`, and the planned `performance-sync` tweak + `RetentionPoint` re-export are dropped to avoid colliding with L2's files. The "stale `il` test" note below was a mis-read — the test correctly imports `performance-sync/route`; ignore it.
+
 ## Problem
 
 The longform learning loop's `video_analytics` table has a `retention_curve_jsonb`

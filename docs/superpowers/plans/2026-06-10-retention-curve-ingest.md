@@ -2,20 +2,28 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let an operator drop a YouTube audience-retention curve (CSV or JSON, exported from YT Studio) into `video_analytics.retention_curve_jsonb` — via a parser, an API route, an in-app settings card, and a CLI — reusing the existing `upsertVideoAnalytics`; plus declare the already-working-in-prod OAuth env vars and write a runbook.
+**Goal:** Let an operator drop a YouTube audience-retention curve (CSV or JSON from YT Studio) into `video_analytics` — via a parser, an API route, an in-app settings card, and a CLI — reusing the existing `upsertVideoAnalytics`, **and computing the same derived opening-hold columns the L2 distiller ranks on** so a manually-imported curve feeds the playbook engine exactly like the cron-fetched one.
 
-**Architecture:** A single pure parser (`retention-parser.ts`) normalizes any pasted format to `RetentionPoint[]`. A repository helper (`ingestManualRetention`) carries forward the latest snapshot's scalar metrics and writes a new snapshot through the existing `upsertVideoAnalytics` (kept the single writer). Two front doors call it: `POST /api/youtube/retention-ingest` (cockpit-cookie guarded) and a `tsx` CLI script. The existing `performance-sync` cron continues to fill the curve automatically once YouTube exposes it.
+**Architecture:** A dependency-free parser (`retention-parser.ts`) normalizes any pasted format to `{elapsedVideoTimeRatio, audienceWatchRatio}[]` (structurally a `RetentionCurvePoint[]`). A repository helper (`ingestManualRetention`) carries forward the latest snapshot's scalar metrics, runs the existing `summarizeOpeningRetention(curve, durationSeconds)` to derive first-30s/60s/relative-opening, and writes a new snapshot through the existing `upsertVideoAnalytics` (kept the single writer). Two front doors call it: `POST /api/youtube/retention-ingest` (cockpit-cookie guarded) and a `tsx` CLI. The existing `performance-sync` cron continues to fill the curve automatically once YouTube exposes it.
 
-**Tech Stack:** Next.js 16.2.6 (App Router route handlers), TypeScript, Zod 4.4.3 (`z.url()`-style top-level validators), Supabase JS (service role), vitest (node env — no component test infra), `tsx` for the CLI.
+**Tech Stack:** Next.js 16.2.6 (App Router route handlers), TypeScript, Zod 4.4.3 (`z.url()`-style validators), Supabase JS (service role), vitest (node env — no component test infra), `tsx` for the CLI.
 
 **Reference spec:** `docs/superpowers/specs/2026-06-10-retention-curve-ingest-design.md`
 
+### ⚠️ Builds on commit `233d27f` (Phase L2 playbook store, committed in parallel)
+
+That commit already landed on this branch and changed the contract — this plan integrates with it:
+- `src/lib/longform/retention.ts` (pure, no `server-only`) exports `summarizeOpeningRetention(curve: RetentionCurvePoint[], durationSeconds: number | null | undefined): { first30sRetention, first60sRetention, relativeRetentionOpening }` and the type `RetentionCurvePoint = { elapsedVideoTimeRatio: number; audienceWatchRatio: number; relativeRetentionPerformance?: number | null }`.
+- `upsertVideoAnalytics` (`src/lib/supabase/repositories/video-analytics.ts`) now accepts optional `first30sRetention`/`first60sRetention`/`relativeRetentionOpening` (writing `first_30s_retention`/`first_60s_retention`/`relative_retention_opening`). **Do NOT re-add or alter these** — just pass them.
+- Migration `20260610000001_longform_playbook_retention.sql` is **already applied to prod** (verified: the columns + `longform_playbooks` exist), so `upsertVideoAnalytics` writes succeed against the DB in `.env.local`.
+- **Do NOT touch** `src/lib/clients/youtube-analytics.ts` (its `RetentionPoint` now has 3 fields and is owned by L2) or `src/app/api/cron/performance-sync/route.ts` (a parallel session owns it). Our parser keeps its OWN 2-field type — structurally assignable to `RetentionCurvePoint` — so no shared-type edits are needed.
+
 **Key existing facts (verified against prod Supabase `jfmjppzjicvbpnlkmxbg`):**
-- B58 video: `your_videos.id = 7f7eef94-de2b-4348-a857-86037563f2e7`, `external_video_id = GwC66BSw7wU`, `status = posted`. Its latest `video_analytics` row has `views=16, avg_view_duration_seconds=58, ctr_pct=2.9, impressions=280`, `retention_curve_jsonb = NULL`.
-- `upsertVideoAnalytics` (`src/lib/supabase/repositories/video-analytics.ts`) takes camelCase params incl. `retentionCurve` and writes `retention_curve_jsonb`, `onConflict: 'your_video_id,snapshot_at'`.
+- B58 video: `your_videos.id = 7f7eef94-de2b-4348-a857-86037563f2e7`, `external_video_id = GwC66BSw7wU`, `status = posted`, `duration_seconds = 503.644`. Its latest `video_analytics` row has `views=16, avg_view_duration_seconds=58, ctr_pct=2.9, impressions=280`, `retention_curve_jsonb = NULL`, derived retention columns = NULL.
+- `upsertVideoAnalytics` writes `onConflict: 'your_video_id,snapshot_at'`.
 - Cockpit auth: `verifySession(cookie)` + `COCKPIT_COOKIE_NAME = 'cockpit_session'` in `src/lib/auth/session.ts`; `signSession()` builds a valid cookie (tests set `process.env.COCKPIT_SESSION_SECRET`).
-- Settings page `src/app/settings/channel/page.tsx` is a server component using `AppShell`/`AppSidebar` + Tailwind tokens (`text-text-primary`, `bg-surface`, `border-subtle`, `accent-electric`, `accent-red`). Client islands use `'use client'` (see `src/components/settings/connect-youtube-button.tsx`).
-- Route tests mock `@/lib/supabase/server` `getServiceClient` with `vi.fn()` + `mockReturnValue`, mock repos, and invoke the handler with a `new Request(...)` directly (see `src/tests/api/performance-sync.test.ts`).
+- Settings page `src/app/settings/channel/page.tsx` is a server component using `AppShell`/`AppSidebar` + Tailwind tokens (`text-text-primary`, `bg-surface`, `bg-app`, `border-subtle`, `accent-electric`, `accent-red`, `text-text-muted`, `text-text-secondary`). Client islands use `'use client'` (see `src/components/settings/connect-youtube-button.tsx`).
+- Route tests mock `@/lib/supabase/server` `getServiceClient` + repos, and invoke the handler with `new Request(...)` directly (see `src/tests/api/performance-sync.test.ts`).
 
 ---
 
@@ -26,10 +34,10 @@
 - [ ] **Step 1: Run the full suite + build to confirm a clean starting point**
 
 Run: `npm test`
-Expected: all tests pass (note the count). If anything is red *before* you start, stop and report — do not build on a broken baseline.
+Expected: all pass (commit 233d27f reported 723 green). Note the count. If red before you start, stop and report.
 
 Run: `npm run build`
-Expected: build succeeds.
+Expected: succeeds.
 
 ---
 
@@ -37,8 +45,9 @@ Expected: build succeeds.
 
 **Files:**
 - Create: `src/lib/clients/retention-parser.ts`
-- Modify: `src/lib/clients/youtube-analytics.ts:69` (replace inline `RetentionPoint` with a re-export so manual + API paths share one type)
 - Test: `src/tests/lib/clients/retention-parser.test.ts`
+
+> Keep this module dependency-free (no imports). Its output type `ParsedRetentionPoint` has exactly `elapsedVideoTimeRatio` + `audienceWatchRatio`, which is structurally assignable to L2's `RetentionCurvePoint` (whose third field is optional) — so consumers can pass it straight to `summarizeOpeningRetention` with no cross-import.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -81,6 +90,14 @@ describe('parseRetentionCurve', () => {
     ]);
   });
 
+  it('ignores extra array columns (e.g. relativeRetentionPerformance) and takes first two', () => {
+    const pts = parseRetentionCurve(JSON.stringify({ rows: [[0, 1, 0.5], [1, 0.2, 0.4]] }));
+    expect(pts).toEqual([
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1 },
+      { elapsedVideoTimeRatio: 1, audienceWatchRatio: 0.2 },
+    ]);
+  });
+
   it('parses CSV with a header and percentage values (0-100 -> 0-1)', () => {
     const csv = 'Video position (%),Absolute audience retention (%)\n0,100\n50,42.5\n100,18';
     const pts = parseRetentionCurve(csv);
@@ -116,10 +133,10 @@ describe('parseRetentionCurve', () => {
     ]);
   });
 
-  it('sorts by elapsed and de-dupes identical elapsed values', () => {
+  it('sorts by elapsed and de-dupes identical elapsed values (first-seen wins)', () => {
     const pts = parseRetentionCurve('1,0.2\n0,1\n0,0.9');
     expect(pts.map((p) => p.elapsedVideoTimeRatio)).toEqual([0, 1]);
-    expect(pts[0].audienceWatchRatio).toBe(1); // first-seen wins for dup elapsed
+    expect(pts[0].audienceWatchRatio).toBe(1);
   });
 
   it('clamps negative watch ratios to 0 and elapsed to [0,1]', () => {
@@ -154,13 +171,13 @@ Expected: FAIL — `Cannot find module '@/lib/clients/retention-parser'`.
 Create `src/lib/clients/retention-parser.ts`:
 
 ```typescript
-// Pure, client-safe (no server-only, no DB): turns arbitrary pasted text
-// (YT Studio CSV, raw YT Analytics API JSON, or a JSON array) into a
-// normalized RetentionPoint[]. Canonical home of the RetentionPoint type;
-// youtube-analytics.ts re-exports it so manual + API ingest produce identical
-// shapes for the L2 playbook engine.
+// Pure, dependency-free, client-safe: turns arbitrary pasted text (YT Studio CSV,
+// raw YT Analytics API JSON, or a JSON array) into a normalized retention curve.
+// ParsedRetentionPoint is intentionally a 2-field structural subset of L2's
+// RetentionCurvePoint (src/lib/longform/retention.ts), so callers can pass the
+// output straight to summarizeOpeningRetention with no cross-import.
 
-export interface RetentionPoint {
+export interface ParsedRetentionPoint {
   elapsedVideoTimeRatio: number;
   audienceWatchRatio: number;
 }
@@ -250,14 +267,14 @@ function scaleColumn(values: number[]): number[] {
   return max > 1.5 ? values.map((v) => v / 100) : values;
 }
 
-function normalize(pairs: Array<[number, number]>): RetentionPoint[] {
+function normalize(pairs: Array<[number, number]>): ParsedRetentionPoint[] {
   if (pairs.length === 0) {
     throw new RetentionParseError('No numeric data points found.');
   }
   const elapsed = scaleColumn(pairs.map((p) => p[0]));
   const watch = scaleColumn(pairs.map((p) => p[1]));
   const seen = new Set<number>();
-  const points: RetentionPoint[] = [];
+  const points: ParsedRetentionPoint[] = [];
   for (let i = 0; i < pairs.length; i++) {
     const e = Math.min(1, Math.max(0, elapsed[i]));
     const w = Math.max(0, watch[i]);
@@ -273,7 +290,7 @@ function normalize(pairs: Array<[number, number]>): RetentionPoint[] {
   return points;
 }
 
-export function parseRetentionCurve(input: string): RetentionPoint[] {
+export function parseRetentionCurve(input: string): ParsedRetentionPoint[] {
   const text = (input ?? '').trim();
   if (!text) throw new RetentionParseError('Empty input — paste a CSV or JSON retention curve.');
   const pairs = text.startsWith('{') || text.startsWith('[') ? parseJson(text) : parseDelimited(text);
@@ -286,130 +303,131 @@ export function parseRetentionCurve(input: string): RetentionPoint[] {
 Run: `npm test -- retention-parser`
 Expected: PASS (all cases).
 
-- [ ] **Step 5: Make `RetentionPoint` a single source of truth**
-
-In `src/lib/clients/youtube-analytics.ts`, replace the inline interface at line 69:
-
-```typescript
-export interface RetentionPoint { elapsedVideoTimeRatio: number; audienceWatchRatio: number; }
-```
-
-with a re-export of the canonical type (add the import near the top of the file, after `import 'server-only';`):
-
-```typescript
-import type { RetentionPoint } from './retention-parser';
-export type { RetentionPoint };
-```
-
-Leave the rest of `youtube-analytics.ts` unchanged (it keeps using `RetentionPoint`).
-
-- [ ] **Step 6: Verify nothing broke**
-
-Run: `npm test`
-Expected: PASS (including the existing `performance-sync` test that uses `RetentionPoint`).
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/clients/retention-parser.ts src/lib/clients/youtube-analytics.ts src/tests/lib/clients/retention-parser.test.ts
-git commit -m "feat(analytics): retention-curve parser (CSV/JSON/API) + shared RetentionPoint type"
+git add src/lib/clients/retention-parser.ts src/tests/lib/clients/retention-parser.test.ts
+git commit -m "feat(analytics): retention-curve parser (CSV/JSON/API), dependency-free"
 ```
 
 ---
 
-## Task 2: Resolve a video by its YouTube id
+## Task 2: Resolve a posted video (id + duration) for ingest
 
 **Files:**
-- Modify: `src/lib/supabase/repositories/your-videos.ts` (add `getYourVideoIdByExternalId` near `getYourVideoById`, ~line 302)
-- Test: `src/tests/lib/supabase/your-videos-external-id.test.ts`
+- Modify: `src/lib/supabase/repositories/your-videos.ts` (add `getVideoForRetentionIngest` after `getYourVideoById`, ~line 302)
+- Test: `src/tests/lib/supabase/get-video-for-retention-ingest.test.ts`
+
+> Returns `duration_seconds` too — `summarizeOpeningRetention` needs it to compute the 30s/60s marks.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/tests/lib/supabase/your-videos-external-id.test.ts`:
+Create `src/tests/lib/supabase/get-video-for-retention-ingest.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { getYourVideoIdByExternalId } from '@/lib/supabase/repositories/your-videos';
+import { getVideoForRetentionIngest } from '@/lib/supabase/repositories/your-videos';
 
-function mockSupabase(row: { id: string } | null, error: { code?: string; message: string } | null = null) {
-  return {
+function mockSupabase(
+  row: { id: string; duration_seconds: number | null } | null,
+  error: { code?: string; message: string } | null = null,
+) {
+  let capturedCol: string | null = null;
+  const supabase = {
     from: (table: string) => {
       if (table !== 'your_videos') throw new Error('wrong table');
       return {
         select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: row, error }),
-          }),
+          eq: (col: string) => {
+            capturedCol = col;
+            return { maybeSingle: async () => ({ data: row, error }) };
+          },
         }),
       };
     },
   } as never;
+  return { supabase, get capturedCol() { return capturedCol; } };
 }
 
-describe('getYourVideoIdByExternalId', () => {
-  it('returns the internal id for a known external_video_id', async () => {
-    const id = await getYourVideoIdByExternalId(mockSupabase({ id: 'internal-uuid' }), 'GwC66BSw7wU');
-    expect(id).toBe('internal-uuid');
+describe('getVideoForRetentionIngest', () => {
+  it('resolves by external_video_id', async () => {
+    const m = mockSupabase({ id: 'internal-uuid', duration_seconds: 503 });
+    const v = await getVideoForRetentionIngest(m.supabase, { externalVideoId: 'GwC66BSw7wU' });
+    expect(v).toEqual({ id: 'internal-uuid', durationSeconds: 503 });
+    expect(m.capturedCol).toBe('external_video_id');
+  });
+
+  it('resolves by yourVideoId', async () => {
+    const m = mockSupabase({ id: 'internal-uuid', duration_seconds: null });
+    const v = await getVideoForRetentionIngest(m.supabase, { yourVideoId: 'internal-uuid' });
+    expect(v).toEqual({ id: 'internal-uuid', durationSeconds: null });
+    expect(m.capturedCol).toBe('id');
   });
 
   it('returns null when no row matches', async () => {
-    const id = await getYourVideoIdByExternalId(mockSupabase(null), 'nope');
-    expect(id).toBeNull();
+    const v = await getVideoForRetentionIngest(mockSupabase(null).supabase, { externalVideoId: 'nope' });
+    expect(v).toBeNull();
   });
 
   it('throws on a non-PGRST116 db error', async () => {
     await expect(
-      getYourVideoIdByExternalId(mockSupabase(null, { code: 'XX000', message: 'boom' }), 'x'),
-    ).rejects.toThrow('getYourVideoIdByExternalId: boom');
+      getVideoForRetentionIngest(mockSupabase(null, { code: 'XX000', message: 'boom' }).supabase, {
+        yourVideoId: 'x',
+      }),
+    ).rejects.toThrow('getVideoForRetentionIngest: boom');
   });
 });
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `npm test -- your-videos-external-id`
-Expected: FAIL — `getYourVideoIdByExternalId is not a function` / not exported.
+Run: `npm test -- get-video-for-retention-ingest`
+Expected: FAIL — not exported.
 
 - [ ] **Step 3: Implement the helper**
 
-In `src/lib/supabase/repositories/your-videos.ts`, add after `getYourVideoById` (after line 302):
+In `src/lib/supabase/repositories/your-videos.ts`, add after `getYourVideoById` (after line ~302):
 
 ```typescript
-export async function getYourVideoIdByExternalId(
+export async function getVideoForRetentionIngest(
   supabase: SupabaseClient,
-  externalVideoId: string,
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("your_videos")
-    .select("id")
-    .eq("external_video_id", externalVideoId)
-    .maybeSingle();
+  ref: { externalVideoId?: string; yourVideoId?: string },
+): Promise<{ id: string; durationSeconds: number | null } | null> {
+  const builder = supabase.from("your_videos").select("id, duration_seconds");
+  const query = ref.yourVideoId
+    ? builder.eq("id", ref.yourVideoId)
+    : builder.eq("external_video_id", ref.externalVideoId ?? "");
+  const { data, error } = await query.maybeSingle();
   if (error && (error as { code?: string }).code !== "PGRST116") {
-    throw new Error(`getYourVideoIdByExternalId: ${error.message}`);
+    throw new Error(`getVideoForRetentionIngest: ${error.message}`);
   }
-  return (data as { id: string } | null)?.id ?? null;
+  if (!data) return null;
+  const row = data as { id: string; duration_seconds: number | null };
+  return { id: row.id, durationSeconds: row.duration_seconds };
 }
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `npm test -- your-videos-external-id`
+Run: `npm test -- get-video-for-retention-ingest`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/supabase/repositories/your-videos.ts src/tests/lib/supabase/your-videos-external-id.test.ts
-git commit -m "feat(analytics): resolve your_videos row by external_video_id"
+git add src/lib/supabase/repositories/your-videos.ts src/tests/lib/supabase/get-video-for-retention-ingest.test.ts
+git commit -m "feat(analytics): resolve posted video (id + duration) for retention ingest"
 ```
 
 ---
 
-## Task 3: Manual-ingest helper (carry-forward merge)
+## Task 3: Manual-ingest helper (carry-forward scalars + derived opening-hold)
 
 **Files:**
-- Modify: `src/lib/supabase/repositories/video-analytics.ts` (append `VideoAnalyticsSnapshot`, `getLatestSnapshot`, `ManualMetricsOverride`, `ingestManualRetention`)
+- Modify: `src/lib/supabase/repositories/video-analytics.ts` (append `VideoAnalyticsSnapshot`, `getLatestSnapshot`, `ManualMetricsOverride`, `ingestManualRetention`; add the relative import of `summarizeOpeningRetention`)
 - Test: `src/tests/lib/supabase/ingest-manual-retention.test.ts`
+
+> `ingestManualRetention` runs the REAL `summarizeOpeningRetention` (pure, no mock needed) to populate `first_30s_retention`/`first_60s_retention`/`relative_retention_opening` — so a manual paste feeds the L2 distiller identically to the cron. Derived columns are RECOMPUTED from the new curve, never carried forward; only scalar metrics carry forward.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -419,7 +437,6 @@ Create `src/tests/lib/supabase/ingest-manual-retention.test.ts`:
 import { describe, it, expect } from 'vitest';
 import { ingestManualRetention } from '@/lib/supabase/repositories/video-analytics';
 
-// Mock supabase: latest snapshot read returns `prior`; upsert captures values.
 function mockSupabase(prior: Record<string, unknown> | null) {
   let captured: Record<string, unknown> | null = null;
   const supabase = {
@@ -429,9 +446,7 @@ function mockSupabase(prior: Record<string, unknown> | null) {
         select: () => ({
           eq: () => ({
             order: () => ({
-              limit: () => ({
-                maybeSingle: async () => ({ data: prior, error: null }),
-              }),
+              limit: () => ({ maybeSingle: async () => ({ data: prior, error: null }) }),
             }),
           }),
         }),
@@ -445,41 +460,54 @@ function mockSupabase(prior: Record<string, unknown> | null) {
   return { supabase, get captured() { return captured; } };
 }
 
+// Distinct buckets at 30s (0.3) and 60s (0.6) marks for duration=100.
 const CURVE = [
   { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1 },
+  { elapsedVideoTimeRatio: 0.3, audienceWatchRatio: 0.6 },
+  { elapsedVideoTimeRatio: 0.6, audienceWatchRatio: 0.4 },
   { elapsedVideoTimeRatio: 1, audienceWatchRatio: 0.2 },
 ];
 
 describe('ingestManualRetention', () => {
-  it('carries forward the latest snapshot scalars and writes the curve', async () => {
+  it('carries forward scalars, stores the curve, and computes derived opening-hold columns', async () => {
     const m = mockSupabase({
       views: 16, likes: 2, comments: 0, shares: null,
       avg_view_duration_seconds: 58, ctr_pct: 2.9, subscribers_gained: 1,
       impressions: 280, watch_time_seconds: 928,
     });
-    const res = await ingestManualRetention(m.supabase, { yourVideoId: 'v1', curve: CURVE });
-    expect(res.points).toBe(2);
+    const res = await ingestManualRetention(m.supabase, {
+      yourVideoId: 'v1', curve: CURVE, durationSeconds: 100,
+    });
+    expect(res.points).toBe(4);
+    // carried forward
     expect(m.captured!.views).toBe(16);
     expect(m.captured!.avg_view_duration_seconds).toBe(58);
     expect(m.captured!.impressions).toBe(280);
+    // curve stored
     expect(m.captured!.retention_curve_jsonb).toEqual(CURVE);
     expect(m.captured!.__onConflict).toBe('your_video_id,snapshot_at');
+    // derived (summarizeOpeningRetention nearest-bucket: 30s->0.3->0.6, 60s->0.6->0.4)
+    expect(m.captured!.first_30s_retention).toBeCloseTo(0.6);
+    expect(m.captured!.first_60s_retention).toBeCloseTo(0.4);
+    expect(m.captured!.relative_retention_opening).toBeNull(); // manual paste has no peer data
+    expect(res.first30sRetention).toBeCloseTo(0.6);
   });
 
   it('lets an explicit metricsOverride win over the carried-forward value', async () => {
     const m = mockSupabase({ views: 16, avg_view_duration_seconds: 58 });
     await ingestManualRetention(m.supabase, {
-      yourVideoId: 'v1', curve: CURVE, metricsOverride: { views: 999 },
+      yourVideoId: 'v1', curve: CURVE, durationSeconds: 100, metricsOverride: { views: 999 },
     });
     expect(m.captured!.views).toBe(999);
-    expect(m.captured!.avg_view_duration_seconds).toBe(58); // untouched -> carried forward
+    expect(m.captured!.avg_view_duration_seconds).toBe(58);
   });
 
-  it('writes a curve-only row (null scalars) when there is no prior snapshot', async () => {
+  it('writes a curve row with null scalars + null derived when no prior snapshot and no duration', async () => {
     const m = mockSupabase(null);
-    await ingestManualRetention(m.supabase, { yourVideoId: 'v1', curve: CURVE });
+    await ingestManualRetention(m.supabase, { yourVideoId: 'v1', curve: CURVE, durationSeconds: null });
     expect(m.captured!.views).toBeNull();
     expect(m.captured!.retention_curve_jsonb).toEqual(CURVE);
+    expect(m.captured!.first_30s_retention).toBeNull(); // no duration -> summarize returns nulls
   });
 });
 ```
@@ -491,7 +519,13 @@ Expected: FAIL — `ingestManualRetention is not a function`.
 
 - [ ] **Step 3: Implement the helper**
 
-Append to `src/lib/supabase/repositories/video-analytics.ts` (after `upsertVideoAnalytics`):
+In `src/lib/supabase/repositories/video-analytics.ts`, add the import near the top (after the existing `import type { SupabaseClient } ...`). Use a RELATIVE path (this module is imported by the `tsx` CLI, which has no `@/` alias):
+
+```typescript
+import { summarizeOpeningRetention, type RetentionCurvePoint } from '../../longform/retention';
+```
+
+Then append after `upsertVideoAnalytics`:
 
 ```typescript
 export interface VideoAnalyticsSnapshot {
@@ -539,23 +573,27 @@ export interface ManualMetricsOverride {
 
 /**
  * Ingest a manually-supplied retention curve as a NEW snapshot at `snapshotAt`
- * (default now), carrying forward the latest snapshot's scalar metrics so the
- * newest row stays complete for `longform_decision_outcomes`. Any field present
- * in `metricsOverride` wins. Reuses the single writer `upsertVideoAnalytics`.
+ * (default now). Carries forward the latest snapshot's scalar metrics (so the
+ * newest row stays complete for `longform_decision_outcomes`); any field in
+ * `metricsOverride` wins. Recomputes the derived opening-hold columns from the
+ * new curve via summarizeOpeningRetention so the L2 distiller sees it. Reuses the
+ * single writer `upsertVideoAnalytics`.
  */
 export async function ingestManualRetention(
   supabase: SupabaseClient,
   params: {
     yourVideoId: string;
-    curve: unknown; // RetentionPoint[]
+    curve: RetentionCurvePoint[];
+    durationSeconds: number | null;
     metricsOverride?: ManualMetricsOverride;
     snapshotAt?: Date;
     rawPayload?: unknown;
   },
-): Promise<{ points: number; snapshotAt: string }> {
+): Promise<{ points: number; snapshotAt: string; first30sRetention: number | null }> {
   const prev = await getLatestSnapshot(supabase, params.yourVideoId);
   const o = params.metricsOverride ?? {};
   const snapshotAt = params.snapshotAt ?? new Date();
+  const opening = summarizeOpeningRetention(params.curve, params.durationSeconds);
   const pick = <T>(override: T | undefined, prior: T | null | undefined): T | null =>
     override !== undefined ? override : (prior ?? null);
 
@@ -572,11 +610,17 @@ export async function ingestManualRetention(
     impressions: pick(o.impressions, prev?.impressions),
     watchTimeSeconds: pick(o.watchTimeSeconds, prev?.watch_time_seconds),
     retentionCurve: params.curve,
+    first30sRetention: opening.first30sRetention,
+    first60sRetention: opening.first60sRetention,
+    relativeRetentionOpening: opening.relativeRetentionOpening,
     rawPayload: params.rawPayload ?? { source: 'manual', importedAt: snapshotAt.toISOString() },
   });
 
-  const points = Array.isArray(params.curve) ? params.curve.length : 0;
-  return { points, snapshotAt: snapshotAt.toISOString() };
+  return {
+    points: params.curve.length,
+    snapshotAt: snapshotAt.toISOString(),
+    first30sRetention: opening.first30sRetention,
+  };
 }
 ```
 
@@ -589,7 +633,7 @@ Expected: PASS.
 
 ```bash
 git add src/lib/supabase/repositories/video-analytics.ts src/tests/lib/supabase/ingest-manual-retention.test.ts
-git commit -m "feat(analytics): ingestManualRetention — carry-forward merge via upsertVideoAnalytics"
+git commit -m "feat(analytics): ingestManualRetention — carry-forward + derived opening-hold via upsertVideoAnalytics"
 ```
 
 ---
@@ -600,7 +644,7 @@ git commit -m "feat(analytics): ingestManualRetention — carry-forward merge vi
 - Create: `src/app/api/youtube/retention-ingest/route.ts`
 - Test: `src/tests/api/retention-ingest.test.ts`
 
-> Before writing: skim `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` (this repo is Next 16; route handlers are `export async function POST(req: Request)`). Read the cockpit cookie off `req.headers.get('cookie')` (NOT `next/headers cookies()`) so the handler is a pure function of its `Request` arg and unit-testable like `performance-sync`.
+> Skim `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` first (Next 16). Read the cockpit cookie off `req.headers.get('cookie')` (NOT `next/headers cookies()`) so the handler is a pure function of its `Request` and unit-testable like `performance-sync`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -611,11 +655,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/supabase/server', () => ({ getServiceClient: vi.fn(() => ({})) }));
 vi.mock('@/lib/supabase/repositories/video-analytics', () => ({
-  ingestManualRetention: vi.fn(async () => ({ points: 3, snapshotAt: '2026-06-10T15:00:00.000Z' })),
+  ingestManualRetention: vi.fn(async () => ({
+    points: 3, snapshotAt: '2026-06-10T15:00:00.000Z', first30sRetention: 0.42,
+  })),
 }));
 vi.mock('@/lib/supabase/repositories/your-videos', () => ({
-  getYourVideoIdByExternalId: vi.fn(async (_s: unknown, ext: string) =>
-    ext === 'GwC66BSw7wU' ? '7f7eef94-de2b-4348-a857-86037563f2e7' : null,
+  getVideoForRetentionIngest: vi.fn(async (_s: unknown, ref: { externalVideoId?: string; yourVideoId?: string }) =>
+    ref.externalVideoId === 'GwC66BSw7wU' || ref.yourVideoId === '7f7eef94-de2b-4348-a857-86037563f2e7'
+      ? { id: '7f7eef94-de2b-4348-a857-86037563f2e7', durationSeconds: 503 }
+      : null,
   ),
 }));
 
@@ -631,14 +679,10 @@ beforeEach(() => {
 function req(body: unknown, opts: { cookie?: string } = {}) {
   return new Request('https://app/api/youtube/retention-ingest', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(opts.cookie ? { cookie: opts.cookie } : {}),
-    },
+    headers: { 'content-type': 'application/json', ...(opts.cookie ? { cookie: opts.cookie } : {}) },
     body: JSON.stringify(body),
   });
 }
-
 const goodCookie = () => `cockpit_session=${signSession()}`;
 const CSV = '0,1\n0.5,0.5\n1,0.2';
 
@@ -654,31 +698,27 @@ describe('POST /api/youtube/retention-ingest', () => {
   });
 
   it('400s on an unparseable curve', async () => {
-    const res = await POST(
-      req({ externalVideoId: 'GwC66BSw7wU', rawCurve: 'garbage\nnope' }, { cookie: goodCookie() }),
-    );
+    const res = await POST(req({ externalVideoId: 'GwC66BSw7wU', rawCurve: 'garbage\nnope' }, { cookie: goodCookie() }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe('parse_error');
   });
 
-  it('404s when the external video id is unknown', async () => {
-    const res = await POST(
-      req({ externalVideoId: 'UNKNOWN', rawCurve: CSV }, { cookie: goodCookie() }),
-    );
+  it('404s when the video is unknown', async () => {
+    const res = await POST(req({ externalVideoId: 'UNKNOWN', rawCurve: CSV }, { cookie: goodCookie() }));
     expect(res.status).toBe(404);
   });
 
-  it('ingests on the happy path', async () => {
+  it('ingests on the happy path, passing the resolved id + duration', async () => {
     const res = await POST(
       req({ externalVideoId: 'GwC66BSw7wU', rawCurve: CSV, metrics: { views: 16 } }, { cookie: goodCookie() }),
     );
     expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toMatchObject({ ok: true, yourVideoId: '7f7eef94-de2b-4348-a857-86037563f2e7', points: 3 });
+    expect(await res.json()).toMatchObject({ ok: true, yourVideoId: '7f7eef94-de2b-4348-a857-86037563f2e7', points: 3 });
     expect(vi.mocked(ingestManualRetention)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         yourVideoId: '7f7eef94-de2b-4348-a857-86037563f2e7',
+        durationSeconds: 503,
         curve: expect.arrayContaining([{ elapsedVideoTimeRatio: 0, audienceWatchRatio: 1 }]),
         metricsOverride: { views: 16 },
       }),
@@ -703,7 +743,7 @@ import { getServiceClient } from '@/lib/supabase/server';
 import { verifySession, COCKPIT_COOKIE_NAME } from '@/lib/auth/session';
 import { parseRetentionCurve, RetentionParseError } from '@/lib/clients/retention-parser';
 import { ingestManualRetention } from '@/lib/supabase/repositories/video-analytics';
-import { getYourVideoIdByExternalId } from '@/lib/supabase/repositories/your-videos';
+import { getVideoForRetentionIngest } from '@/lib/supabase/repositories/your-videos';
 
 export const dynamic = 'force-dynamic';
 
@@ -776,24 +816,34 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const supabase = getServiceClient();
-  let yourVideoId = body.yourVideoId ?? null;
-  if (!yourVideoId && body.externalVideoId) {
-    yourVideoId = await getYourVideoIdByExternalId(supabase, body.externalVideoId);
-  }
-  if (!yourVideoId) {
-    return Response.json({ error: 'video_not_found', externalVideoId: body.externalVideoId }, { status: 404 });
+  const video = await getVideoForRetentionIngest(
+    supabase,
+    body.yourVideoId ? { yourVideoId: body.yourVideoId } : { externalVideoId: body.externalVideoId },
+  );
+  if (!video) {
+    return Response.json(
+      { error: 'video_not_found', externalVideoId: body.externalVideoId, yourVideoId: body.yourVideoId },
+      { status: 404 },
+    );
   }
 
   const result = await ingestManualRetention(supabase, {
-    yourVideoId,
+    yourVideoId: video.id,
     curve,
+    durationSeconds: video.durationSeconds,
     metricsOverride: body.metrics,
     snapshotAt,
     rawPayload: { source: 'manual_paste', rawCurve: body.rawCurve },
   });
 
   return Response.json(
-    { ok: true, yourVideoId, points: result.points, snapshotAt: result.snapshotAt },
+    {
+      ok: true,
+      yourVideoId: video.id,
+      points: result.points,
+      snapshotAt: result.snapshotAt,
+      first30sRetention: result.first30sRetention,
+    },
     { status: 200 },
   );
 }
@@ -821,14 +871,14 @@ git commit -m "feat(analytics): POST /api/youtube/retention-ingest (cockpit-guar
 
 - [ ] **Step 1: Ensure `tsx` is available at the repo root**
 
-The root has `@supabase/supabase-js` and `server-only` but not `tsx` (it lives in `scripts/render-worker/node_modules`). Add it as a root devDependency:
+`tsx` lives in `scripts/render-worker/node_modules`, not at the root. Add it as a root devDependency so the script runs from the repo root (where its relative `../src/...` imports resolve `server-only`, `@supabase/supabase-js`, and `luxon` from root `node_modules`):
 
 Run: `npm i -D tsx`
-Expected: `tsx` added to `devDependencies`; `node_modules/.bin/tsx` exists.
+Expected: `tsx` in `devDependencies`; `node_modules/.bin/tsx` exists.
 
 - [ ] **Step 2: Add the npm script**
 
-In `package.json` `scripts`, add (next to `render-worker`):
+In `package.json` `scripts`, add next to `render-worker`:
 
 ```json
 "ingest-retention": "node --import tsx --env-file=.env.local scripts/ingest-retention.ts"
@@ -848,7 +898,7 @@ import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { parseRetentionCurve } from '../src/lib/clients/retention-parser.ts';
 import { ingestManualRetention } from '../src/lib/supabase/repositories/video-analytics.ts';
-import { getYourVideoIdByExternalId } from '../src/lib/supabase/repositories/your-videos.ts';
+import { getVideoForRetentionIngest } from '../src/lib/supabase/repositories/your-videos.ts';
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -879,14 +929,14 @@ async function main() {
   if (!url || !key) throw new Error('SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY must be set (.env.local)');
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  const yourVideoId = UUID_RE.test(video) ? video : await getYourVideoIdByExternalId(supabase, video);
-  if (!yourVideoId) {
-    throw new Error(`No your_videos row for external_video_id=${video}. Register/post the video first.`);
-  }
+  const ref = UUID_RE.test(video) ? { yourVideoId: video } : { externalVideoId: video };
+  const resolved = await getVideoForRetentionIngest(supabase, ref);
+  if (!resolved) throw new Error(`No your_videos row for ${video}. Register/post the video first.`);
 
   const res = await ingestManualRetention(supabase, {
-    yourVideoId,
+    yourVideoId: resolved.id,
     curve,
+    durationSeconds: resolved.durationSeconds,
     metricsOverride: {
       views: numArg('views'),
       avgViewDurationSeconds: numArg('avd'),
@@ -895,7 +945,10 @@ async function main() {
     },
   });
 
-  console.log(`✓ Upserted ${res.points} retention points for ${yourVideoId} @ ${res.snapshotAt}`);
+  console.log(
+    `✓ Upserted ${res.points} retention points for ${resolved.id} @ ${res.snapshotAt} ` +
+      `(first-30s retention: ${res.first30sRetention ?? 'n/a'})`,
+  );
 }
 
 main().catch((e) => {
@@ -907,7 +960,7 @@ main().catch((e) => {
 - [ ] **Step 4: Smoke-test argument handling without touching the DB**
 
 Run: `npm run ingest-retention -- --video GwC66BSw7wU`
-Expected: exits non-zero with `ingest-retention failed: Provide --file <path> or pipe input with --stdin` (proves imports resolve under tsx and arg parsing works).
+Expected: exits non-zero with `ingest-retention failed: Provide --file <path> or pipe input with --stdin` (proves imports resolve under tsx + arg parsing works).
 
 - [ ] **Step 5: Commit**
 
@@ -922,14 +975,14 @@ git commit -m "feat(analytics): CLI to paste/pipe a retention curve into video_a
 
 **Files:**
 - Create: `src/components/settings/retention-import-card.tsx` (client island)
+- Modify: `src/lib/supabase/repositories/your-videos.ts` (add `listPostedVideos`)
 - Modify: `src/app/settings/channel/page.tsx` (fetch posted videos, render the card)
-- Modify: `src/lib/supabase/repositories/your-videos.ts` (add `listPostedVideos` for the dropdown)
 
-> No component test infra exists (vitest is node-env). Verify this task with the preview workflow (Step 5), not a unit test.
+> No component test infra (vitest is node-env). Verify with the preview workflow (Step 5).
 
-- [ ] **Step 1: Add a `listPostedVideos` helper (for the dropdown)**
+- [ ] **Step 1: Add a `listPostedVideos` helper (dropdown source)**
 
-In `src/lib/supabase/repositories/your-videos.ts`, add after `getYourVideoIdByExternalId`:
+In `src/lib/supabase/repositories/your-videos.ts`, add after `getVideoForRetentionIngest`:
 
 ```typescript
 export async function listPostedVideos(
@@ -955,11 +1008,11 @@ Create `src/components/settings/retention-import-card.tsx`:
 'use client';
 
 import { useMemo, useState } from 'react';
-import { parseRetentionCurve, type RetentionPoint } from '@/lib/clients/retention-parser';
+import { parseRetentionCurve, type ParsedRetentionPoint } from '@/lib/clients/retention-parser';
 
 type PostedVideo = { id: string; external_video_id: string | null; title: string };
 
-function Sparkline({ points }: { points: RetentionPoint[] }) {
+function Sparkline({ points }: { points: ParsedRetentionPoint[] }) {
   const d = useMemo(() => {
     if (points.length < 2) return '';
     const maxW = Math.max(...points.map((p) => p.audienceWatchRatio), 1);
@@ -986,7 +1039,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const parsed = useMemo<{ points: RetentionPoint[] } | { error: string } | null>(() => {
+  const parsed = useMemo<{ points: ParsedRetentionPoint[] } | { error: string } | null>(() => {
     if (!raw.trim()) return null;
     try {
       return { points: parseRetentionCurve(raw) };
@@ -1019,7 +1072,12 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || json.error || `HTTP ${res.status}`);
-      setStatus({ kind: 'ok', msg: `Saved ${json.points} points.` });
+      setStatus({
+        kind: 'ok',
+        msg: `Saved ${json.points} points. First-30s retention: ${
+          json.first30sRetention != null ? `${Math.round(json.first30sRetention * 100)}%` : 'n/a'
+        }.`,
+      });
       setRaw('');
     } catch (e) {
       setStatus({ kind: 'err', msg: e instanceof Error ? e.message : 'failed' });
@@ -1035,8 +1093,9 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
       <div>
         <h2 className="text-sm font-medium text-text-primary">Audience retention — manual import</h2>
         <p className="text-xs text-text-muted mt-1">
-          YouTube withholds the retention curve from the API until a video has enough views. Paste it from
-          YT Studio (Analytics → Engagement → Audience retention) as CSV or JSON.
+          YouTube withholds the retention curve from the API until a video has enough views, so paste it from
+          YT Studio (Analytics → Engagement → Audience retention) as CSV or JSON. The first-30s hold this
+          computes is the L2 playbook&apos;s primary ranking signal.
         </p>
       </div>
 
@@ -1070,9 +1129,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
             />
           </label>
 
-          {parsed && 'error' in parsed && (
-            <p className="text-xs text-accent-red">⚠ {parsed.error}</p>
-          )}
+          {parsed && 'error' in parsed && <p className="text-xs text-accent-red">⚠ {parsed.error}</p>}
           {parsed && 'points' in parsed && (
             <div className="space-y-1">
               <p className="text-xs text-text-muted">{parsed.points.length} points parsed</p>
@@ -1080,11 +1137,7 @@ export function RetentionImportCard({ videos }: { videos: PostedVideo[] }) {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setShowMetrics((s) => !s)}
-            className="text-xs text-text-muted underline"
-          >
+          <button type="button" onClick={() => setShowMetrics((s) => !s)} className="text-xs text-text-muted underline">
             {showMetrics ? 'Hide' : 'Add'} headline metrics (optional)
           </button>
           {showMetrics && (
@@ -1154,28 +1207,28 @@ import { RetentionImportCard } from '@/components/settings/retention-import-card
 - [ ] **Step 4: Typecheck + build**
 
 Run: `npm run build`
-Expected: build succeeds (the client island compiles; `parseRetentionCurve` is client-safe).
+Expected: succeeds (the client island compiles; `parseRetentionCurve` is client-safe).
 
 - [ ] **Step 5: Verify in the browser (preview workflow)**
 
-Start the dev server (`preview_start`), log in (the route needs a valid cockpit cookie), navigate to `/settings/channel`, paste the sample CSV `0,100` / `50,42` / `100,18` (newline-separated), confirm the sparkline + "3 points parsed" appears, click Save, confirm the ✓ toast. Capture a screenshot for the user.
+Start the dev server (`preview_start`), log in (the route needs a valid cockpit cookie), navigate to `/settings/channel`, paste the sample CSV `0,100` / `50,42` / `100,18` (newline-separated), confirm the sparkline + "3 points parsed" appears, click Save, confirm the ✓ toast (with first-30s %). Capture a screenshot for the user.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/components/settings/retention-import-card.tsx src/app/settings/channel/page.tsx src/lib/supabase/repositories/your-videos.ts
-git commit -m "feat(analytics): settings card to paste a retention curve (live sparkline preview)"
+git commit -m "feat(analytics): settings card to paste a retention curve (live sparkline + first-30s readout)"
 ```
 
 ---
 
-## Task 7: API-path hardening — declare OAuth env vars + surface empty retention
+## Task 7: Declare the OAuth env vars
 
 **Files:**
-- Modify: `src/lib/env.ts` (declare the OAuth vars as optional)
-- Modify: `.env.example` (document them)
-- Modify: `src/app/api/cron/performance-sync/route.ts` (flag empty retention in the per-video summary)
-- Modify: `src/tests/api/performance-sync.test.ts` (assert the empty-retention flag)
+- Modify: `src/lib/env.ts`
+- Modify: `.env.example`
+
+> Scope note: do NOT modify `performance-sync/route.ts` — a parallel session owns it. The original plan's `retentionEmpty` summary tweak is dropped to avoid colliding with that file; empty retention is already handled (summarize returns nulls).
 
 - [ ] **Step 1: Declare the OAuth env vars**
 
@@ -1183,7 +1236,7 @@ In `src/lib/env.ts`, inside `envSchema`, add after the External API keys block:
 
 ```typescript
   // Google OAuth (YouTube upload + Analytics). Read directly with `!` in routes/crons;
-  // declared here so a half-configured set fails loudly. Set in Vercel prod.
+  // declared here so a half-configured set surfaces. Set in Vercel prod.
   GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
   OAUTH_TOKEN_ENCRYPTION_KEY_V1: z.string().length(64).optional(),
@@ -1208,74 +1261,16 @@ OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION=1
 ANALYTICS_SYNC_WINDOW_DAYS=14
 ```
 
-- [ ] **Step 3: Surface empty retention in the cron summary**
+- [ ] **Step 3: Verify the suite still passes (env additions are optional/defaulted)**
 
-In `src/app/api/cron/performance-sync/route.ts`, change the per-channel summary to track empty-retention videos. Update the summary array type (line ~42) and the loop:
+Run: `npm test`
+Expected: PASS (no test depends on these being unset).
 
-```typescript
-  const summary: Array<{ channelId: string; videos: number; errors: number; retentionEmpty: number }> = [];
-```
-
-Inside the per-channel block initialise `let retentionEmpty = 0;` next to `videosCount`/`errCount`, and immediately after the `Promise.all([...])` destructure (after line ~106) add:
-
-```typescript
-        if (!Array.isArray(retention) || retention.length === 0) retentionEmpty += 1;
-```
-
-and include it when pushing the summary:
-
-```typescript
-    summary.push({ channelId: c.id, videos: videosCount, errors: errCount, retentionEmpty });
-```
-
-(Add `retentionEmpty: 0` to the two early `summary.push(...)` continue-branches as well, e.g. `summary.push({ channelId: c.id, videos: 0, errors: 1, retentionEmpty: 0 });`.)
-
-- [ ] **Step 4: Update the performance-sync test to assert the flag**
-
-In `src/tests/api/performance-sync.test.ts`, after the existing assertions in the happy-path test, add:
-
-```typescript
-    const body = await res.json();
-    // fetchRetentionReport mock returns a 1-point array -> not empty
-    expect(body.summary[0]).toMatchObject({ videos: 1, retentionEmpty: 0 });
-```
-
-Then add a second test proving the empty case is flagged:
-
-```typescript
-  it('flags videos whose retention report is empty', async () => {
-    const { fetchRetentionReport } = await import('@/lib/clients/youtube-analytics');
-    vi.mocked(fetchRetentionReport).mockResolvedValueOnce([]);
-    vi.mocked(getServiceClient).mockReturnValue({
-      from: (table: string) => {
-        if (table === 'channels') {
-          return { select: () => ({ eq: () => ({ eq: async () => ({
-            data: [{ id: 'chan-1', external_channel_id: 'UC_X', timezone: 'America/New_York' }], error: null }) }) }) };
-        }
-        if (table === 'your_videos') {
-          return { select: () => ({ eq: () => ({ eq: () => ({ gte: async () => ({
-            data: [{ id: 'v1', external_video_id: 'EXT_1', channel_id: 'chan-1', posted_at: new Date().toISOString() }], error: null }) }) }) }) };
-        }
-        throw new Error('unmocked table ' + table);
-      },
-    } as never);
-    const req = new Request('https://app/api/cron/performance-sync', { headers: { authorization: 'Bearer ANYCRON' } });
-    const res = await GET(req);
-    const body = await res.json();
-    expect(body.summary[0]).toMatchObject({ retentionEmpty: 1 });
-  });
-```
-
-- [ ] **Step 5: Run the tests**
-
-Run: `npm test -- performance-sync`
-Expected: PASS (both the original and new test).
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/env.ts .env.example src/app/api/cron/performance-sync/route.ts src/tests/api/performance-sync.test.ts
-git commit -m "feat(analytics): declare OAuth env vars + flag empty retention in performance-sync"
+git add src/lib/env.ts .env.example
+git commit -m "chore(env): declare Google OAuth + analytics-window env vars"
 ```
 
 ---
@@ -1287,15 +1282,16 @@ git commit -m "feat(analytics): declare OAuth env vars + flag empty retention in
 
 - [ ] **Step 1: Write the runbook**
 
-Create `docs/superpowers/research/2026-06-10-retention-ingest-runbook.md` covering, in plain English:
+Create the file covering, in plain English:
 - **Why retention is empty for new videos:** YouTube withholds the API retention curve until a view/watch-hour threshold; YT Studio shows it earlier. (B58 = 16 views → API empty, Studio populated.)
+- **Why it matters for L2:** a manual paste computes `first_30s_retention` (via `summarizeOpeningRetention`) — the playbook distiller's primary ranking signal — so importing B58's curve unblocks the learning loop, not just the column.
 - **Manual import (the fix that works now):**
-  1. YT Studio → Content → the video → Analytics → Engagement → Audience retention. Read the curve. (If you can open the Network tab, copy the `audienceWatchRatio` JSON response — paste it as-is.)
-  2. Either: `/settings/channel` → "Audience retention — manual import" → pick the video, paste CSV/JSON, optionally add views/AVD/CTR/impressions, Save.
-  3. Or CLI: `npm run ingest-retention -- --video GwC66BSw7wU --file curve.csv [--views 16 --avd 58 --ctr 2.9 --impressions 280]`.
-- **Accepted formats:** 2-column CSV/TSV (elapsed, retention; % or ratio), JSON array of `{elapsedVideoTimeRatio, audienceWatchRatio}`, or the raw YT Analytics API `{rows:[[e,w],…]}`.
-- **Verify it landed:** the newest `video_analytics` row for the video has a non-null `retention_curve_jsonb` array (and the carried-forward scalars are still present).
-- **Auto path (already live in prod):** `performance-sync` cron (daily, `vercel.ts`) fills the curve once YouTube exposes it; `summary[].retentionEmpty` in its response shows which videos YT still withholds. Requires `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY_V1`, `OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION` set in Vercel + a stored channel refresh token (re-auth at `/api/youtube/oauth/start`).
+  1. YT Studio → Content → the video → Analytics → Engagement → Audience retention. Read the curve (or, with the Network tab open, copy the `audienceWatchRatio` JSON response and paste it as-is).
+  2. In-app: `/settings/channel` → "Audience retention — manual import" → pick the video, paste CSV/JSON, optionally add views/AVD/CTR/impressions, Save.
+  3. CLI: `npm run ingest-retention -- --video GwC66BSw7wU --file curve.csv [--views 16 --avd 58 --ctr 2.9 --impressions 280]`.
+- **Accepted formats:** 2-column CSV/TSV (elapsed, retention; % or ratio), JSON array of `{elapsedVideoTimeRatio, audienceWatchRatio}`, or the raw YT Analytics API `{rows:[[e,w],…]}` (extra columns ignored).
+- **Verify it landed:** the newest `video_analytics` row for the video has a non-null `retention_curve_jsonb` array AND a non-null `first_30s_retention`, with the carried-forward scalars intact.
+- **Auto path (already live in prod):** `performance-sync` cron (daily, `vercel.ts`) fills the curve + derived columns once YouTube exposes the data; requires `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY_V1`, `OAUTH_TOKEN_ENCRYPTION_KEY_CURRENT_VERSION` in Vercel + a stored channel refresh token (re-auth at `/api/youtube/oauth/start`).
 
 - [ ] **Step 2: Commit**
 
@@ -1313,31 +1309,33 @@ git commit -m "docs(analytics): retention-curve ingest runbook"
 - [ ] **Step 1: Full suite + build green**
 
 Run: `npm test`
-Expected: all pass (baseline count + the new parser/helper/route/cron tests).
+Expected: all pass (baseline 723 + the new parser/resolver/helper/route tests).
 
 Run: `npm run build`
 Expected: succeeds.
 
 - [ ] **Step 2: Real B58 backfill end-to-end**
 
-Obtain B58's actual retention curve from YT Studio (operator step — ask the user to paste/export it, or use the in-app card while logged in). Ingest it via the UI card OR:
+Obtain B58's actual retention curve from YT Studio (operator step — ask the user to paste/export it, or use the in-app card while logged in). Ingest via the UI card OR:
 
 Run: `npm run ingest-retention -- --video GwC66BSw7wU --file /tmp/b58-retention.csv`
-Expected: `✓ Upserted N retention points for 7f7eef94-… @ <ts>`.
+Expected: `✓ Upserted N retention points for 7f7eef94-… @ <ts> (first-30s retention: NN%)`.
 
-- [ ] **Step 3: Confirm the row in the DB**
+- [ ] **Step 3: Confirm the row + derived signal in the DB**
 
-Confirm the newest `video_analytics` row for `7f7eef94-de2b-4348-a857-86037563f2e7` has a non-null `retention_curve_jsonb` array AND retained scalar metrics (views=16, avg_view_duration_seconds=58, ctr_pct=2.9, impressions=280 carried forward). A short throwaway `tsx` query against `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` is fine; delete it after.
+Confirm the newest `video_analytics` row for `7f7eef94-de2b-4348-a857-86037563f2e7` has: non-null `retention_curve_jsonb` array, non-null `first_30s_retention`/`first_60s_retention`, and the carried-forward scalars (`views=16, avg_view_duration_seconds=58, ctr_pct=2.9, impressions=280`). A short throwaway `tsx` query against `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` is fine; delete it after. Also confirm `select * from longform_decision_outcomes where your_video_id = '7f7eef94-…'` now surfaces `first_30s_retention` (the distiller's input).
 
 - [ ] **Step 4: Report**
 
-Summarize for the user: tests green, build green, B58 curve now populated (with point count), and that the cron will keep it fresh once YouTube exposes more data.
+Summarize for the user: tests/build green, B58 curve + first-30s retention now populated (with the numbers), and that this feeds the L2 distiller (commit 233d27f) so the playbook can rank on real drop-off.
 
 ---
 
 ## Self-Review notes
 
-- **Spec coverage:** parser (Task 1), video resolver (Task 2), carry-forward ingest helper (Task 3), API route (Task 4), CLI (Task 5), settings UI (Task 6), OAuth env declaration + empty-retention visibility (Task 7), runbook (Task 8), verification (Task 9). All spec sections map to a task.
-- **Type consistency:** `RetentionPoint` defined once in `retention-parser.ts`, re-exported by `youtube-analytics.ts`. `ingestManualRetention` / `getLatestSnapshot` / `getYourVideoIdByExternalId` / `listPostedVideos` signatures are consistent across the helper, route, CLI, and UI. Route field names (`externalVideoId`, `yourVideoId`, `rawCurve`, `metrics`) match the UI body and the test.
-- **No placeholders:** every code step contains full code; every run step has an exact command + expected result.
-- **Out of scope (do not build):** the L2 playbook engine that consumes the curve.
+- **Spec coverage:** parser (Task 1), video resolver w/ duration (Task 2), carry-forward + derived-column ingest helper (Task 3), API route (Task 4), CLI (Task 5), settings UI (Task 6), OAuth env declaration (Task 7), runbook (Task 8), verification (Task 9).
+- **Integration with 233d27f:** reuses `summarizeOpeningRetention` + the new `upsertVideoAnalytics` derived params; does NOT touch `youtube-analytics.ts` or `performance-sync/route.ts`. Parser's `ParsedRetentionPoint` is a structural subset of `RetentionCurvePoint`.
+- **Type consistency:** `ParsedRetentionPoint` (parser) → flows as `RetentionCurvePoint[]` into `summarizeOpeningRetention` and `ingestManualRetention`. `getVideoForRetentionIngest` returns `{ id, durationSeconds }`, consumed identically by route + CLI. Route body fields (`externalVideoId`/`yourVideoId`/`rawCurve`/`metrics`) match the UI and the test.
+- **CLI import safety:** the script + its transitive `src/` imports use relative paths or type-only `@/`-free imports; `video-analytics.ts` imports `summarizeOpeningRetention` via a relative path so `tsx` (no `@/` alias) resolves it.
+- **No placeholders:** every code step has full code; every run step an exact command + expected result.
+- **Out of scope (do not build):** the L2 playbook distiller/engine itself — already built in 233d27f; this only feeds it.
