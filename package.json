@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "render-worker": "cd scripts/render-worker && node --import tsx --env-file=../../.env.local poll.ts"
+    "render-worker": "cd scripts/render-worker && node --import tsx --env-file=../../.env.local poll.ts",
+    "ingest-retention": "node --import tsx --conditions=react-server --env-file=.env.local scripts/ingest-retention.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",
@@ -58,6 +59,7 @@
     "postcss": "^8.5.15",
     "supabase": "^2.101.0",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.7"
   }
