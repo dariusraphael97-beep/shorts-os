@@ -1710,10 +1710,13 @@ export type Database = {
           avg_view_duration_seconds: number | null
           comments: number | null
           ctr_pct: number | null
+          first_30s_retention: number | null
+          first_60s_retention: number | null
           id: string
           impressions: number | null
           likes: number | null
           raw_payload: Json | null
+          relative_retention_opening: number | null
           retention_curve_jsonb: Json | null
           shares: number | null
           snapshot_at: string
@@ -1726,10 +1729,13 @@ export type Database = {
           avg_view_duration_seconds?: number | null
           comments?: number | null
           ctr_pct?: number | null
+          first_30s_retention?: number | null
+          first_60s_retention?: number | null
           id?: string
           impressions?: number | null
           likes?: number | null
           raw_payload?: Json | null
+          relative_retention_opening?: number | null
           retention_curve_jsonb?: Json | null
           shares?: number | null
           snapshot_at?: string
@@ -1742,10 +1748,13 @@ export type Database = {
           avg_view_duration_seconds?: number | null
           comments?: number | null
           ctr_pct?: number | null
+          first_30s_retention?: number | null
+          first_60s_retention?: number | null
           id?: string
           impressions?: number | null
           likes?: number | null
           raw_payload?: Json | null
+          relative_retention_opening?: number | null
           retention_curve_jsonb?: Json | null
           shares?: number | null
           snapshot_at?: string
@@ -2239,7 +2248,11 @@ export type Database = {
           ctr_pct: number | null
           decision_id: string | null
           decision_type: string | null
+          duration_seconds: number | null
+          first_30s_retention: number | null
+          first_60s_retention: number | null
           posted_at: string | null
+          relative_retention_opening: number | null
           status: string | null
           title: string | null
           views: number | null

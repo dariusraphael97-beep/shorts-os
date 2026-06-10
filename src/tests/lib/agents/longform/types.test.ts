@@ -47,4 +47,14 @@ describe("longform/types", () => {
     expect(EMPTY_LONGFORM_PLAYBOOK.stylePicker.presetWinsByGenre).toEqual({});
     expect(EMPTY_LONGFORM_PLAYBOOK.beatPlanner.promptPatternTags).toEqual([]);
   });
+
+  it("EMPTY playbook carries the new retention-first L2 fields, all empty (back-compat)", () => {
+    expect(EMPTY_LONGFORM_PLAYBOOK.writer.winningTitleFormulas).toEqual([]);
+    expect(EMPTY_LONGFORM_PLAYBOOK.writer.rankedExemplars).toEqual([]);
+    expect(EMPTY_LONGFORM_PLAYBOOK.thumbnail).toEqual({ winningWordCombos: [], winningNumberPatterns: [] });
+    // sampleSize 0 is the cold-start sentinel: agents treat this playbook as "no learning yet".
+    expect(EMPTY_LONGFORM_PLAYBOOK.retention.sampleSize).toBe(0);
+    expect(EMPTY_LONGFORM_PLAYBOOK.retention.medianFirst30sRetention).toBeNull();
+    expect(EMPTY_LONGFORM_PLAYBOOK.retention.bestFirst30sRetention).toBeNull();
+  });
 });

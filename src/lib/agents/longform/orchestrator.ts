@@ -3,7 +3,7 @@ import type { StreamEvent } from "@/lib/agents/types";
 import { LongformPlanSchema, type LongformPlan } from "@/lib/agents/longform/types";
 import { clampTargetDuration } from "@/lib/longform/duration";
 import { buildLongformLedgerRows, type LedgerRow } from "@/lib/longform/ledger";
-import { EMPTY_LONGFORM_PLAYBOOK } from "@/lib/agents/longform/playbook";
+import { EMPTY_LONGFORM_PLAYBOOK, type LongformPlaybook } from "@/lib/agents/longform/playbook";
 import { runLongformWriter } from "@/lib/agents/longform/writer";
 import { runStylePicker, type StylePickerResult } from "@/lib/agents/longform/style-picker";
 import { runBeatPlanner } from "@/lib/agents/longform/beat-planner";
@@ -51,13 +51,19 @@ export interface LongformPipelineDeps {
   enqueueRender: (args: { yourVideoId: string }) => Promise<{ id: string }>;
   finishJob: (jobId: string) => Promise<void>;
   failJob: (jobId: string, error: string) => Promise<void>;
+  /**
+   * L2 learning store: distill the playbook from this channel's posted-video outcomes (retention-first).
+   * Optional + always back-compatible — omitted (tests) or any read failure ⇒ EMPTY_LONGFORM_PLAYBOOK.
+   */
+  loadPlaybook?: (args: { channelId: string }) => Promise<LongformPlaybook>;
 }
 
 export async function* runLongformPipeline(args: LongformPipelineArgs, deps: LongformPipelineDeps): AsyncGenerator<StreamEvent> {
   const target = clampTargetDuration(args.targetDurationSeconds);
   const job = await deps.createJob({ channelId: args.channelId });
   yield { type: "job_started", data: { jobId: job.id, topicId: args.topic, channelId: args.channelId, startedAt: new Date().toISOString() } };
-  const playbook = EMPTY_LONGFORM_PLAYBOOK;
+  // L2: load the channel's learned playbook (retention-first). Falls back to EMPTY in L1 / cold start.
+  const playbook = deps.loadPlaybook ? await deps.loadPlaybook({ channelId: args.channelId }) : EMPTY_LONGFORM_PLAYBOOK;
 
   try {
     // 1. Writer

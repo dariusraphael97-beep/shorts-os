@@ -48,11 +48,34 @@ describe('youtube-analytics client', () => {
     expect(r.ctrPct).toBe(4.2);
   });
 
-  it('fetchRetentionReport returns the audienceWatchRatio curve rows', async () => {
+  it('fetchRetentionReport requests both watch-ratio + relativeRetentionPerformance and returns the curve', async () => {
+    let requestedMetrics: string | null = null;
+    globalThis.fetch = vi.fn(async (url: URL | string) => {
+      requestedMetrics = new URL(String(url)).searchParams.get('metrics');
+      return new Response(JSON.stringify({
+        columnHeaders: [
+          { name: 'elapsedVideoTimeRatio' }, { name: 'audienceWatchRatio' }, { name: 'relativeRetentionPerformance' },
+        ],
+        rows: [[0, 1.0, 0.6], [0.1, 0.9, 0.55], [0.5, 0.5, 0.4]],
+      }), { status: 200 });
+    }) as never;
+    const r = await fetchRetentionReport({
+      accessToken: 'AT', externalChannelId: 'UC', externalVideoId: 'EXT',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(requestedMetrics).toBe('audienceWatchRatio,relativeRetentionPerformance');
+    expect(r).toEqual([
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0, relativeRetentionPerformance: 0.6 },
+      { elapsedVideoTimeRatio: 0.1, audienceWatchRatio: 0.9, relativeRetentionPerformance: 0.55 },
+      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: 0.4 },
+    ]);
+  });
+
+  it('fetchRetentionReport tolerates a curve with no relative column (older/low-data videos)', async () => {
     globalThis.fetch = vi.fn(async () =>
       new Response(JSON.stringify({
         columnHeaders: [{ name: 'elapsedVideoTimeRatio' }, { name: 'audienceWatchRatio' }],
-        rows: [[0, 1.0], [0.1, 0.9], [0.5, 0.5]],
+        rows: [[0, 1.0], [0.5, 0.5]],
       }), { status: 200 }),
     ) as never;
     const r = await fetchRetentionReport({
@@ -60,9 +83,8 @@ describe('youtube-analytics client', () => {
       startDate: '2026-05-13', endDate: '2026-05-27',
     });
     expect(r).toEqual([
-      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0 },
-      { elapsedVideoTimeRatio: 0.1, audienceWatchRatio: 0.9 },
-      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5 },
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0, relativeRetentionPerformance: null },
+      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: null },
     ]);
   });
 });

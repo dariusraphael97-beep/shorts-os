@@ -14,6 +14,11 @@ export interface UpsertParams {
   impressions: bigint | number | null;
   watchTimeSeconds: bigint | number | null;
   retentionCurve: unknown;
+  /** Derived opening-hold numbers (from summarizeOpeningRetention) — the L2 playbook's primary signal.
+   *  Optional: callers predating the L2 retention work simply omit them (stored as null). */
+  first30sRetention?: number | null;
+  first60sRetention?: number | null;
+  relativeRetentionOpening?: number | null;
   rawPayload: unknown;
 }
 
@@ -35,6 +40,9 @@ export async function upsertVideoAnalytics(
       impressions: params.impressions,
       watch_time_seconds: params.watchTimeSeconds,
       retention_curve_jsonb: params.retentionCurve,
+      first_30s_retention: params.first30sRetention ?? null,
+      first_60s_retention: params.first60sRetention ?? null,
+      relative_retention_opening: params.relativeRetentionOpening ?? null,
       raw_payload: params.rawPayload,
     },
     { onConflict: 'your_video_id,snapshot_at' },

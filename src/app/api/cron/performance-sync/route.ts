@@ -11,6 +11,7 @@ import {
   fetchRetentionReport,
 } from '@/lib/clients/youtube-analytics';
 import { upsertVideoAnalytics } from '@/lib/supabase/repositories/video-analytics';
+import { summarizeOpeningRetention } from '@/lib/longform/retention';
 
 export const maxDuration = 300;
 
@@ -25,6 +26,7 @@ interface VideoRow {
   external_video_id: string | null;
   channel_id: string;
   posted_at: string | null;
+  duration_seconds: number | null;
 }
 
 export async function GET(req: Request) {
@@ -75,7 +77,7 @@ export async function GET(req: Request) {
     const windowStart = DateTime.utc().minus({ days: windowDays }).toISO();
     const { data: videos, error: vidErr } = await supabase
       .from('your_videos')
-      .select('id, external_video_id, channel_id, posted_at')
+      .select('id, external_video_id, channel_id, posted_at, duration_seconds')
       .eq('channel_id', c.id)
       .eq('status', 'posted')
       .gte('posted_at', windowStart);
@@ -104,6 +106,9 @@ export async function GET(req: Request) {
             endDate: endDate!,
           }),
         ]);
+        // Reduce the curve to the opening-hold numbers the L2 playbook ranks on. Falls back to nulls
+        // when the curve or duration is missing (the distiller then treats this video as unmeasured).
+        const opening = summarizeOpeningRetention(retention, v.duration_seconds);
         await upsertVideoAnalytics(supabase, {
           yourVideoId: v.id,
           snapshotAt: new Date(),
@@ -117,6 +122,9 @@ export async function GET(req: Request) {
           impressions: core.impressions,
           watchTimeSeconds: core.estimatedMinutesWatched * 60,
           retentionCurve: retention,
+          first30sRetention: opening.first30sRetention,
+          first60sRetention: opening.first60sRetention,
+          relativeRetentionOpening: opening.relativeRetentionOpening,
           rawPayload: { stats, core, retention },
         });
         videosCount += 1;

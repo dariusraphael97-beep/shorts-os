@@ -28,6 +28,18 @@ function hookPrompt(ctx: WriterRunContext): string {
   const ex = ctx.playbook.writer.exemplarHooks.length
     ? `\nProven hooks for this channel (emulate their shape, not their words):\n${ctx.playbook.writer.exemplarHooks.map((h) => `- ${h}`).join("\n")}`
     : "";
+  // The retention bar IS the hook's job. In 2026 a high-CTR / slow-open video gets demoted ("Quality
+  // CTR") — the first 30s decide everything. Once the playbook has learned a bar, make it the writer's
+  // hard constraint. Empty (L1) playbook ⇒ sampleSize 0 ⇒ no line (and tests stay deterministic).
+  const bar = ctx.playbook.retention;
+  const benchLine =
+    bar && bar.sampleSize > 0 && bar.medianFirst30sRetention != null
+      ? `\nRETENTION BAR (your single most important constraint): this channel's past winners held ${Math.round(
+          bar.medianFirst30sRetention * 100,
+        )}% of viewers through the first 30 seconds${
+          bar.bestFirst30sRetention != null ? ` (best: ${Math.round(bar.bestFirst30sRetention * 100)}%)` : ""
+        }. A slow open is the #1 reason videos die. Open ON the story — no throat-clearing, no setup. Every clause must buy the next.`
+      : "";
   return `PASS:HOOK
 You are the Writer for a faceless longform YouTube documentary.
 Topic: "${ctx.topic}"
@@ -35,7 +47,7 @@ Topic: "${ctx.topic}"
 Pick ONE sharp ANGLE, then write a cold-open HOOK (the first ~10-15 seconds of narration).
 The hook must: open ON the story (a specific time/place anchor OR a bold curiosity claim), drip-reveal
 in short clauses, and pose 1-2 rhetorical questions that frame the whole video's curiosity gap.
-${FORMAT_RULES}${ex}
+${FORMAT_RULES}${benchLine}${ex}
 
 Return JSON: { "angle": string, "hook": string }.`;
 }

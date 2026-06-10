@@ -66,7 +66,17 @@ export async function fetchCoreReport(args: {
   };
 }
 
-export interface RetentionPoint { elapsedVideoTimeRatio: number; audienceWatchRatio: number; }
+export interface RetentionPoint {
+  elapsedVideoTimeRatio: number;
+  audienceWatchRatio: number;
+  /**
+   * YouTube's relativeRetentionPerformance at this point (0–1; 0.5 = median peer of similar length).
+   * This is the algorithm's own "is this hook above or below par?" read — null when YouTube has too
+   * little data to compute it. Pulled alongside audienceWatchRatio so the opening hold can be scored
+   * both absolutely (did people stay?) and relative to peers (did we beat the median?).
+   */
+  relativeRetentionPerformance: number | null;
+}
 
 export async function fetchRetentionReport(args: {
   accessToken: string;
@@ -80,13 +90,14 @@ export async function fetchRetentionReport(args: {
   u.searchParams.set('startDate', args.startDate);
   u.searchParams.set('endDate', args.endDate);
   u.searchParams.set('dimensions', 'elapsedVideoTimeRatio');
-  u.searchParams.set('metrics', 'audienceWatchRatio');
+  u.searchParams.set('metrics', 'audienceWatchRatio,relativeRetentionPerformance');
   u.searchParams.set('filters', `video==${args.externalVideoId}`);
   const res = await fetch(u, { headers: { Authorization: `Bearer ${args.accessToken}` } });
   if (!res.ok) throw new Error(`fetchRetentionReport: ${res.status} ${await res.text()}`);
-  const json = (await res.json()) as { rows?: Array<[number, number]> };
-  return (json.rows ?? []).map(([elapsedVideoTimeRatio, audienceWatchRatio]) => ({
+  const json = (await res.json()) as { rows?: Array<[number, number, number?]> };
+  return (json.rows ?? []).map(([elapsedVideoTimeRatio, audienceWatchRatio, relative]) => ({
     elapsedVideoTimeRatio,
     audienceWatchRatio,
+    relativeRetentionPerformance: relative ?? null,
   }));
 }

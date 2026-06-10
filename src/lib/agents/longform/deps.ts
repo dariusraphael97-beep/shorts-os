@@ -8,6 +8,7 @@ import { createProduceLongformJob, finishJobSuccess, finishJobFailure } from "@/
 import { createLongformDraft } from "@/lib/supabase/repositories/longform";
 import { recordLongformLedger } from "@/lib/supabase/repositories/decisions";
 import { enqueueRenderJob } from "@/lib/supabase/repositories/render-jobs";
+import { loadLongformPlaybook } from "@/lib/supabase/repositories/longform-playbook";
 
 export function buildLongformDeps(supabase: SupabaseClient): LongformPipelineDeps {
   return {
@@ -26,5 +27,6 @@ export function buildLongformDeps(supabase: SupabaseClient): LongformPipelineDep
       }).then((j) => ({ id: j.id })),
     finishJob: (jobId) => finishJobSuccess(supabase, jobId),
     failJob: (jobId, error) => finishJobFailure(supabase, jobId, error),
+    loadPlaybook: (a) => loadLongformPlaybook(supabase, a.channelId),
   };
 }
