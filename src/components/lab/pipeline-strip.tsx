@@ -27,18 +27,18 @@ const AGENT_BASE: Record<AgentId, { label: string; emoji: string }> = {
 };
 
 const STATE_STYLES: Record<AgentChipState, string> = {
-  idle:     "bg-elevated text-text-muted border-subtle",
-  thinking: "bg-elevated text-accent-amber border-accent-amber/40 animate-pulse",
-  working:  "bg-elevated text-accent-electric border-accent-electric/40 shadow-[0_0_12px_rgba(0,255,136,0.25)]",
-  done:     "bg-elevated text-accent-electric border-accent-electric/40",
-  failed:   "bg-elevated text-accent-red border-accent-red/60",
+  idle:     "bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-subtle)]",
+  thinking: "bg-[var(--bg-elevated)] text-[var(--accent-amber)] border-[var(--accent-amber)]/40 animate-pulse",
+  working:  "bg-[var(--bg-elevated)] text-[var(--accent-electric)] border-[var(--accent-electric)]/40 shadow-[0_0_12px_rgba(0,255,136,0.25)]",
+  done:     "bg-[var(--bg-elevated)] text-[var(--accent-electric)] border-[var(--accent-electric)]/40",
+  failed:   "bg-[var(--bg-elevated)] text-[var(--accent-red)] border-[var(--accent-red)]/60",
 };
 
 export function PipelineStrip({ states }: { states: Record<AgentId, AgentChipState> }) {
   const order: AgentId[] = ["strategist", "writer", "voice_coach", "director"];
 
   return (
-    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface border border-subtle sticky top-0 z-10">
+    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] sticky top-0 z-10">
       {order.map((id, idx) => {
         const base = AGENT_BASE[id];
         const s = states[id];
@@ -52,7 +52,7 @@ export function PipelineStrip({ states }: { states: Record<AgentId, AgentChipSta
               <span>{base.label}</span>
             </span>
             {idx < order.length - 1 && (
-              <span className="text-text-muted text-xs">━━</span>
+              <span className="text-[var(--text-muted)] text-xs">━━</span>
             )}
           </span>
         );

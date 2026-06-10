@@ -11,15 +11,15 @@ const ORDER: { id: AgentId; emoji: string; label: string }[] = [
 ];
 
 const STATE_STYLES: Record<ChipState, string> = {
-  idle: "bg-elevated text-text-muted border-subtle",
-  working: "bg-elevated text-accent-electric border-accent-electric/40 shadow-[0_0_12px_rgba(0,255,136,0.25)] animate-pulse",
-  done: "bg-elevated text-accent-electric border-accent-electric/40",
-  failed: "bg-elevated text-accent-red border-accent-red/60",
+  idle: "bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border-subtle)]",
+  working: "bg-[var(--bg-elevated)] text-[var(--accent-electric)] border-[var(--accent-electric)]/40 shadow-[0_0_12px_rgba(0,255,136,0.25)] animate-pulse",
+  done: "bg-[var(--bg-elevated)] text-[var(--accent-electric)] border-[var(--accent-electric)]/40",
+  failed: "bg-[var(--bg-elevated)] text-[var(--accent-red)] border-[var(--accent-red)]/60",
 };
 
 export function LongformPipelineStrip({ states }: { states: Record<AgentId, ChipState> }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-surface border border-subtle sticky top-0 z-10">
+    <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] sticky top-0 z-10">
       {ORDER.map((a, idx) => (
         <span key={a.id} className="flex items-center gap-2">
           <span
@@ -29,7 +29,7 @@ export function LongformPipelineStrip({ states }: { states: Record<AgentId, Chip
             <span aria-hidden>{a.emoji}</span>
             <span>{a.label}</span>
           </span>
-          {idx < ORDER.length - 1 && <span className="text-text-muted text-xs">━━</span>}
+          {idx < ORDER.length - 1 && <span className="text-[var(--text-muted)] text-xs">━━</span>}
         </span>
       ))}
     </div>

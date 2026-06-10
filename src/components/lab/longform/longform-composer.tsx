@@ -41,9 +41,9 @@ export function LongformComposer({ channelId }: { channelId: string }) {
   }
 
   return (
-    <section className="rounded-xl border border-subtle bg-surface p-6 shadow-[var(--elev-2)]">
+    <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-[var(--elev-2)]">
       <div className="flex items-center gap-2 text-text-primary">
-        <Clapperboard className="h-5 w-5 text-accent-electric" strokeWidth={1.5} />
+        <Clapperboard className="h-5 w-5 text-[var(--accent-electric)]" strokeWidth={1.5} />
         <h2 className="text-lg font-semibold">New longform video</h2>
       </div>
       <p className="mt-1 text-sm text-text-secondary">Type a topic or title. The Writer, Style-picker, Beat-planner, and Voice take it from here.</p>
@@ -77,7 +77,7 @@ export function LongformComposer({ channelId }: { channelId: string }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-text-muted">{label}</p>
+      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
       {children}
     </div>
   );
@@ -104,7 +104,7 @@ function Segmented<T extends string | number>({
   const groupId = useId();
   const reduce = useReducedMotion();
   return (
-    <div role="radiogroup" aria-label={ariaLabel} className="inline-flex flex-wrap gap-1 rounded-lg border border-subtle bg-elevated p-1">
+    <div role="radiogroup" aria-label={ariaLabel} className="inline-flex flex-wrap gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -116,13 +116,13 @@ function Segmented<T extends string | number>({
             title={o.hint}
             onClick={() => onChange(o.value)}
             className={`relative inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
-              active ? "text-text-primary" : "text-text-muted hover:text-text-primary"
+              active ? "text-text-primary" : "text-[var(--text-muted)] hover:text-text-primary"
             }`}
           >
             {active && (
               <motion.span
                 layoutId={`seg-active-${groupId}`}
-                className="absolute inset-0 rounded-md bg-surface shadow-[var(--elev-1)]"
+                className="absolute inset-0 rounded-md bg-[var(--bg-surface)] shadow-[var(--elev-1)]"
                 transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
               />
             )}

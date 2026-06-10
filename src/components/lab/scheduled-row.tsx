@@ -50,19 +50,19 @@ export function ScheduledRow({ video }: { video: YourVideo }) {
       <div className="min-w-0">
         <p className="text-sm text-text-primary truncate">{video.title}</p>
         {isUploading ? (
-          <p className="text-xs font-mono text-accent-electric">uploading…</p>
+          <p className="text-xs font-mono text-[var(--accent-electric)]">uploading…</p>
         ) : (
-          <p className="text-xs font-mono text-text-muted">
+          <p className="text-xs font-mono text-[var(--text-muted)]">
             posts in {hours}h {minutes}m
             {scheduledFor && ` · ${scheduledFor.toLocaleString()}`}
           </p>
         )}
       </div>
       <div className="flex gap-2 shrink-0">
-        <button onClick={postNow} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-elevated text-text-primary text-xs font-medium hover:bg-hover border border-subtle disabled:opacity-50">
+        <button onClick={postNow} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-[var(--bg-elevated)] text-text-primary text-xs font-medium hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] disabled:opacity-50">
           Post now
         </button>
-        <button onClick={cancel} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-elevated text-accent-red text-xs font-medium hover:bg-hover border border-accent-red/40 disabled:opacity-50">
+        <button onClick={cancel} disabled={busy || isUploading} className="px-3 py-1.5 rounded bg-[var(--bg-elevated)] text-[var(--accent-red)] text-xs font-medium hover:bg-[var(--bg-hover)] border border-[var(--accent-red)]/40 disabled:opacity-50">
           Cancel
         </button>
       </div>

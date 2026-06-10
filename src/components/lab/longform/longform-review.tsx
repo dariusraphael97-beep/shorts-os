@@ -25,45 +25,45 @@ export function LongformReview({ draft }: { draft: Draft }) {
   }
 
   return (
-    <article className="rounded-xl border border-subtle bg-surface overflow-hidden">
+    <article className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
       <header className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-text-primary">{draft.title}</h3>
-          <div className="mt-1 flex items-center gap-2 text-xs text-text-muted">
+          <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <Badge variant="secondary">{plan.presetId ?? "—"}</Badge>
             <span>{beatCount} beats</span>
             {draft.duration_seconds ? <span>· {Math.round(draft.duration_seconds / 60)} min</span> : null}
             <span>· {draft.status}</span>
           </div>
         </div>
-        <button onClick={() => setOpen((o) => !o)} className="text-xs text-accent-electric hover:underline">{open ? "Hide" : "Review"}</button>
+        <button onClick={() => setOpen((o) => !o)} className="text-xs text-[var(--accent-electric)] hover:underline">{open ? "Hide" : "Review"}</button>
       </header>
 
       {open && (
-        <div className="grid gap-4 border-t border-subtle p-4 md:grid-cols-[2fr_1fr]">
+        <div className="grid gap-4 border-t border-[var(--border-subtle)] p-4 md:grid-cols-[2fr_1fr]">
           <div>
             {draft.render_artifact_url ? (
-              <video ref={videoRef} src={draft.render_artifact_url} controls playsInline className="w-full rounded-lg border border-subtle bg-black" style={{ aspectRatio: "16 / 9" }} />
+              <video ref={videoRef} src={draft.render_artifact_url} controls playsInline className="w-full rounded-lg border border-[var(--border-subtle)] bg-black" style={{ aspectRatio: "16 / 9" }} />
             ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-subtle text-sm text-text-muted">
+              <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-[var(--border-subtle)] text-sm text-[var(--text-muted)]">
                 {draft.status === "rendering" ? "Rendering…" : "Not rendered yet"}
               </div>
             )}
-            {plan.hook && <p className="mt-3 text-sm text-text-secondary"><span className="text-text-muted">Hook: </span>{plan.hook}</p>}
+            {plan.hook && <p className="mt-3 text-sm text-text-secondary"><span className="text-[var(--text-muted)]">Hook: </span>{plan.hook}</p>}
           </div>
           <aside className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Chapters</h4>
-              {markers.length > 0 && <button onClick={copyChapters} className="text-[11px] text-accent-electric hover:underline">Copy</button>}
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Chapters</h4>
+              {markers.length > 0 && <button onClick={copyChapters} className="text-[11px] text-[var(--accent-electric)] hover:underline">Copy</button>}
             </div>
             {markers.length === 0 ? (
-              <p className="text-xs text-text-muted">No markers yet.</p>
+              <p className="text-xs text-[var(--text-muted)]">No markers yet.</p>
             ) : (
               <ul className="space-y-1">
                 {markers.map((m) => (
                   <li key={m.index}>
-                    <button onClick={() => seek(m.startSeconds)} className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-text-secondary hover:bg-elevated">
-                      <span className="font-mono text-text-muted">{m.timestamp}</span>
+                    <button onClick={() => seek(m.startSeconds)} className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-text-secondary hover:bg-[var(--bg-elevated)]">
+                      <span className="font-mono text-[var(--text-muted)]">{m.timestamp}</span>
                       <span className="truncate">{m.title}</span>
                     </button>
                   </li>

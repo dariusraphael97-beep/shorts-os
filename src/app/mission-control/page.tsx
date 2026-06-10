@@ -12,7 +12,7 @@ export default function MissionControlPage() {
     <AppShell bare sidebar={<AppSidebar />}>
       <div className="flex h-full flex-col">
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="flex-1 min-w-0 lg:basis-3/5 lg:border-r lg:border-subtle">
+          <div className="flex-1 min-w-0 lg:basis-3/5 lg:border-r lg:border-border-subtle">
             <TopicQueuePanel />
           </div>
           <div className="flex-1 min-w-0 lg:basis-2/5">

@@ -28,19 +28,19 @@ export default async function SettingsChannelPage({
         </header>
 
         {connected === 'true' && (
-          <div className="rounded border border-accent-electric/40 bg-accent-electric/10 px-4 py-3 text-sm text-text-primary">
+          <div className="rounded border border-success/40 bg-success/10 px-4 py-3 text-sm text-text-primary">
             ✓ YouTube connected. Upload jobs will now use this account.
           </div>
         )}
         {error && (
-          <div className="rounded border border-accent-red/40 bg-accent-red/10 px-4 py-3 text-sm text-text-primary">
+          <div className="rounded border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-text-primary">
             ✗ OAuth failed: {error}
           </div>
         )}
 
-        <section className="rounded-lg border border-subtle bg-surface p-4 space-y-3">
+        <section className="rounded-lg border border-border-subtle bg-surface-1 p-4 space-y-3">
           <h2 className="text-sm font-medium text-text-primary">{channel.display_name}</h2>
-          <dl className="text-xs font-mono text-text-muted space-y-1">
+          <dl className="text-xs font-mono text-text-tertiary space-y-1">
             <div><dt className="inline">slug:</dt> <dd className="inline">{channel.slug}</dd></div>
             <div><dt className="inline">platform:</dt> <dd className="inline">{channel.platform}</dd></div>
             <div><dt className="inline">external_channel_id:</dt> <dd className="inline">{channel.external_channel_id ?? '(not set)'}</dd></div>

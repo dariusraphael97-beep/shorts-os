@@ -25,10 +25,10 @@ export function TopicQueueClient({ initial }: { initial: QueuedTopic[] }) {
 
   return (
     <section className="flex flex-col h-full">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-subtle">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Topic Queue</h2>
-          <span className="text-[10px] font-mono text-text-muted">{topics.length} queued</span>
+          <span className="text-[10px] font-mono text-[var(--text-muted)]">{topics.length} queued</span>
         </div>
         <Tooltip>
           <TooltipTrigger
@@ -37,7 +37,7 @@ export function TopicQueueClient({ initial }: { initial: QueuedTopic[] }) {
                 type="button"
                 onClick={refresh}
                 disabled={isRefreshing}
-                className="p-1.5 rounded hover:bg-elevated text-text-muted"
+                className="p-1.5 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                 aria-label="Refresh"
               />
             }
@@ -50,7 +50,7 @@ export function TopicQueueClient({ initial }: { initial: QueuedTopic[] }) {
 
       {topics.length === 0 ? (
         <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <p className="text-sm text-text-muted max-w-md">
+          <p className="text-sm text-[var(--text-muted)] max-w-md">
             Scrapers haven&apos;t queued anything yet — they fire daily around 7 AM ET. The Reddit and Wikipedia harvesters write here; YouTube and TikTok write to Trending.
           </p>
         </div>

@@ -24,12 +24,12 @@ export default async function LongformLabPage() {
           <h1 className="text-2xl font-semibold text-text-primary">Longform</h1>
           <p className="mt-1 text-sm text-text-secondary">Type a topic → a finished 16:9 faceless documentary.</p>
         </header>
-        {channel?.id ? <LongformComposer channelId={channel.id} /> : <p className="text-sm text-accent-red">No channel configured. Add one in Settings first.</p>}
+        {channel?.id ? <LongformComposer channelId={channel.id} /> : <p className="text-sm text-[var(--accent-red)]">No channel configured. Add one in Settings first.</p>}
         <LongformRunPane />
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Recent longform drafts</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">Recent longform drafts</h2>
           {(drafts ?? []).length === 0
-            ? <p className="text-sm text-text-muted">No longform videos yet.</p>
+            ? <p className="text-sm text-[var(--text-muted)]">No longform videos yet.</p>
             : (drafts ?? []).map((d) => <LongformReview key={d.id} draft={d} />)}
         </div>
       </div>

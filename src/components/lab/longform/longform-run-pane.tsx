@@ -66,7 +66,7 @@ export function LongformRunPane() {
   if (!run.active && !run.completed && !run.failure) return null;
 
   return (
-    <section className="space-y-4 rounded-xl border border-subtle bg-surface p-5">
+    <section className="space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
       <LongformPipelineStrip states={run.states} />
       <div className="grid gap-3 sm:grid-cols-2">
         <OutputCard title="Hook" value={run.hook} />
@@ -74,16 +74,16 @@ export function LongformRunPane() {
         <OutputCard title="Image beats" value={run.beatCount != null ? String(run.beatCount) : null} />
         <OutputCard title="Narrator" value={run.voiceId} />
       </div>
-      {run.failure && <p className="text-sm text-accent-red">{run.failure}</p>}
+      {run.failure && <p className="text-sm text-[var(--accent-red)]">{run.failure}</p>}
     </section>
   );
 }
 
 function OutputCard({ title, value }: { title: string; value: string | null }) {
   return (
-    <div className="rounded-lg border border-subtle bg-elevated p-3">
-      <p className="text-[11px] uppercase tracking-wide text-text-muted">{title}</p>
-      <p className="mt-1 text-sm text-text-primary min-h-[1.25rem]">{value ?? <span className="text-text-muted italic">…</span>}</p>
+    <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+      <p className="text-[11px] uppercase tracking-wide text-[var(--text-muted)]">{title}</p>
+      <p className="mt-1 text-sm text-text-primary min-h-[1.25rem]">{value ?? <span className="text-[var(--text-muted)] italic">…</span>}</p>
     </div>
   );
 }

@@ -7,8 +7,8 @@ export default async function LoginPage(props: { searchParams: Promise<SearchPar
   const { next, error } = await props.searchParams;
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-app">
-      <div className="w-full max-w-sm rounded-lg border border-subtle bg-surface p-8">
+    <main className="min-h-screen flex items-center justify-center bg-[var(--bg-app)]">
+      <div className="w-full max-w-sm rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8">
         <h1 className="text-2xl font-semibold text-text-primary">Shorts OS</h1>
         <p className="text-sm text-text-secondary mt-1">Cockpit access</p>
 
@@ -20,9 +20,9 @@ export default async function LoginPage(props: { searchParams: Promise<SearchPar
             autoFocus
             required
             placeholder="Password"
-            className="w-full h-10 px-3 rounded bg-elevated border border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-electric"
+            className="w-full h-10 px-3 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-text-primary placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-electric)]"
           />
-          {error && <p className="text-sm text-accent-red">{error}</p>}
+          {error && <p className="text-sm text-[var(--accent-red)]">{error}</p>}
           <ShimmerButton
             type="submit"
             background="rgba(20, 20, 20, 1)"

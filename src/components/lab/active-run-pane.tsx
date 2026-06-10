@@ -181,13 +181,13 @@ export function ActiveRunPane() {
       </div>
 
       {run.failure && (
-        <div className="rounded-lg border border-accent-red/60 bg-accent-red/5 p-4">
-          <p className="text-sm text-accent-red font-medium">
+        <div className="rounded-lg border border-[var(--accent-red)]/60 bg-[var(--accent-red)]/5 p-4">
+          <p className="text-sm text-[var(--accent-red)] font-medium">
             ✗ {run.failure.agent} failed
           </p>
           <p className="text-xs font-mono text-text-secondary mt-1">{run.failure.error}</p>
           <button
-            className="mt-3 px-3 py-1.5 rounded bg-accent-electric text-app text-xs font-medium hover:opacity-90"
+            className="mt-3 px-3 py-1.5 rounded bg-[var(--accent-electric)] text-[var(--bg-app)] text-xs font-medium hover:opacity-90"
             onClick={() => run.topicId && startRun(run.topicId)}
           >
             Re-dispatch

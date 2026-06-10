@@ -14,10 +14,10 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
 
   return (
     <section className="flex flex-col h-full">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-subtle">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Trending Shorts</h2>
-          <span className="text-[10px] font-mono text-text-muted">{filtered.length} shown</span>
+          <span className="text-[10px] font-mono text-[var(--text-muted)]">{filtered.length} shown</span>
         </div>
         <Tooltip>
           <TooltipTrigger
@@ -25,7 +25,7 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="p-1.5 rounded hover:bg-elevated text-text-muted"
+                className="p-1.5 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                 aria-label="Refresh"
               />
             }
@@ -36,11 +36,11 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
         </Tooltip>
       </header>
 
-      <div className="flex gap-1 px-4 py-2 border-b border-subtle">
+      <div className="flex gap-1 px-4 py-2 border-b border-[var(--border-subtle)]">
         <button
           onClick={() => setFilter("all")}
           className={`text-[11px] px-2 py-1 rounded ${
-            filter === "all" ? "bg-elevated text-text-primary" : "text-text-muted hover:bg-elevated"
+            filter === "all" ? "bg-[var(--bg-elevated)] text-text-primary" : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
           }`}
         >
           All
@@ -50,7 +50,7 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
             key={s}
             onClick={() => setFilter(s)}
             className={`text-[11px] px-2 py-1 rounded ${
-              filter === s ? "bg-elevated text-text-primary" : "text-text-muted hover:bg-elevated"
+              filter === s ? "bg-[var(--bg-elevated)] text-text-primary" : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
             }`}
           >
             {s}
@@ -60,7 +60,7 @@ export function TrendingClient({ initial }: { initial: ViralObservation[] }) {
 
       {filtered.length === 0 ? (
         <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <p className="text-sm text-text-muted max-w-md">
+          <p className="text-sm text-[var(--text-muted)] max-w-md">
             No trending shorts observed in this filter. YouTube + TikTok crons fire daily 6:00 / 6:30 ET.
           </p>
         </div>

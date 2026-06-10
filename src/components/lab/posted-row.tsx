@@ -18,15 +18,15 @@ export async function PostedRow({ video }: { video: YourVideo }) {
       <div className="min-w-0">
         <p className="text-sm text-text-primary truncate">{video.title}</p>
         {stats ? (
-          <p className="text-xs font-mono text-text-muted">
+          <p className="text-xs font-mono text-[var(--text-muted)]">
             {stats.views ?? 0} views · {stats.avg_view_duration_seconds?.toFixed(1) ?? '—'}s avg · {stats.ctr_pct?.toFixed(1) ?? '—'}% CTR
           </p>
         ) : (
-          <p className="text-xs font-mono text-text-muted">no analytics yet (sync runs daily)</p>
+          <p className="text-xs font-mono text-[var(--text-muted)]">no analytics yet (sync runs daily)</p>
         )}
       </div>
       {video.url && (
-        <a href={video.url} target="_blank" rel="noopener" className="text-xs text-accent-electric hover:underline shrink-0">
+        <a href={video.url} target="_blank" rel="noopener" className="text-xs text-[var(--accent-electric)] hover:underline shrink-0">
           View on YouTube ↗
         </a>
       )}
