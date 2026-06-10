@@ -55,6 +55,23 @@ describe('POST /api/youtube/retention-ingest', () => {
     expect(res.status).toBe(404);
   });
 
+  it('401s when the cockpit cookie is present but forged', async () => {
+    const res = await POST(req({ externalVideoId: 'GwC66BSw7wU', rawCurve: CSV }, { cookie: 'cockpit_session=tampered.payload' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('401s (not 500) when the cookie value is malformed percent-encoding', async () => {
+    const res = await POST(req({ externalVideoId: 'GwC66BSw7wU', rawCurve: CSV }, { cookie: 'cockpit_session=%zz' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('400s when both video ids are provided', async () => {
+    const res = await POST(
+      req({ externalVideoId: 'GwC66BSw7wU', yourVideoId: '7f7eef94-de2b-4348-a857-86037563f2e7', rawCurve: CSV }, { cookie: goodCookie() }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it('ingests on the happy path, passing the resolved id + duration', async () => {
     const res = await POST(
       req({ externalVideoId: 'GwC66BSw7wU', rawCurve: CSV, metrics: { views: 16 } }, { cookie: goodCookie() }),

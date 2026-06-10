@@ -39,7 +39,13 @@ function readCockpitCookie(req: Request): string | null {
   if (!header) return null;
   for (const part of header.split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k === COCKPIT_COOKIE_NAME) return decodeURIComponent(v.join('='));
+    if (k === COCKPIT_COOKIE_NAME) {
+      try {
+        return decodeURIComponent(v.join('='));
+      } catch {
+        return null;
+      }
+    }
   }
   return null;
 }
