@@ -318,6 +318,20 @@ export async function getVideoForRetentionIngest(
   return { id: row.id, durationSeconds: row.duration_seconds };
 }
 
+export async function listPostedVideos(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<Array<{ id: string; external_video_id: string | null; title: string }>> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("id, external_video_id, title")
+    .eq("channel_id", channelId)
+    .eq("status", "posted")
+    .order("posted_at", { ascending: false });
+  if (error) throw new Error(`listPostedVideos: ${error.message}`);
+  return (data as Array<{ id: string; external_video_id: string | null; title: string }>) ?? [];
+}
+
 export interface ClaimedRow {
   id: string;
   channel_id: string;

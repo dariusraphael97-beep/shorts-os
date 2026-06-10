@@ -2,7 +2,9 @@ import { AppShell } from '@/components/layout/app-shell';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { getServiceClient } from '@/lib/supabase/server';
 import { getDefaultChannel, isYouTubeConnected } from '@/lib/supabase/repositories/channels';
+import { listPostedVideos } from '@/lib/supabase/repositories/your-videos';
 import { ConnectYouTubeButton } from '@/components/settings/connect-youtube-button';
+import { RetentionImportCard } from '@/components/settings/retention-import-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,7 @@ export default async function SettingsChannelPage({
   const supabase = getServiceClient();
   const channel = await getDefaultChannel(supabase);
   const ytConnected = await isYouTubeConnected(supabase, channel.id);
+  const postedVideos = await listPostedVideos(supabase, channel.id);
 
   return (
     <AppShell bare sidebar={<AppSidebar />}>
@@ -48,6 +51,8 @@ export default async function SettingsChannelPage({
           </dl>
           <ConnectYouTubeButton connected={ytConnected} />
         </section>
+
+        <RetentionImportCard videos={postedVideos} />
       </div>
     </AppShell>
   );
