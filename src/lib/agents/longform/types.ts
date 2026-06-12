@@ -67,6 +67,18 @@ export const WriterOutputSchema = z.object({
 });
 export type WriterOutput = z.infer<typeof WriterOutputSchema>;
 
+// --- Operator-provided script (skips the Writer agent; doodle-essay etc.) ---
+export const ScriptOverrideSchema = z.object({
+  angle: z.string().min(1),
+  hook: z.string().min(1),
+  chapters: z.array(z.object({
+    title: z.string().min(1).max(120),
+    purpose: z.string().min(1).max(300),
+    narration: z.string().min(40),
+  })).min(1).max(12),
+});
+export type ScriptOverride = z.infer<typeof ScriptOverrideSchema>;
+
 // --- Style picker ---
 export const StylePickerOutputSchema = z.object({
   presetId: PresetIdSchema,
