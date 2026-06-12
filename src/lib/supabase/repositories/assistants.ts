@@ -146,3 +146,60 @@ export async function listAssistantMemory(
   if (error) throw new Error(`listAssistantMemory: ${error.message}`);
   return (data ?? []) as AssistantMemory[];
 }
+
+export async function deleteAssistantMemory(
+  supabase: SupabaseClient,
+  assistantId: string,
+  memoryKey: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('assistant_memory')
+    .delete()
+    .eq('assistant_id', assistantId)
+    .eq('memory_key', memoryKey);
+  if (error) throw new Error(`deleteAssistantMemory: ${error.message}`);
+}
+
+export type AssistantSettings = Record<string, unknown>;
+
+export async function getAssistantSettings(
+  supabase: SupabaseClient,
+  assistantId: string,
+): Promise<AssistantSettings> {
+  const { data, error } = await supabase
+    .from('assistant_settings')
+    .select('settings')
+    .eq('assistant_id', assistantId)
+    .maybeSingle();
+  if (error && (error as { code?: string }).code !== 'PGRST116') {
+    throw new Error(`getAssistantSettings: ${error.message}`);
+  }
+  return ((data as { settings: AssistantSettings } | null)?.settings ?? {}) as AssistantSettings;
+}
+
+/** Merge-patch: shallow-spreads `patch` over the existing settings jsonb. */
+export async function updateAssistantSettings(
+  supabase: SupabaseClient,
+  assistantId: string,
+  patch: AssistantSettings,
+): Promise<AssistantSettings> {
+  const existing = await getAssistantSettings(supabase, assistantId);
+  const merged = { ...existing, ...patch };
+  const { error } = await supabase
+    .from('assistant_settings')
+    .upsert({ assistant_id: assistantId, settings: merged, updated_at: new Date().toISOString() });
+  if (error) throw new Error(`updateAssistantSettings: ${error.message}`);
+  return merged;
+}
+
+export async function setAssistantEnabled(
+  supabase: SupabaseClient,
+  assistantId: string,
+  isEnabled: boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from('assistants')
+    .update({ is_enabled: isEnabled })
+    .eq('id', assistantId);
+  if (error) throw new Error(`setAssistantEnabled: ${error.message}`);
+}
