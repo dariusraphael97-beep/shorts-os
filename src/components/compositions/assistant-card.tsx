@@ -18,10 +18,12 @@ export interface AssistantCardProps {
   recentActivity?: { id: string; summary: string; at: string }[];
   disabled?: boolean;
   comingInPhase?: number;
+  /** Amber annotation: cron hasn't completed within its expected window. */
+  overdue?: boolean;
   onOpen?: () => void;
 }
 
-function CardInner({ icon: Icon, name, role, status, activitySummary, recentActivity, disabled, comingInPhase }: Omit<AssistantCardProps, "onOpen">) {
+function CardInner({ icon: Icon, name, role, status, activitySummary, recentActivity, disabled, comingInPhase, overdue }: Omit<AssistantCardProps, "onOpen">) {
   const entries = recentActivity?.slice(0, 3) ?? [];
 
   return (
@@ -47,6 +49,11 @@ function CardInner({ icon: Icon, name, role, status, activitySummary, recentActi
           </p>
           <p className="truncate text-sm text-[var(--text-secondary)]">{role}</p>
         </div>
+        {overdue && !disabled && (
+          <Badge variant="secondary" className="shrink-0 text-[var(--warning)]">
+            Overdue
+          </Badge>
+        )}
         {disabled && comingInPhase !== undefined && (
           <Badge variant="secondary" className="shrink-0">
             Phase {comingInPhase}
