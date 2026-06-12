@@ -224,4 +224,62 @@ describe("longform/beat-planner", () => {
     // sparse block should be cleanly separated — no triple newlines
     expect(captured).not.toMatch(/\n{3,}/);
   });
+
+  it("non-sparse: hallucinated label/background from the LLM do NOT leak into beats or image prompts", async () => {
+    // The schema accepts label/background in all modes, so a hallucinated value from a non-sparse
+    // call must be discarded before assembleImagePrompt sees it — otherwise it would bake a
+    // "flat solid neon purple background filling the frame" into a cinematic render.
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return {
+        object: {
+          items: Array.from({ length: n }, (_, i) => ({
+            scene: `cinematic scene ${i}`,
+            onScreenText: "",
+            sound: "",
+            label: "sneaky label",
+            background: "neon purple",
+          })),
+        },
+      } as never;
+    });
+    const out = await runBeatPlanner(ctx()); // cinematic-realistic = NOT sparse
+    const beats = out.chapters[0].beats;
+    // hallucinated fields must not appear as beat metadata
+    expect(beats[0].objectLabel).toBeUndefined();
+    expect(beats[0].backgroundMood).toBeUndefined();
+    // and must not have infected the assembled image prompt
+    expect(beats[0].imagePrompt).not.toContain("neon purple");
+  });
+
+  it("sparse mode: prompt JSON shape pins label+background in the items schema (not in non-sparse shape)", async () => {
+    let capturedSparse = "";
+    let capturedNonSparse = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const prompt = opts?.prompt ?? "";
+      const n = Number(prompt.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      if (prompt.includes('"label": string')) capturedSparse = prompt;
+      else capturedNonSparse = prompt;
+      return {
+        object: {
+          items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })),
+        },
+      } as never;
+    });
+    // run sparse first
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pin chapter", narration: "The sun rises. The clock ticks. Nobody moves." }],
+    });
+    // run non-sparse to capture the other shape
+    await runBeatPlanner(ctx());
+    // sparse shape must contain the label+background fields verbatim in the JSON schema line
+    expect(capturedSparse).toContain('"label": string, "background": string');
+    // non-sparse shape must NOT include those fields
+    expect(capturedNonSparse).not.toContain('"label": string');
+    expect(capturedNonSparse).not.toContain('"background": string');
+  });
 });

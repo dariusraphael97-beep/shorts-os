@@ -108,9 +108,12 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
     });
     const sliceTexts = slices.map((s) => s.text);
     const items = await sceneItems(ctx.styleBible, ch.title, sliceTexts, ctx.grounding ?? "");
+    // label/background are sparse-mode contracts; never trust them from non-sparse calls
+    // (the schema accepts them in all modes, so a hallucinated value would otherwise leak).
+    const sparse = ctx.styleBible.onScreenTextMode === "sparse";
     const beats = slices.map((slice, i) => {
-      const label = items[i].label?.trim() ?? "";
-      const background = items[i].background?.trim() ?? "";
+      const label = sparse ? items[i].label?.trim() ?? "" : "";
+      const background = sparse ? items[i].background?.trim() ?? "" : "";
       const { prompt, negativePrompt } = assembleImagePrompt({
         sceneDescription: items[i].scene,
         onScreenText: items[i].onScreenText,
