@@ -17,13 +17,16 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   if (!isAssistantId(id)) return Response.json({ error: 'unknown assistant' }, { status: 404 });
   try {
     const body = (await req.json()) as { memoryKey?: string; memoryValue?: unknown; confidence?: number };
-    if (!body.memoryKey || body.memoryValue === undefined) {
+    if (!body.memoryKey?.trim() || body.memoryValue === undefined) {
       return Response.json({ error: 'memoryKey and memoryValue are required' }, { status: 400 });
+    }
+    if (body.confidence !== undefined && (typeof body.confidence !== 'number' || body.confidence < 0 || body.confidence > 1)) {
+      return Response.json({ error: 'confidence must be a number in [0,1]' }, { status: 400 });
     }
     const supabase = getServiceClient();
     const memory = await upsertAssistantMemory(supabase, {
       assistantId: id,
-      memoryKey: body.memoryKey,
+      memoryKey: body.memoryKey.trim(),
       memoryValue: body.memoryValue,
       confidence: body.confidence,
       editableByUser: true,
@@ -39,9 +42,9 @@ export async function DELETE(req: Request, ctx: Ctx): Promise<Response> {
   if (!isAssistantId(id)) return Response.json({ error: 'unknown assistant' }, { status: 404 });
   try {
     const body = (await req.json()) as { memoryKey?: string };
-    if (!body.memoryKey) return Response.json({ error: 'memoryKey is required' }, { status: 400 });
+    if (!body.memoryKey?.trim()) return Response.json({ error: 'memoryKey is required' }, { status: 400 });
     const supabase = getServiceClient();
-    await deleteAssistantMemory(supabase, id, body.memoryKey);
+    await deleteAssistantMemory(supabase, id, body.memoryKey.trim());
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : 'failed to delete memory' }, { status: 500 });

@@ -113,7 +113,7 @@ export function MemoryTab({ agentId, memories }: { agentId: string; memories: Me
             </div>
             {m.editable_by_user && (
               <div className="flex shrink-0 gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setEditingKey(m.memory_key)} aria-label="Edit">
+                <Button variant="ghost" size="sm" onClick={() => setEditingKey(m.memory_key)} disabled={busy} aria-label="Edit">
                   <Pencil className="h-4 w-4" strokeWidth={1.5} />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => remove(m.memory_key)} disabled={busy} aria-label="Delete">
