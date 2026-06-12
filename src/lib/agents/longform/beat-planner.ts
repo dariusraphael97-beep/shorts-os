@@ -34,7 +34,7 @@ ${styleBible.presetId} documentary. Describe the subject and setting only — do
 words (those are added automatically) and do NOT put on-screen text in the scene. Keep each scene one vivid sentence.`;
   const frequency =
     styleBible.onScreenTextMode === "sparse"
-      ? `Captions are RARE and load-bearing: leave onScreenText "" on the vast majority of beats. Add one ONLY on a true emphasis beat (roughly 1 beat in 8) — the single line the viewer must remember — as an ALL-CAPS punch of AT MOST 4 WORDS. Count the words: if it needs 5+, cut it down (e.g. "OLD HOURS", never "YOUR METABOLISM KEEPS OLD HOURS"); a caption over 4 words will be discarded.`
+      ? `Captions are RARE and load-bearing: leave onScreenText "" on the vast majority of beats. Add one ONLY on a true emphasis beat (roughly 1 beat in 7 — every chapter has a few) — the single line the viewer must remember — as an ALL-CAPS punch of AT MOST 4 WORDS. Count the words: if it needs 5+, cut it down (e.g. "OLD HOURS", never "YOUR METABOLISM KEEPS OLD HOURS"); a caption over 4 words will be discarded.`
       : styleBible.onScreenTextMode === "additive"
         ? `Keep it clean: leave onScreenText "" on most beats — add a short hook ONLY on the few beats where a key stat or turning point really lands.`
         : `Most beats should have text; use "" only when a clean wordless image is clearly stronger.`;
@@ -50,7 +50,7 @@ string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few
       ? `\nFor each beat also give:
 - "label": a small lowercase object label for EVIDENCE beats only — a dated artifact, document, or exhibit (e.g. "diary, 1400s." or "cookbook, 1500s."). Use "" on every other beat.
 - "background": the ONE flat solid background color for this beat, keyed to its mood — "white" for diagram/fact beats, "deep navy" for night or contemplation, "warm orange and pale blue" for sunrise/warmth, "dark navy" for a night bedroom, "earthy brown and green" for outdoors/nature/the past — plus scene-appropriate variants (e.g. "warm kitchen yellow", "factory grey"). VARY THE BACKGROUND across the video; never use white for everything.
-A crude red marker circle (or red hand-drawn arrow) is this video's rarest, most powerful device: include one in AT MOST ONE beat of THIS chapter — and ONLY if this chapter presents a dated document or artifact as a smoking gun (write it into that beat's "scene", e.g. "a crude red marker circle scrawled around the date"). Chapters without such a smoking-gun beat get NO red callout at all.`
+A crude red marker circle (or red hand-drawn arrow) is this video's signature evidence device: if THIS chapter presents a dated document or artifact as evidence (a manuscript, a dated ad, a journal — usually the beat that gets a "label"), put a red callout on the single strongest such beat by writing it into that beat's "scene" (e.g. "a crude red marker circle scrawled around the date"). AT MOST ONE beat of THIS chapter — and NONE if the chapter has no dated-evidence beat.`
       : ``;
   const isSparse = styleBible.onScreenTextMode === "sparse";
   const jsonShape = isSparse

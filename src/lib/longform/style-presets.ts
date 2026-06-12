@@ -123,7 +123,7 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "never a collage, never a grid, never multiple panels",
     aspect: "16:9",
     kenBurnsZoom: 0, // Task 12 smoke test: 0.04 stair-steps (~0.85px/frame sub-pixel rounding → shimmer on line art); reference is hard-cut statics anyway
-    targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
+    targetBeatSeconds: 2.8, // Zenn's cadence: a new image every 2-3s. The slicer's flush-on-exceed packing lands ~12% under target, so 2.8 yields a true ~2.4s mean (2.5 measured a choppy 2.11s).
     wordsPerSecond: 2.9, // reference narration measured ~187 wpm (≈3.1 w/s); 2.9 keeps slices + estimates honest (global 2.4 over-cuts ~35% more beats)
     musicMood: "no music bed, or an extremely soft contemplative ambient pad far beneath the narration",
     model: "gpt_image_2", // Task 11 bake-off WINNER vs nano_banana_2 (better lettering, confident flat fills — see docs/superpowers/research/2026-06-12-doodle-bakeoff/verdict.md)
