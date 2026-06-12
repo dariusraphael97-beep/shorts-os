@@ -6,7 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getServiceClient } from "@/lib/supabase/server";
 import { getAssistantById, listAssistantMemory, getAssistantSettings } from "@/lib/supabase/repositories/assistants";
-import { listChatThreads, listChatMessages, type ChatMessage, type ChatThread } from "@/lib/supabase/repositories/assistant-chat";
+import { listChatThreads, listChatMessages } from "@/lib/supabase/repositories/assistant-chat";
 import { getLiveDashboard } from "@/lib/assistants/ledger";
 import { ASSISTANT_DEFS, assistantIcon, isAssistantId, DEFAULT_CHAT_MODEL } from "@/lib/assistants/registry";
 import { AssistantStatusDot } from "@/components/compositions/assistant-status-dot";
@@ -137,10 +137,15 @@ async function SettingsSection({ agentId, isEnabled }: { agentId: string; isEnab
 
 async function ChatSection({ agentId, threadId }: { agentId: string; threadId?: string }) {
   const supabase = getServiceClient();
-  const threads: ChatThread[] = await listChatThreads(supabase, agentId, 20).catch(() => []);
+  const threads = await listChatThreads(supabase, agentId, 20).catch(() => []);
   const activeThread = threadId ? threads.find((t) => t.id === threadId) ?? null : null;
-  const messages: ChatMessage[] = activeThread
-    ? await listChatMessages(supabase, activeThread.id).catch(() => [])
-    : [];
-  return <ChatTab agentId={agentId} threads={threads} activeThreadId={activeThread?.id ?? null} initialMessages={messages} />;
+  const messages = activeThread ? await listChatMessages(supabase, activeThread.id).catch(() => []) : [];
+  return (
+    <ChatTab
+      agentId={agentId}
+      threads={threads.map((t) => ({ id: t.id, title: t.title, last_message_at: t.last_message_at }))}
+      activeThreadId={activeThread?.id ?? null}
+      initialMessages={messages.map((m) => ({ id: m.id, role: m.role, content: m.content }))}
+    />
+  );
 }

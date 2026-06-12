@@ -2,9 +2,10 @@ import "server-only";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { loadEnv } from "@/lib/env";
 
-type ClaudeModelId =
+export type ClaudeModelId =
   | "claude-haiku-4-5"
   | "claude-sonnet-4-5"
+  | "claude-sonnet-4-6"
   | "claude-opus-4-7";
 
 let anthropicInstance: ReturnType<typeof createAnthropic> | null = null;
