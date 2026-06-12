@@ -86,6 +86,8 @@ function pipelineLabel(kind: Job['kind']): string {
 
 function ingestionEvent(run: IngestionRunRow): ActivityEvent {
   const label = JOB_LABELS[run.job] ?? run.job;
+  // Unknown job values (schema drift beyond the IngestionJob union) silently fall back to
+  // niche_scout here; ledger.ts is the right place to validate/warn at the fetch boundary.
   const assistantId = JOB_OWNER[run.job] ?? 'niche_scout';
   if (!run.finished_at) {
     return {
@@ -199,11 +201,11 @@ export function deriveLiveStatuses(inputs: LedgerInputs): LiveDashboard {
     }
     if (!failure && def.includesPipelineJobs) {
       const doneJobs = inputs.jobs.filter((j) => j.finished_at);
-      const latestJob = doneJobs.sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0];
+      const latestJob = [...doneJobs].sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0];
       if (latestJob?.status === 'failed') failure = pipelineEvent(latestJob).summary;
       if (!failure) {
         const doneRenders = inputs.renderJobs.filter((r) => r.finished_at);
-        const latestRender = doneRenders.sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0];
+        const latestRender = [...doneRenders].sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0];
         if (latestRender?.status === 'failed') failure = renderEvent(latestRender).summary;
       }
     }
