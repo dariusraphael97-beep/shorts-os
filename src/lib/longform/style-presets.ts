@@ -41,8 +41,10 @@ export interface StyleBible {
   /** How on-screen text relates to the rest of the image:
    *  "exclusive" (default) — the caption is the ONLY text; everything else is suppressed.
    *  "additive" — the caption is a headline that COEXISTS with the scene's own labels / diagram
-   *  text (e.g. technical diagrams whose internal text is the content). */
-  onScreenTextMode?: "exclusive" | "additive";
+   *  text (e.g. technical diagrams whose internal text is the content).
+   *  "sparse" — doodle-essay mode: captions are RARE hand-lettered ALL-CAPS punches on emphasis
+   *  beats only; evidence beats may carry a small lowercase objectLabel instead. */
+  onScreenTextMode?: "exclusive" | "additive" | "sparse";
 }
 
 const NEG_COMMON =

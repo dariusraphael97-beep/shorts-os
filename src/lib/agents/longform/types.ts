@@ -19,6 +19,7 @@ export const StyleBibleSchema = z.object({
   imageParams: z.record(z.string(), z.string()),
   referenceDriven: z.boolean().optional(),
   soundEffectsEnabled: z.boolean().optional(),
+  onScreenTextMode: z.enum(["exclusive", "additive", "sparse"]).optional(),
 });
 
 export const VoiceChoiceSchema = z.object({
@@ -90,6 +91,10 @@ export const BeatSchema = z.object({
   photoQuery: z.string().default(""),
   /** Optional short text-to-SFX prompt for this moment (e.g. "a hawk screech"); empty = no sound. */
   soundEffect: z.string().optional(),
+  /** Small lowercase evidence label drawn next to the subject (e.g. "diary, 1400s."); absent = none. */
+  objectLabel: z.string().optional(),
+  /** Flat solid background color/mood for this beat (e.g. "deep navy"); absent = preset default. */
+  backgroundMood: z.string().optional(),
 });
 export const ChapterBeatsSchema = z.object({
   chapterIndex: z.number().int().nonnegative(),
@@ -106,6 +111,8 @@ export const SceneItemsSchema = z.object({
     sound: z.string(),
     visualKind: z.enum(["photo", "illustration"]).default("illustration"),
     photoQuery: z.string().default(""),
+    label: z.string().default(""),
+    background: z.string().default(""),
   })).min(1),
 });
 // (legacy) scenes-only shape, kept for any callers that only need descriptions.
