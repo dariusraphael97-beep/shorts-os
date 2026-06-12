@@ -142,7 +142,10 @@ export async function listRecentReviews(
 ): Promise<RecentReview[]> {
   const { data, error } = await supabase
     .from('video_reviews')
-    .select('id, your_video_id, reviewed_at, overall_verdict, your_videos(title, status)')
+    // `!your_video_id` disambiguates the embed: two FKs link these tables
+    // (video_reviews.your_video_id and your_videos.review_id), and an
+    // unhinted join makes PostgREST error out.
+    .select('id, your_video_id, reviewed_at, overall_verdict, your_videos!your_video_id(title, status)')
     .order('reviewed_at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(`listRecentReviews: ${error.message}`);
