@@ -93,15 +93,23 @@ export async function fetchRetentionReport(args: {
   startDate: string;
   endDate: string;
 }): Promise<RetentionPoint[]> {
-  const u = new URL('https://youtubeanalytics.googleapis.com/v2/reports');
-  u.searchParams.set('ids', `channel==${args.externalChannelId}`);
-  u.searchParams.set('startDate', args.startDate);
-  u.searchParams.set('endDate', args.endDate);
-  u.searchParams.set('dimensions', 'elapsedVideoTimeRatio');
-  u.searchParams.set('metrics', 'audienceWatchRatio,relativeRetentionPerformance');
-  u.searchParams.set('filters', `video==${args.externalVideoId}`);
-  const res = await fetch(u, { headers: { Authorization: `Bearer ${args.accessToken}` } });
-  if (!res.ok) throw new Error(`fetchRetentionReport: ${res.status} ${await res.text()}`);
+  const query = (metrics: string) => {
+    const u = new URL('https://youtubeanalytics.googleapis.com/v2/reports');
+    u.searchParams.set('ids', `channel==${args.externalChannelId}`);
+    u.searchParams.set('startDate', args.startDate);
+    u.searchParams.set('endDate', args.endDate);
+    u.searchParams.set('dimensions', 'elapsedVideoTimeRatio');
+    u.searchParams.set('metrics', metrics);
+    u.searchParams.set('filters', `video==${args.externalVideoId}`);
+    return fetch(u, { headers: { Authorization: `Bearer ${args.accessToken}` } });
+  };
+  // relativeRetentionPerformance needs a minimum amount of data; YouTube 400s the whole query for
+  // low-traffic videos. Fall back to audienceWatchRatio alone so the curve still lands, and if even
+  // that is unavailable (brand-new / tiny-audience video) return [] rather than throw — otherwise the
+  // route's Promise.all([stats, core, retention]) would abort and silently write NO row at all.
+  let res = await query('audienceWatchRatio,relativeRetentionPerformance');
+  if (!res.ok) res = await query('audienceWatchRatio');
+  if (!res.ok) return [];
   const json = (await res.json()) as { rows?: Array<[number, number, number?]> };
   return (json.rows ?? []).map(([elapsedVideoTimeRatio, audienceWatchRatio, relative]) => ({
     elapsedVideoTimeRatio,

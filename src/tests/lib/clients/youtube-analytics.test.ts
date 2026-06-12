@@ -112,4 +112,47 @@ describe('youtube-analytics client', () => {
       { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: null },
     ]);
   });
+
+  it('fetchRetentionReport falls back to audienceWatchRatio-only when relativeRetentionPerformance is rejected', async () => {
+    // YouTube 400s the combined query for low-traffic videos because relativeRetentionPerformance
+    // needs a minimum amount of data. The watch-ratio-only curve is still available, so we must
+    // retry rather than throw away the whole curve (and, with Promise.all upstream, the whole sync).
+    const requested: string[] = [];
+    globalThis.fetch = vi.fn(async (url: URL | string) => {
+      const metrics = new URL(String(url)).searchParams.get('metrics')!;
+      requested.push(metrics);
+      if (metrics.includes('relativeRetentionPerformance')) {
+        return new Response(JSON.stringify({ error: { code: 400, message: 'unsupported metric: relativeRetentionPerformance' } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({
+        columnHeaders: [{ name: 'elapsedVideoTimeRatio' }, { name: 'audienceWatchRatio' }],
+        rows: [[0, 1.0], [0.5, 0.5]],
+      }), { status: 200 });
+    }) as never;
+    const r = await fetchRetentionReport({
+      accessToken: 'AT', externalChannelId: 'UC', externalVideoId: 'EXT',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(requested.length).toBe(2);                            // tried combined, then fell back
+    expect(requested[0]).toContain('relativeRetentionPerformance');
+    expect(requested[1]).toBe('audienceWatchRatio');
+    expect(r).toEqual([
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0, relativeRetentionPerformance: null },
+      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: null },
+    ]);
+  });
+
+  it('fetchRetentionReport returns an empty curve (never throws) when YouTube rejects the report entirely', async () => {
+    // A brand-new / tiny-audience video has no retention report at all. This must degrade to [] so
+    // the per-video sync still writes core stats (views/AVD/impressions/CTR) instead of silently
+    // skipping the whole row via the route's Promise.all.
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ error: { code: 400, message: 'insufficient data' } }), { status: 400 }),
+    ) as never;
+    const r = await fetchRetentionReport({
+      accessToken: 'AT', externalChannelId: 'UC', externalVideoId: 'EXT',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(r).toEqual([]);
+  });
 });
