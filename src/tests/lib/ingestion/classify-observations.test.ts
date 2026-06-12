@@ -12,7 +12,7 @@ import { runClassification } from "@/lib/ingestion/classify-observations";
 import type { ShortsObservation } from "@/lib/supabase/repositories/shorts-observations";
 
 const observation = (id: string): ShortsObservation => ({
-  video_id: id, source: "youtube_search", channel_id: "c", channel_subscriber_count: 1,
+  video_id: id, source: "youtube_search", channel_id: "c", channel_subscriber_count: 1, channel_published_at: null,
   title: "t", description: "d", tags: [], thumbnail_url: "https://img/x.jpg",
   duration_seconds: 30, published_at: null, view_count: 1, like_count: 0, comment_count: 0,
   observed_at: "2026-05-29T00:00:00Z", last_refreshed_at: "2026-05-29T00:00:00Z",

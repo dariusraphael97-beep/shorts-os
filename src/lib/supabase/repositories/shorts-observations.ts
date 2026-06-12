@@ -15,6 +15,7 @@ export interface ShortsObservation {
   source: ShortsObservationSource;
   channel_id: string | null;
   channel_subscriber_count: number | null;
+  channel_published_at: string | null;
   title: string;
   description: string | null;
   tags: unknown[];
@@ -33,6 +34,7 @@ export interface UpsertShortsObservationParams {
   source: ShortsObservationSource;
   channelId?: string | null;
   channelSubscriberCount?: number | null;
+  channelPublishedAt?: Date | null;
   title: string;
   description?: string | null;
   tags?: unknown[];
@@ -56,6 +58,7 @@ export async function upsertShortsObservation(
       source: params.source,
       channel_id: params.channelId ?? null,
       channel_subscriber_count: params.channelSubscriberCount ?? null,
+      channel_published_at: params.channelPublishedAt ? params.channelPublishedAt.toISOString() : null,
       title: params.title,
       description: params.description ?? null,
       tags: params.tags ?? [],
