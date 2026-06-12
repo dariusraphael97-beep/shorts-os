@@ -42,6 +42,16 @@ export interface VideoReview {
   prompt_version: string;
 }
 
+/** Compact review row joined with its video's title/status (for Mission Control). */
+export interface RecentReview {
+  id: string;
+  your_video_id: string;
+  reviewed_at: string;
+  overall_verdict: OverallVerdict;
+  video_title: string | null;
+  video_status: string | null;
+}
+
 export interface InsertVideoReviewParams {
   yourVideoId: string;
   titleScore: number; titleVerdict: ReviewVerdict;
