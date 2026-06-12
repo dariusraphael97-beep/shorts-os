@@ -79,6 +79,27 @@ ${numbered}`;
 
 interface SceneItem { scene: string; onScreenText: string; sound: string; visualKind: "photo" | "illustration"; photoQuery: string; label: string; background: string }
 
+// Red callouts are the sparse style's signature evidence device — more than ~4 across the
+// video dilutes it. The prompt budgets per chapter (max one); code enforces the global cap
+// because per-chapter LLM calls can't see each other (run #4 measured 5/7 chapters complying).
+const MAX_RED_CALLOUTS = 4;
+const RED_CALLOUT_RE = /red[^,.;]*(circle|arrow|marker)|(circle|arrow|marker)[^,.;]*red/i;
+
+/** Remove the red-callout clause from a scene that exceeded the video-wide budget. */
+function stripRedCallout(scene: string): string {
+  const clauses = scene.split(/([,;]|(?<=[.!?])\s+)/);
+  const kept = clauses.filter((c, i) => i % 2 === 1 || !RED_CALLOUT_RE.test(c));
+  const cleaned = kept
+    .join("")
+    .replace(/\s*[,;]\s*(?=[,;.!?]|$)/g, "") // dangling separators left by dropped clauses
+    .replace(/^\s*[,;]\s*/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (cleaned && !RED_CALLOUT_RE.test(cleaned)) return cleaned;
+  // The callout is woven through every clause — fall back to deleting just the red phrasing.
+  return scene.replace(/(?:crude\s+|hand-drawn\s+)*red\s+(?:marker\s+|hand-drawn\s+)?(?:circle|arrow|marker)?/gi, "").replace(/\s{2,}/g, " ").trim() || scene;
+}
+
 async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: string[], grounding: string): Promise<SceneItem[]> {
   const prompt = scenePrompt(styleBible, chapterTitle, slices, grounding);
   const run = async () => {
@@ -103,6 +124,7 @@ async function sceneItems(styleBible: StyleBible, chapterTitle: string, slices: 
 
 export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPlannerOutput> {
   const chapters = [];
+  let redCalloutsUsed = 0; // video-wide, across chapters (first-come within chapter order)
   for (const ch of ctx.chapters) {
     const slices = splitNarrationIntoBeats(ch.narration, {
       targetBeatSeconds: ctx.styleBible.targetBeatSeconds,
@@ -120,8 +142,13 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
       // a caption over 4 words is dropped, and photos never happen in sparse styles.
       const rawCaption = items[i].onScreenText ?? "";
       const caption = sparse && rawCaption.trim().split(/\s+/).filter(Boolean).length > 4 ? "" : rawCaption;
+      let scene = items[i].scene;
+      if (sparse && RED_CALLOUT_RE.test(scene)) {
+        if (redCalloutsUsed >= MAX_RED_CALLOUTS) scene = stripRedCallout(scene);
+        else redCalloutsUsed++;
+      }
       const { prompt, negativePrompt } = assembleImagePrompt({
-        sceneDescription: items[i].scene,
+        sceneDescription: scene,
         onScreenText: caption,
         objectLabel: label,
         backgroundMood: background,
@@ -132,7 +159,7 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
         index: i,
         narrationSlice: slice.text,
         estDurationSeconds: slice.estDurationSeconds,
-        sceneDescription: items[i].scene,
+        sceneDescription: scene,
         onScreenText: caption,
         visualKind: sparse ? ("illustration" as const) : items[i].visualKind,
         photoQuery: sparse ? "" : items[i].photoQuery,

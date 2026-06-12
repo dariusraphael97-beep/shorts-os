@@ -222,6 +222,33 @@ describe("longform/beat-planner", () => {
     }
   });
 
+  it("caps red callouts at 4 video-wide and strips the clause from overflow scenes", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({
+        scene: "a parchment with a date, a crude red marker circle scrawled around the date",
+        onScreenText: "", sound: "", visualKind: "illustration", photoQuery: "", label: "", background: "",
+      })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      // 6 chapters → 6 red-callout scenes from the LLM; only the first 4 may survive
+      chapters: Array.from({ length: 6 }, (_, c) => ({ index: c, title: `C${c}`, narration: "A short single sentence for this chapter." })),
+    });
+    const beats = out.chapters.flatMap((c) => c.beats);
+    const RED = /red (circle|arrow|marker)/i; // same regex the plan QC uses
+    expect(beats.filter((b) => RED.test(b.sceneDescription)).length).toBe(4);
+    expect(beats.filter((b) => RED.test(b.imagePrompt)).length).toBe(4);
+    const stripped = beats.filter((b) => !RED.test(b.sceneDescription));
+    expect(stripped).toHaveLength(2);
+    for (const b of stripped) {
+      expect(b.sceneDescription).toContain("parchment with a date"); // the scene survives, only the callout goes
+      expect(b.imagePrompt).toContain("parchment with a date");
+    }
+  });
+
   it("sparse slicing honors the preset's wordsPerSecond (faster narrator → fewer, bigger beats)", async () => {
     vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
       const opts = allArgs[0] as { prompt?: string };
@@ -232,12 +259,12 @@ describe("longform/beat-planner", () => {
     expect(preset.wordsPerSecond).toBe(2.9); // reference measured ~187wpm; global default 2.4 over-cuts
     const narration = Array.from({ length: 20 }, () => "Seven plain words sit in this sentence.").join(" ");
     const slow = await runBeatPlanner({
-      styleBible: { ...preset, wordsPerSecond: undefined }, // global 2.4 → 6-word target → one beat per sentence
+      styleBible: { ...preset, wordsPerSecond: undefined }, // global 2.4 → 7-word target → one beat per 7-word sentence
       playbook: EMPTY_LONGFORM_PLAYBOOK,
       chapters: [{ index: 0, title: "Pace", narration }],
     });
     const fast = await runBeatPlanner({
-      styleBible: { ...preset, wordsPerSecond: 6 }, // exaggerated pace → 15-word target → sentences pack in pairs
+      styleBible: { ...preset, wordsPerSecond: 6 }, // exaggerated pace → 17-word target → sentences pack in pairs
       playbook: EMPTY_LONGFORM_PLAYBOOK,
       chapters: [{ index: 0, title: "Pace", narration }],
     });
