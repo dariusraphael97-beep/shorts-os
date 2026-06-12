@@ -34,6 +34,22 @@ export const SHORTS_SEARCH_SEEDS: string[] = [
   'psychology facts',
 ];
 
+/** Seed queries for the dominatable longform sweep (from the proven seed-niches scan). */
+export const DOMINATABLE_SEEDS: readonly string[] = [
+  'ranked tier list', 'backyard birds', 'weird animals', 'deep sea creatures',
+  'space facts', 'how it works', 'psychology facts', 'money mistakes',
+  'the history of', 'what happens to your', 'unsolved mysteries', 'how the body works',
+];
+
+/** A video qualifies as a dominatable candidate when ALL hold (mirrors seed-niches). */
+export const DOMINATABLE_GATE = {
+  minDurationSeconds: 240,
+  minViews: 300_000,
+  minViewsToSubsRatio: 3,
+  maxChannelAgeDays: 365,
+  publishedWithinDays: 120,
+} as const;
+
 export const REDDIT_SEED_SUBREDDITS: string[] = [
   'NewTubers', 'PartneredYoutube', 'youtubers', 'NextLevel', 'youtube',
   'Damnthatsinteresting', 'todayilearned', 'interestingasfuck', 'nextfuckinglevel',
