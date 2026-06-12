@@ -177,7 +177,11 @@ export async function getAssistantSettings(
   return ((data as { settings: AssistantSettings } | null)?.settings ?? {}) as AssistantSettings;
 }
 
-/** Merge-patch: shallow-spreads `patch` over the existing settings jsonb. */
+/**
+ * Merge-patch: shallow-spreads `patch` over the existing settings jsonb.
+ * NOTE: read-modify-write, not atomic — concurrent calls may lose writes.
+ * Acceptable for single-user agent settings; upgrade to an RPC if that changes.
+ */
 export async function updateAssistantSettings(
   supabase: SupabaseClient,
   assistantId: string,

@@ -50,6 +50,8 @@ export async function listChatThreads(
   return (data ?? []) as ChatThread[];
 }
 
+// Two-step (insert + thread bump), not transactional: if the bump fails the
+// message row already exists, so callers must not naively retry without dedup.
 export async function appendChatMessage(
   supabase: SupabaseClient,
   params: { threadId: string; role: ChatRole; content: string },
@@ -77,6 +79,7 @@ export async function listChatMessages(
     .select()
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true })
+    // Hard cap: chat tab renders a single thread; 200 messages is far beyond expected single-user thread length.
     .limit(200);
   if (error) throw new Error(`listChatMessages: ${error.message}`);
   return (data ?? []) as ChatMessage[];
