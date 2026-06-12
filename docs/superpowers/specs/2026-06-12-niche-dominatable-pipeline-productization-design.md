@@ -30,9 +30,10 @@ Make the cron pipeline produce dominatable longform niches **automatically**, th
 `supabase/migrations/2026XXXXXXXXXX_dominatable_sweep.sql`:
 
 1. Redefine `ingestion_runs_job_check` to add `'youtube_dominatable_sweep'` (the new cron must log to the `ingestion_runs` ledger or it is invisible in Mission Control — see [migration 20260611000001](../../../supabase/migrations/20260611000001_ingestion_runs_performance_sync.sql) for the existing 9-name constraint).
-2. `alter table shorts_observations add column channel_published_at timestamptz;` (nullable; the channel-age signal for Phase 2).
+2. Redefine `shorts_observations_source_check` to add `'youtube_dominatable'` (verified: the table has a source CHECK enumerating the existing 6 sources; the upsert would 400 without this).
+3. `alter table shorts_observations add column channel_published_at timestamptz;` (nullable; the channel-age signal for Phase 2).
 
-Bundling both avoids two separate prod-migration gates. The migration must be applied before Phase 1 code merges (the ledger insert would otherwise violate the CHECK). Apply to a Supabase **branch** first, verify, then prod (Darius-gated per the standing prod-migration rule).
+Bundling all three avoids separate prod-migration gates. The migration must be applied before Phase 1 code merges (the ledger insert would otherwise violate the CHECK). Apply to a Supabase **branch** first, verify, then prod (Darius-gated per the standing prod-migration rule).
 
 ### Phase 1 — Longform dominatable sweep + channel enrichment
 
