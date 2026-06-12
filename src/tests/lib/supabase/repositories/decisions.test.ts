@@ -33,6 +33,7 @@ describe("decisions repository", () => {
       reasoning: "because",
       prompt_version: null,
       guidance_ids_used: [],
+      your_video_id: null,
     });
   });
 

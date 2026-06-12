@@ -9,6 +9,8 @@ import {
   getLatestWeekStart,
 } from "@/lib/supabase/repositories/niche-clusters";
 import { isoWeekStart, partitionBands } from "@/lib/niches/current-week";
+import { pickBestNiche } from "@/lib/niches/auto-pick";
+import { GenerateBestNiche } from "@/components/compositions/generate-best-niche";
 import { NichesFeed, type NicheCardData } from "./niches-feed";
 
 export default async function NichesPage() {
@@ -28,6 +30,26 @@ export default async function NichesPage() {
   }
 
   const { proven, unproven } = partitionBands(clusters);
+
+  const pick = pickBestNiche(
+    clusters.map((c) => ({
+      id: c.id,
+      canonical_topic: c.canonical_topic,
+      production_fit: c.production_fit ?? "manual_only",
+      niche_score: c.niche_score,
+      proven_score: c.proven_score,
+      first_mover_score: c.first_mover_score,
+      winnerDurationSeconds: c.explainability_top_signals?.winnerDurationSeconds ?? null,
+    })),
+  );
+  const heroPick = pick
+    ? {
+        clusterId: pick.cluster.id,
+        title: pick.cluster.canonical_topic,
+        reason: pick.reason,
+        band: pick.band,
+      }
+    : null;
 
   const toCardData = (cluster: (typeof clusters)[number]): NicheCardData => ({
     id: cluster.id,
@@ -58,6 +80,7 @@ export default async function NichesPage() {
         title="This week's niches"
         description={headerDescription}
       />
+      <GenerateBestNiche pick={heroPick} />
       <NichesFeed proven={proven.map(toCardData)} unproven={unproven.map(toCardData)} />
     </AppShell>
   );

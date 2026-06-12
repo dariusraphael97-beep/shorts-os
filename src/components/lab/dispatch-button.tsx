@@ -48,7 +48,7 @@ export function DispatchButton({ topicId }: { topicId: string }) {
     <Button
       onClick={handleClick}
       disabled={disabled}
-      className="bg-accent-electric text-app font-medium hover:opacity-90 disabled:opacity-40"
+      className="bg-[var(--accent-electric)] text-[var(--bg-app)] font-medium hover:opacity-90 disabled:opacity-40"
       title={activeElsewhere ? "A run is already in progress" : ""}
     >
       {label} ▶

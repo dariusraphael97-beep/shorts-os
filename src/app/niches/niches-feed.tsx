@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NicheCard } from "@/components/compositions/niche-card";
+import { studioHref } from "@/lib/niches/studio-href";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,9 +84,9 @@ function UnprovenPill() {
 
 function EmptyState() {
   return (
-    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-raised)]/40 px-8 py-16 text-center">
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-2)]/40 px-8 py-16 text-center">
       {/* Decorative icon */}
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-raised)]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -220,21 +221,7 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
 
   const handleGenerate = useCallback(
     (id: string) => {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/niches/${id}/generate`, { method: "POST" });
-          const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-          if (res.ok && body.ok) {
-            toast.success("Seeded a draft — finish it in the Lab", {
-              action: { label: "Open Lab", onClick: () => router.push("/lab") },
-            });
-          } else {
-            toast.error(body.error ?? `Generate failed (${res.status})`);
-          }
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Generate request failed");
-        }
-      })();
+      router.push(studioHref(id));
     },
     [router],
   );
@@ -368,17 +355,17 @@ export function NichesFeed({ proven, unproven }: NichesFeedProps) {
         className="mb-6 flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-tertiary)]"
         aria-label="Keyboard shortcuts: j/k to navigate, Enter to open, x to dismiss, g to generate"
       >
-        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px]">j</kbd>
-        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px]">k</kbd>
+        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px]">j</kbd>
+        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px]">k</kbd>
         <span className="text-[var(--border-strong)]">navigate</span>
         <span className="mx-1 text-[var(--border-strong)]">·</span>
-        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px]">↵</kbd>
+        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px]">↵</kbd>
         <span className="text-[var(--border-strong)]">open</span>
         <span className="mx-1 text-[var(--border-strong)]">·</span>
-        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px]">x</kbd>
+        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px]">x</kbd>
         <span className="text-[var(--border-strong)]">dismiss</span>
         <span className="mx-1 text-[var(--border-strong)]">·</span>
-        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-raised)] px-1.5 py-0.5 text-[10px]">g</kbd>
+        <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px]">g</kbd>
         <span className="text-[var(--border-strong)]">generate</span>
       </div>
 

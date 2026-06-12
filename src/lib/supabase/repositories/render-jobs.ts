@@ -6,7 +6,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type RenderJobType = 'clip_ingest' | 'render_f1' | 'render_f2' | 'upload';
+export type RenderJobType = 'clip_ingest' | 'render_f1' | 'render_f2' | 'upload' | 'render_longform';
 export type RenderJobStatus = 'pending' | 'claimed' | 'running' | 'succeeded' | 'failed';
 
 export interface RenderJobRow {
@@ -111,4 +111,22 @@ export async function resetStuckJobs(supabase: SupabaseClient): Promise<RenderJo
   const { data, error } = await supabase.rpc('reset_stuck_render_jobs');
   if (error) throw error;
   return (data ?? []) as RenderJobRow[];
+}
+
+/** Most recent render job for a draft (any status), or null. */
+export async function getLatestRenderJobForVideo(
+  supabase: SupabaseClient,
+  yourVideoId: string,
+): Promise<RenderJobRow | null> {
+  const { data, error } = await supabase
+    .from('render_jobs')
+    .select()
+    .eq('your_video_id', yourVideoId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error && (error as { code?: string }).code !== 'PGRST116') {
+    throw new Error(`getLatestRenderJobForVideo: ${error.message}`);
+  }
+  return (data as RenderJobRow | null) ?? null;
 }

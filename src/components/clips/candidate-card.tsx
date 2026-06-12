@@ -105,7 +105,7 @@ export function CandidateCard(props: {
           type="button"
           disabled={busy}
           onClick={() => post(`/api/clips/candidates/${props.draft.id}/approve`)}
-          className="px-3 py-1.5 rounded text-sm bg-text-primary text-app disabled:opacity-50"
+          className="px-3 py-1.5 rounded text-sm bg-text-primary text-[var(--bg-app)] disabled:opacity-50"
         >
           Approve
         </button>

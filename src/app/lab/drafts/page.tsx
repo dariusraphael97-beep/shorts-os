@@ -42,9 +42,9 @@ export default async function LabDraftsPage({
 
         <DraftsTabs active={active} />
 
-        <section className="rounded-lg border border-subtle bg-surface">
+        <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
           {videos.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-text-muted">
+            <p className="px-4 py-6 text-sm text-[var(--text-muted)]">
               {active === "draft" && "No drafts. Dispatch a topic from /lab to make one."}
               {active === "rendered" && "No rendered videos yet. Render a draft to see it here."}
               {active === "scheduled" && "No scheduled videos yet. Approve a rendered video to schedule it."}

@@ -170,7 +170,7 @@ export async function finalCompose(args: {
   });
 }
 
-function runFfmpeg(argv: string[]): Promise<void> {
+export function runFfmpeg(argv: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const p = spawn(ffmpegPath as string, argv, { stdio: ['ignore', 'inherit', 'inherit'] });
     p.on('error', reject);

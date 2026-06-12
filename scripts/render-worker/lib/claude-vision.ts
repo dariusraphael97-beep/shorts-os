@@ -59,3 +59,35 @@ export async function describeClipFromFrames(args: {
   });
   return result.object;
 }
+
+const PhotoVetSchema = z.object({ usable: z.boolean(), reason: z.string() });
+
+// Vision check: is this downloaded candidate a real, clean, relevant photo usable as a full-frame 16:9 background?
+export async function vetPhoto(args: { imagePath: string; subject: string }): Promise<{ usable: boolean; reason: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return { usable: false, reason: 'no api key' };
+  try {
+    const anthropic = createAnthropic({ apiKey });
+    const buf = await readFile(args.imagePath);
+    const result = await generateObject({
+      model: anthropic('claude-haiku-4-5'),
+      schema: PhotoVetSchema,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: `You are vetting a web image to use as a full-screen visual in a documentary video about "${args.subject}". The video will crop and slowly pan/zoom across it, so framing and background do NOT need to be perfect.
+
+Return usable=true if it is a REAL PHOTOGRAPH that clearly and recognizably shows ${args.subject}, at a reasonable resolution. Minor imperfections are FINE and should NOT be rejected: a workshop or garage background, an engine stand or jack, tools, hands, imperfect or off-center framing, extra context around the subject, or light branding.
+
+Return usable=false ONLY if one of these is true: (a) it is NOT a real photo (a 3D render, illustration, drawing, diagram, chart, or logo); (b) it does not actually show ${args.subject}; (c) it is a tiny or very blurry thumbnail; (d) it is a multi-image collage; (e) it is a video screenshot with UI overlays (play button, captions); or (f) it is mostly covered by watermark/text.
+
+Be LENIENT — when a real, relevant, decent-resolution photo is in front of you, pass it. Return JSON { "usable": boolean, "reason": string }.` },
+          { type: 'image' as const, image: buf },
+        ],
+      }],
+    });
+    return PhotoVetSchema.parse(result.object);
+  } catch (e) {
+    return { usable: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}

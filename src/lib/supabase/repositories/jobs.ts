@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AgentId } from "@/lib/agents/types";
 
-export type JobKind = "scrape" | "score_topics" | "produce_video" | "analyze_performance";
+export type JobKind = "scrape" | "score_topics" | "produce_video" | "analyze_performance" | "produce_longform_video";
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type Job = {
@@ -41,6 +41,28 @@ export async function createProduceVideoJob(
     .select("*")
     .single();
   if (error) throw new Error(`createProduceVideoJob: ${error.message}`);
+  return data as Job;
+}
+
+export async function createProduceLongformJob(
+  supabase: SupabaseClient,
+  args: { channelId: string },
+): Promise<Job> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .insert({
+      kind: "produce_longform_video",
+      status: "running",
+      channel_id: args.channelId,
+      current_step: "writer",
+      current_agent: "writer",
+      progress_pct: 0,
+      started_at: new Date().toISOString(),
+      metadata: {},
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(`createProduceLongformJob: ${error.message}`);
   return data as Job;
 }
 

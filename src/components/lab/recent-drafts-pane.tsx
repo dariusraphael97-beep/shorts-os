@@ -12,13 +12,13 @@ export async function RecentDraftsPane() {
   const drafts = await listRecentDrafts(supabase, 10);
 
   return (
-    <section className="rounded-lg border border-subtle bg-surface">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-subtle">
+    <section className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
         <h2 className="text-lg font-semibold text-text-primary">Recent Drafts</h2>
-        <span className="text-xs font-mono text-text-muted">{drafts.length} drafts</span>
+        <span className="text-xs font-mono text-[var(--text-muted)]">{drafts.length} drafts</span>
       </header>
       {drafts.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-text-muted">
+        <p className="px-4 py-6 text-sm text-[var(--text-muted)]">
           No drafts yet — dispatch a reviewed topic above to make one.
         </p>
       ) : (

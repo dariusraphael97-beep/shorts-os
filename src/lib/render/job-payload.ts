@@ -22,6 +22,11 @@ export const UploadPayload = z.object({
 });
 export type UploadPayload = z.infer<typeof UploadPayload>;
 
+export const RenderLongformPayload = z.object({
+  your_video_id: z.string().uuid(),
+});
+export type RenderLongformPayload = z.infer<typeof RenderLongformPayload>;
+
 export function parseJobPayload(jobType: string, payload: unknown) {
   switch (jobType) {
     case 'clip_ingest': return ClipIngestPayload.parse(payload);

@@ -1,0 +1,137 @@
+// src/lib/agents/longform/writer.ts
+import { generateObject, NoObjectGeneratedError } from "ai";
+import { getClaudeModel } from "@/lib/ai/gateway";
+import { deriveChapterCount, estimateWordBudget } from "@/lib/longform/duration";
+import {
+  WriterHookSchema, WriterOutlineSchema, WriterChapterNarrationSchema,
+  WriterOutputSchema, type WriterOutput,
+} from "@/lib/agents/longform/types";
+import { runResearcher, renderFactSheet } from "@/lib/agents/longform/researcher";
+import type { FactSheet } from "@/lib/agents/longform/types";
+import type { LongformPlaybook } from "@/lib/agents/longform/playbook";
+
+export interface WriterRunContext {
+  topic: string;
+  targetDurationSeconds: number;
+  playbook: LongformPlaybook;
+  /** Operator-verified ground-truth facts forwarded to the researcher; they override conflicting web sources. */
+  trustedFacts?: string[];
+}
+
+const FORMAT_RULES = `FORMAT (match a top-tier faceless documentary channel like Fern/Blackfiles):
+- AUTHORITATIVE, MEASURED narration. Short, clipped sentences and fragments — one idea per line.
+- Build suspense with deliberate, reveal-withholding turns ("but they're not...", fact-then-twist).
+- Transition with turn-words ("So why...", "Here's the thing...", "So where do you go...") — never chapter cards.
+- NO "hey guys", no channel intro, no on-screen-text assumptions. Write only what is spoken.`;
+
+function hookPrompt(ctx: WriterRunContext): string {
+  const ex = ctx.playbook.writer.exemplarHooks.length
+    ? `\nProven hooks for this channel (emulate their shape, not their words):\n${ctx.playbook.writer.exemplarHooks.map((h) => `- ${h}`).join("\n")}`
+    : "";
+  // The retention bar IS the hook's job. In 2026 a high-CTR / slow-open video gets demoted ("Quality
+  // CTR") — the first 30s decide everything. Once the playbook has learned a bar, make it the writer's
+  // hard constraint. Empty (L1) playbook ⇒ sampleSize 0 ⇒ no line (and tests stay deterministic).
+  const bar = ctx.playbook.retention;
+  const benchLine =
+    bar && bar.sampleSize > 0 && bar.medianFirst30sRetention != null
+      ? `\nRETENTION BAR (your single most important constraint): this channel's past winners held ${Math.round(
+          bar.medianFirst30sRetention * 100,
+        )}% of viewers through the first 30 seconds${
+          bar.bestFirst30sRetention != null ? ` (best: ${Math.round(bar.bestFirst30sRetention * 100)}%)` : ""
+        }. A slow open is the #1 reason videos die. Open ON the story — no throat-clearing, no setup. Every clause must buy the next.`
+      : "";
+  return `PASS:HOOK
+You are the Writer for a faceless longform YouTube documentary.
+Topic: "${ctx.topic}"
+
+Pick ONE sharp ANGLE, then write a cold-open HOOK (the first ~10-15 seconds of narration).
+The hook must: open ON the story (a specific time/place anchor OR a bold curiosity claim), drip-reveal
+in short clauses, and pose 1-2 rhetorical questions that frame the whole video's curiosity gap.
+${FORMAT_RULES}${benchLine}${ex}
+
+Return JSON: { "angle": string, "hook": string }.`;
+}
+
+function outlinePrompt(ctx: WriterRunContext, chapterCount: number): string {
+  return `PASS:OUTLINE
+You are the Writer. Topic: "${ctx.topic}".
+Produce exactly ${chapterCount} chapters forming ONE continuous narrative arc (invisible to the viewer —
+no on-screen titles). Each chapter: a short internal title + a one-line purpose.
+${FORMAT_RULES}
+
+Return JSON: { "chapters": [{ "title": string, "purpose": string }] } with exactly ${chapterCount} items.`;
+}
+
+function narrationPrompt(ctx: WriterRunContext, chapter: { title: string; purpose: string }, wordBudget: number, grounding: string): string {
+  const groundingBlock = grounding ? `\n${grounding}\n` : "";
+  return `PASS:NARRATION
+You are the Writer. Topic: "${ctx.topic}". Angle is set.
+Write the spoken NARRATION for this chapter only.
+Chapter: "${chapter.title}" — purpose: ${chapter.purpose}
+Target ~${wordBudget} words. ${FORMAT_RULES}
+Do not restate the title. Flow naturally from the prior chapter and set up the next with a turn-word.
+${groundingBlock}
+ACCURACY (critical): Every number you state — cost, price, horsepower, torque, dimension, date, quantity — MUST match the VERIFIED FACTS above. If a number you want is not in the verified facts, do NOT invent it: speak qualitatively (omit the figure) rather than guess. Never state a precise dollar amount or spec that isn't grounded.
+
+Return JSON: { "narration": string }.`;
+}
+
+async function callObject<T>(model: ReturnType<typeof getClaudeModel>, schema: import("zod").ZodType<T>, prompt: string): Promise<T> {
+  const run = async (): Promise<T> => {
+    const result = await generateObject({ model, schema, prompt });
+    return schema.parse(result.object);
+  };
+  try {
+    return await run();
+  } catch (err) {
+    if (!NoObjectGeneratedError.isInstance(err)) throw err;
+    return await run();
+  }
+}
+
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+export async function runLongformWriter(ctx: WriterRunContext): Promise<WriterOutput> {
+  const opus = getClaudeModel("claude-opus-4-7");
+  const sonnet = getClaudeModel("claude-sonnet-4-5");
+  const chapterCount = deriveChapterCount(ctx.targetDurationSeconds);
+  const wordBudget = estimateWordBudget(ctx.targetDurationSeconds);
+
+  // Pass 1: angle + hook.
+  const hookOut = await callObject(opus, WriterHookSchema, hookPrompt(ctx));
+
+  // Pass 2: outline (fallback to generic chapter scaffold if it keeps failing).
+  let outline: { title: string; purpose: string }[];
+  try {
+    outline = (await callObject(sonnet, WriterOutlineSchema, outlinePrompt(ctx, chapterCount))).chapters;
+  } catch (err) {
+    if (!NoObjectGeneratedError.isInstance(err)) throw err;
+    outline = Array.from({ length: chapterCount }, (_, i) => ({
+      title: `Part ${i + 1}`,
+      purpose: i === 0 ? "establish the hook and the stakes" : i === chapterCount - 1 ? "resolve and land the payoff" : "develop the argument with a new reveal",
+    }));
+  }
+
+  // Research: ground the narration in real, sourced facts (best-effort — empty on any failure).
+  const factSheet: FactSheet = await runResearcher({ topic: ctx.topic, outline, trustedFacts: ctx.trustedFacts });
+  const grounding = renderFactSheet(factSheet);
+
+  // Pass 3: narration per chapter.
+  const perChapterBudget = Math.max(40, Math.round(wordBudget / outline.length));
+  const chapters = [];
+  for (const ch of outline) {
+    let narration: string;
+    try {
+      narration = (await callObject(opus, WriterChapterNarrationSchema, narrationPrompt(ctx, ch, perChapterBudget, grounding))).narration;
+    } catch (err) {
+      if (!NoObjectGeneratedError.isInstance(err)) throw err;
+      narration = `${ch.purpose}. ${ctx.topic}.`; // safe non-empty fallback so render never hard-fails
+    }
+    chapters.push({ title: ch.title, purpose: ch.purpose, narration });
+  }
+
+  const estimatedWords = chapters.reduce((sum, c) => sum + countWords(c.narration), 0) + countWords(hookOut.hook);
+  return WriterOutputSchema.parse({ angle: hookOut.angle, hook: hookOut.hook, estimatedWords, chapters, factSheet });
+}

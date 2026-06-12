@@ -90,8 +90,10 @@ export function WhyThisNiche({ signals }: WhyThisNicheProps) {
   const rows = formatSignals(signals);
   const nicheAgeDays =
     typeof signals.nicheAgeDays === "number" ? signals.nicheAgeDays : null;
+  const viewsToSubs =
+    typeof signals.viewsToSubsRatio === "number" ? signals.viewsToSubsRatio : null;
 
-  if (rows.length === 0 && nicheAgeDays === null) {
+  if (rows.length === 0 && nicheAgeDays === null && viewsToSubs === null) {
     return (
       <p className="py-2 text-xs text-[var(--text-tertiary)]">
         No signal data available yet.
@@ -107,6 +109,12 @@ export function WhyThisNiche({ signals }: WhyThisNicheProps) {
             <SignalBarRow key={row.key} row={row} />
           ))}
         </ol>
+      )}
+
+      {viewsToSubs !== null && viewsToSubs >= 2 && (
+        <p className="font-mono text-[10px] tracking-wide text-[var(--text-tertiary)]">
+          Views run ~{viewsToSubs >= 10 ? Math.round(viewsToSubs) : viewsToSubs.toFixed(1)}× subscribers (algorithm-driven)
+        </p>
       )}
 
       {nicheAgeDays !== null && (

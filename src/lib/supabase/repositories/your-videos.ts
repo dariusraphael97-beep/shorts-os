@@ -276,6 +276,62 @@ export async function countTodayUploads(
   return (data ?? []).length;
 }
 
+export interface StudioDraft {
+  id: string;
+  status: string;
+  title: string;
+  longform_plan: Record<string, unknown> | null;
+  render_artifact_url: string | null;
+  duration_seconds: number | null;
+  source_niche_cluster_id: string | null;
+}
+
+export async function getYourVideoById(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<StudioDraft | null> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("id, status, title, longform_plan, render_artifact_url, duration_seconds, source_niche_cluster_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error && (error as { code?: string }).code !== "PGRST116") {
+    throw new Error(`getYourVideoById: ${error.message}`);
+  }
+  return (data as StudioDraft | null) ?? null;
+}
+
+export async function getVideoForRetentionIngest(
+  supabase: SupabaseClient,
+  ref: { externalVideoId?: string; yourVideoId?: string },
+): Promise<{ id: string; durationSeconds: number | null } | null> {
+  const builder = supabase.from("your_videos").select("id, duration_seconds");
+  const query = ref.yourVideoId
+    ? builder.eq("id", ref.yourVideoId)
+    : builder.eq("external_video_id", ref.externalVideoId ?? "");
+  const { data, error } = await query.maybeSingle();
+  if (error && (error as { code?: string }).code !== "PGRST116") {
+    throw new Error(`getVideoForRetentionIngest: ${error.message}`);
+  }
+  if (!data) return null;
+  const row = data as { id: string; duration_seconds: number | null };
+  return { id: row.id, durationSeconds: row.duration_seconds };
+}
+
+export async function listPostedVideos(
+  supabase: SupabaseClient,
+  channelId: string,
+): Promise<Array<{ id: string; external_video_id: string | null; title: string }>> {
+  const { data, error } = await supabase
+    .from("your_videos")
+    .select("id, external_video_id, title")
+    .eq("channel_id", channelId)
+    .eq("status", "posted")
+    .order("posted_at", { ascending: false });
+  if (error) throw new Error(`listPostedVideos: ${error.message}`);
+  return (data as Array<{ id: string; external_video_id: string | null; title: string }>) ?? [];
+}
+
 export interface ClaimedRow {
   id: string;
   channel_id: string;

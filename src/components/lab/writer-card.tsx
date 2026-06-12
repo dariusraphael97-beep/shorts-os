@@ -23,7 +23,7 @@ export function WriterCard({
   const estDuration = output ? output.estimated_duration_seconds : wordCount / 2.5;
 
   return (
-    <article className="rounded-lg border border-subtle bg-surface p-4">
+    <article className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
       <header className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-text-primary">✍️ Writer</h3>
         <StateBadge state={state} />
@@ -33,14 +33,14 @@ export function WriterCard({
         className="text-text-primary text-[15px] leading-relaxed font-sans whitespace-pre-wrap min-h-[120px]"
         data-testid="writer-script-area"
       >
-        {displayed || <span className="text-text-muted italic">waiting for Strategist…</span>}
-        {state === "working" && <span className="inline-block ml-0.5 w-2 h-4 align-text-bottom bg-accent-electric animate-pulse" />}
+        {displayed || <span className="text-[var(--text-muted)] italic">waiting for Strategist…</span>}
+        {state === "working" && <span className="inline-block ml-0.5 w-2 h-4 align-text-bottom bg-[var(--accent-electric)] animate-pulse" />}
       </div>
 
       {wordCount > 0 && (
-        <footer className="mt-3 flex items-center gap-4 text-xs font-mono text-text-muted">
+        <footer className="mt-3 flex items-center gap-4 text-xs font-mono text-[var(--text-muted)]">
           <span>
-            <span className="text-accent-electric">{wordCount}</span> words
+            <span className="text-[var(--accent-electric)]">{wordCount}</span> words
           </span>
           <span>est ~{estDuration.toFixed(0)}s</span>
         </footer>
@@ -57,5 +57,5 @@ function StateBadge({ state }: { state: AgentChipState }) {
   const txt: Record<AgentChipState, string> = {
     idle: "waiting", thinking: "thinking…", working: "streaming…", done: "✓ done", failed: "✗ failed",
   };
-  return <span className="text-xs font-mono text-text-muted">{txt[state]}</span>;
+  return <span className="text-xs font-mono text-[var(--text-muted)]">{txt[state]}</span>;
 }

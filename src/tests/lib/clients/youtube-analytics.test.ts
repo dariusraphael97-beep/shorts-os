@@ -48,11 +48,59 @@ describe('youtube-analytics client', () => {
     expect(r.ctrPct).toBe(4.2);
   });
 
-  it('fetchRetentionReport returns the audienceWatchRatio curve rows', async () => {
+  it('fetchCoreReport falls back to core metrics when the API rejects impressions/ctrPct', async () => {
+    const requested: string[] = [];
+    globalThis.fetch = vi.fn(async (url: URL | string) => {
+      const metrics = new URL(String(url)).searchParams.get('metrics')!;
+      requested.push(metrics);
+      if (metrics.includes('impressions')) {
+        return new Response(JSON.stringify({ error: { code: 400, message: 'unknown metric: impressions' } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ rows: [[400, 25.5, 7]] }), { status: 200 });
+    }) as never;
+    const r = await fetchCoreReport({
+      accessToken: 'AT',
+      externalChannelId: 'UC_X', externalVideoId: 'EXT_ID',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(requested.length).toBe(2);                 // tried full set, then fell back
+    expect(requested[0]).toContain('impressions');
+    expect(requested[1]).not.toContain('impressions');
+    expect(r.estimatedMinutesWatched).toBe(400);
+    expect(r.averageViewDurationSeconds).toBe(25.5);
+    expect(r.subscribersGained).toBe(7);
+    expect(r.impressions).toBeNull();
+    expect(r.ctrPct).toBeNull();
+  });
+
+  it('fetchRetentionReport requests both watch-ratio + relativeRetentionPerformance and returns the curve', async () => {
+    let requestedMetrics: string | null = null;
+    globalThis.fetch = vi.fn(async (url: URL | string) => {
+      requestedMetrics = new URL(String(url)).searchParams.get('metrics');
+      return new Response(JSON.stringify({
+        columnHeaders: [
+          { name: 'elapsedVideoTimeRatio' }, { name: 'audienceWatchRatio' }, { name: 'relativeRetentionPerformance' },
+        ],
+        rows: [[0, 1.0, 0.6], [0.1, 0.9, 0.55], [0.5, 0.5, 0.4]],
+      }), { status: 200 });
+    }) as never;
+    const r = await fetchRetentionReport({
+      accessToken: 'AT', externalChannelId: 'UC', externalVideoId: 'EXT',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(requestedMetrics).toBe('audienceWatchRatio,relativeRetentionPerformance');
+    expect(r).toEqual([
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0, relativeRetentionPerformance: 0.6 },
+      { elapsedVideoTimeRatio: 0.1, audienceWatchRatio: 0.9, relativeRetentionPerformance: 0.55 },
+      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: 0.4 },
+    ]);
+  });
+
+  it('fetchRetentionReport tolerates a curve with no relative column (older/low-data videos)', async () => {
     globalThis.fetch = vi.fn(async () =>
       new Response(JSON.stringify({
         columnHeaders: [{ name: 'elapsedVideoTimeRatio' }, { name: 'audienceWatchRatio' }],
-        rows: [[0, 1.0], [0.1, 0.9], [0.5, 0.5]],
+        rows: [[0, 1.0], [0.5, 0.5]],
       }), { status: 200 }),
     ) as never;
     const r = await fetchRetentionReport({
@@ -60,9 +108,8 @@ describe('youtube-analytics client', () => {
       startDate: '2026-05-13', endDate: '2026-05-27',
     });
     expect(r).toEqual([
-      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0 },
-      { elapsedVideoTimeRatio: 0.1, audienceWatchRatio: 0.9 },
-      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5 },
+      { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1.0, relativeRetentionPerformance: null },
+      { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.5, relativeRetentionPerformance: null },
     ]);
   });
 });

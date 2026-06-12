@@ -48,3 +48,6 @@ scripts/gen-font-fingerprint.mjs
 
 # operator scratch files
 most-likely-to-form.gs
+
+# Visual brainstorm companion
+.superpowers/

@@ -53,9 +53,9 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
   }
 
   return (
-    <li className="rounded-md border border-subtle bg-surface hover:bg-hover transition">
+    <li className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] transition">
       <div className="p-3 flex items-start gap-3">
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-elevated text-text-secondary border border-subtle shrink-0">
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] text-text-secondary border border-[var(--border-subtle)] shrink-0">
           {SOURCE_LABEL[obs.source] ?? obs.source}
         </span>
         <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
             <span>·</span>
             <span>{relativeTime(obs.observed_at)}</span>
           </div>
-          {error && <p className="text-xs text-accent-red mt-1">{error}</p>}
+          {error && <p className="text-xs text-[var(--accent-red)] mt-1">{error}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Tooltip>
@@ -76,7 +76,7 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
                   href={obs.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 rounded hover:bg-elevated text-text-muted"
+                  className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                   aria-label="Open source"
                 />
               }
@@ -92,7 +92,7 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
                   type="button"
                   onClick={explain}
                   disabled={isPending}
-                  className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
+                  className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--accent-electric)] disabled:opacity-50"
                   aria-label="Ask Claude why this works"
                 />
               }
@@ -108,7 +108,7 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
                   <button
                     type="button"
                     onClick={() => setExpanded((v) => !v)}
-                    className="p-2 rounded hover:bg-elevated text-text-muted"
+                    className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                     aria-label="Toggle breakdown"
                   />
                 }
@@ -121,7 +121,7 @@ export function TrendingRow({ obs }: { obs: ViralObservation }) {
         </div>
       </div>
       {expanded && breakdown && (
-        <div className="px-3 pb-3 text-xs text-text-secondary leading-relaxed border-t border-subtle pt-2">
+        <div className="px-3 pb-3 text-xs text-text-secondary leading-relaxed border-t border-[var(--border-subtle)] pt-2">
           {breakdown}
         </div>
       )}

@@ -15,7 +15,7 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
 
   const score = Math.round(topic.hookability_score ?? 0);
   const scoreColor =
-    score >= 80 ? "text-accent-electric" : score >= 60 ? "text-accent-amber" : "text-text-muted";
+    score >= 80 ? "text-[var(--accent-electric)]" : score >= 60 ? "text-[var(--accent-amber)]" : "text-[var(--text-muted)]";
 
   async function submitState(state: "reviewed" | "rejected", reasonText?: string) {
     setError(null);
@@ -35,18 +35,18 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
   }
 
   return (
-    <li className="rounded-md border border-subtle bg-surface hover:bg-hover transition">
+    <li className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] transition">
       <div className="p-3 flex items-start gap-3">
         <div className={`text-3xl font-mono font-semibold tabular-nums shrink-0 ${scoreColor}`}>
           <NumberTicker value={score} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-wide text-text-muted">
+            <span className="text-[10px] font-mono uppercase tracking-wide text-[var(--text-muted)]">
               {topic.source}
             </span>
-            <span className="text-[10px] text-text-muted">·</span>
-            <span className="text-[10px] text-text-muted">
+            <span className="text-[10px] text-[var(--text-muted)]">·</span>
+            <span className="text-[10px] text-[var(--text-muted)]">
               {new Date(topic.created_at).toLocaleTimeString()}
             </span>
           </div>
@@ -54,7 +54,7 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
           {topic.summary && (
             <p className="text-xs text-text-secondary mt-1 line-clamp-2">{topic.summary}</p>
           )}
-          {error && <p className="text-xs text-accent-red mt-1">{error}</p>}
+          {error && <p className="text-xs text-[var(--accent-red)] mt-1">{error}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Tooltip>
@@ -64,7 +64,7 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
                   type="button"
                   onClick={() => submitState("reviewed")}
                   disabled={isPending}
-                  className="p-2 rounded hover:bg-elevated text-accent-electric disabled:opacity-50"
+                  className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--accent-electric)] disabled:opacity-50"
                   aria-label="Queue for production"
                 />
               }
@@ -80,7 +80,7 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
                   type="button"
                   onClick={() => setReasonOpen((v) => !v)}
                   disabled={isPending}
-                  className="p-2 rounded hover:bg-elevated text-accent-red disabled:opacity-50"
+                  className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--accent-red)] disabled:opacity-50"
                   aria-label="Reject"
                 />
               }
@@ -95,7 +95,7 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="p-2 rounded hover:bg-elevated text-text-muted"
+                  className="p-2 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                   aria-label="Expand"
                 />
               }
@@ -112,20 +112,20 @@ export function TopicRow({ topic, onResolved }: { topic: QueuedTopic; onResolved
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason (optional)"
-            className="flex-1 h-8 px-2 text-xs bg-elevated border border-subtle rounded text-text-primary placeholder:text-text-muted"
+            className="flex-1 h-8 px-2 text-xs bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-text-primary placeholder:text-[var(--text-muted)]"
           />
           <button
             type="button"
             onClick={() => submitState("rejected", reason.trim() || undefined)}
             disabled={isPending}
-            className="h-8 px-3 text-xs rounded bg-accent-red/10 text-accent-red border border-accent-red/30 disabled:opacity-50"
+            className="h-8 px-3 text-xs rounded bg-[var(--accent-red)]/10 text-[var(--accent-red)] border border-[var(--accent-red)]/30 disabled:opacity-50"
           >
             Reject
           </button>
         </div>
       )}
       {expanded && (
-        <pre className="px-3 pb-3 text-[11px] font-mono text-text-muted overflow-x-auto whitespace-pre-wrap">
+        <pre className="px-3 pb-3 text-[11px] font-mono text-[var(--text-muted)] overflow-x-auto whitespace-pre-wrap">
           {JSON.stringify(topic.raw_payload, null, 2)}
         </pre>
       )}
