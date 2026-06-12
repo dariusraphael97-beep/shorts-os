@@ -12,6 +12,11 @@ import {
 } from '@/lib/clients/youtube-analytics';
 import { upsertVideoAnalytics } from '@/lib/supabase/repositories/video-analytics';
 import { summarizeOpeningRetention } from '@/lib/longform/retention';
+import {
+  startIngestionRun,
+  finishIngestionRun,
+  type IngestionRunRow,
+} from '@/lib/supabase/repositories/ingestion-runs';
 
 export const maxDuration = 300;
 
@@ -32,6 +37,17 @@ interface VideoRow {
 export async function GET(req: Request) {
   try { assertCronAuth(req); } catch (e) { if (e instanceof Response) return e; throw e; }
   const supabase = getServiceClient();
+
+  // Ledger entry for Mission Control's Analyst card. Tolerate the un-migrated
+  // CHECK constraint (performance_sync added in 20260611000001) — never let
+  // ledger bookkeeping break the actual sync.
+  let ledgerRun: IngestionRunRow | null = null;
+  try {
+    ledgerRun = await startIngestionRun(supabase, { job: 'performance_sync' });
+  } catch (err) {
+    console.warn('[performance-sync] ledger start failed:', err instanceof Error ? err.message : err);
+  }
+
   const windowDays = parseInt(process.env.ANALYTICS_SYNC_WINDOW_DAYS ?? '14', 10);
 
   const { data: channels, error: chanErr } = await supabase
@@ -39,7 +55,17 @@ export async function GET(req: Request) {
     .select('id, external_channel_id, timezone')
     .eq('is_active', true)
     .eq('platform', 'youtube');
-  if (chanErr) return NextResponse.json({ ok: false, error: chanErr.message }, { status: 500 });
+  if (chanErr) {
+    if (ledgerRun) {
+      try {
+        await finishIngestionRun(supabase, {
+          id: ledgerRun.id, status: 'failed', itemsIngested: 0, itemsSkipped: 0, quotaUnits: 0,
+          error: chanErr.message,
+        });
+      } catch { /* ledger is best-effort */ }
+    }
+    return NextResponse.json({ ok: false, error: chanErr.message }, { status: 500 });
+  }
 
   const summary: Array<{ channelId: string; videos: number; errors: number }> = [];
 
@@ -133,6 +159,24 @@ export async function GET(req: Request) {
       }
     }
     summary.push({ channelId: c.id, videos: videosCount, errors: errCount });
+  }
+
+  const totalVideos = summary.reduce((acc, s) => acc + s.videos, 0);
+  const totalErrors = summary.reduce((acc, s) => acc + s.errors, 0);
+  if (ledgerRun) {
+    try {
+      await finishIngestionRun(supabase, {
+        id: ledgerRun.id,
+        status: totalErrors === 0 ? 'success' : totalVideos > 0 ? 'partial' : 'failed',
+        itemsIngested: totalVideos,
+        itemsSkipped: 0,
+        quotaUnits: 0,
+        error: totalErrors > 0 ? `${totalErrors} video/channel error(s)` : null,
+        context: { summary },
+      });
+    } catch (err) {
+      console.warn('[performance-sync] ledger finish failed:', err instanceof Error ? err.message : err);
+    }
   }
 
   return NextResponse.json({ ok: true, ...scraperLog('performance-sync', { summary }) });
