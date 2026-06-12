@@ -68,6 +68,7 @@ export const ASSISTANT_DEFS: Record<AssistantId, AssistantDef> = {
     ingestionJobs: [
       'youtube_category_sweep',
       'youtube_shorts_search',
+      'youtube_dominatable_sweep',
       'reddit_topic_discovery',
       'google_trends',
       'tiktok_creative_center',
@@ -82,6 +83,7 @@ export const ASSISTANT_DEFS: Record<AssistantId, AssistantDef> = {
       { label: 'Shorts search', cron: '0 8 * * *' },
       { label: 'Reddit discovery', cron: '0 9 * * *' },
       { label: 'Google Trends', cron: '30 9 * * *' },
+      { label: 'Dominatable sweep', cron: '30 7 * * *' },
       { label: 'TikTok Creative Center', cron: '0 22 * * 0' },
       { label: 'Classify observations', cron: '15 */6 * * *' },
       { label: 'Cluster niches', cron: '0 23 * * 0' },

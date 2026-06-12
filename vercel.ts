@@ -38,6 +38,7 @@ export const config: VercelConfig = {
     { path: '/api/cron/youtube-shorts-search',   schedule: '0 8 * * *'    }, // daily 08:00 UTC
     { path: '/api/cron/reddit-topic-discovery',  schedule: '0 9 * * *'    }, // daily 09:00 UTC
     { path: '/api/cron/google-trends',           schedule: '30 9 * * *'   }, // daily 09:30 UTC
+    { path: '/api/cron/youtube-dominatable-sweep', schedule: '30 7 * * *' }, // daily 07:30 UTC — dominatable longform sweep
     { path: '/api/cron/tiktok-creative-center',  schedule: '0 22 * * 0'   }, // weekly Sun 22:00 UTC (disabled stub)
     // --- Plan #5 Phase 1 Sub-phase D (niche-finder brain) ---
     { path: '/api/cron/classify-observations',   schedule: '15 */6 * * *' }, // every 6h, offset after ingestion
