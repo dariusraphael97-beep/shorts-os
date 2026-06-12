@@ -57,4 +57,39 @@ describe("longform/image-prompt", () => {
     expect(getStylePreset("technical-illustration").onScreenTextMode).toBe("additive");
     expect(getStylePreset("naturalist-illustration").onScreenTextMode).toBeUndefined();
   });
+
+  // sparse mode: build the bible by overriding, so this test is independent of preset defaults
+  const sparseBible = { ...getStylePreset("stick-figure-animated"), onScreenTextMode: "sparse" as const };
+
+  it("sparse mode: caption renders as hand-lettered ALL-CAPS marker text (upper-cased)", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a stick figure at a kitchen table", styleBible: sparseBible, onScreenText: "every single meal" });
+    expect(out.prompt).toContain('reading exactly "EVERY SINGLE MEAL"');
+    expect(out.prompt.toLowerCase()).toContain("marker");
+    expect(out.prompt.toLowerCase()).toContain("hand-lettered");
+  });
+
+  it("sparse mode: objectLabel renders as a small lowercase hand-written label", () => {
+    const out = assembleImagePrompt({ sceneDescription: "an old leather diary on a wooden table", styleBible: sparseBible, objectLabel: "diary, 1400s." });
+    expect(out.prompt).toContain('label reading exactly "diary, 1400s."');
+    expect(out.prompt.toLowerCase()).toContain("lowercase");
+    expect(out.prompt).not.toContain("no on-screen text"); // label IS the text — don't suppress it
+  });
+
+  it("sparse mode with neither caption nor label suppresses all text", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a campfire under a starfield", styleBible: sparseBible });
+    expect(out.prompt).toContain("no on-screen text");
+  });
+
+  it("backgroundMood is baked into the prompt as a flat solid background", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a stick figure lying awake", styleBible: sparseBible, backgroundMood: "deep navy" });
+    expect(out.prompt).toContain("flat solid deep navy background");
+  });
+
+  it("no backgroundMood → no background clause (other presets unaffected)", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a misty forest", styleBible: bible });
+    // cinematic-realistic framing contains "flat solid" in its own text; assert the specific
+    // per-beat background clause (which includes "filling the frame") is absent
+    expect(out.prompt).not.toContain("flat solid deep navy background");
+    expect(out.prompt).not.toContain("background filling the frame");
+  });
 });
