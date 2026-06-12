@@ -1,6 +1,6 @@
 import "server-only";
 import type { StreamEvent } from "@/lib/agents/types";
-import { LongformPlanSchema, type LongformPlan, type ScriptOverride, type WriterOutput } from "@/lib/agents/longform/types";
+import { LongformPlanSchema, WriterOutputSchema, type LongformPlan, type ScriptOverride, type WriterOutput } from "@/lib/agents/longform/types";
 import { clampTargetDuration } from "@/lib/longform/duration";
 import { buildLongformLedgerRows, type LedgerRow } from "@/lib/longform/ledger";
 import { EMPTY_LONGFORM_PLAYBOOK, type LongformPlaybook } from "@/lib/agents/longform/playbook";
@@ -64,10 +64,10 @@ export interface LongformPipelineDeps {
 
 // An operator script becomes a Writer-shaped output: word count from the narration itself, and the
 // operator's trustedFacts as the fact sheet (they are the verified ground truth for this run).
-function scriptOverrideToWriterOutput(s: ScriptOverride, trustedFacts: string[] | undefined): WriterOutput {
-  const estimatedWords = s.chapters.reduce((n, c) => n + c.narration.split(/\s+/).filter(Boolean).length, 0);
+function scriptOverrideToWriterOutput(script: ScriptOverride, trustedFacts: string[] | undefined): WriterOutput {
+  const estimatedWords = script.chapters.reduce((n, c) => n + c.narration.split(/\s+/).filter(Boolean).length, 0);
   const facts = (trustedFacts ?? []).map((f) => f.trim()).filter(Boolean).map((f) => ({ claim: f, detail: f }));
-  return { angle: s.angle, hook: s.hook, estimatedWords, chapters: s.chapters, factSheet: { facts, uncertain: [] } };
+  return WriterOutputSchema.parse({ angle: script.angle, hook: script.hook, estimatedWords, chapters: script.chapters, factSheet: { facts, uncertain: [] } });
 }
 
 export async function* runLongformPipeline(args: LongformPipelineArgs, deps: LongformPipelineDeps): AsyncGenerator<StreamEvent> {

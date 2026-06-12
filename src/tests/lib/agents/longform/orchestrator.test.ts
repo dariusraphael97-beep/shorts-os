@@ -117,4 +117,21 @@ describe("longform/orchestrator", () => {
       plan: expect.objectContaining({ voice: expect.objectContaining({ voiceId: "JBFqnCBsd6RMkjVDRZzb" }) }),
     }));
   });
+
+  it("yield-event sequence is identical whether the Writer runs or is skipped via scriptOverride", async () => {
+    const d1 = deps();
+    const eventsDefault = await collect(runLongformPipeline({ topic: "t", targetDurationSeconds: 540, channelId: "ch1", presetId: "stick-figure-animated" }, d1));
+
+    const d2 = deps();
+    const eventsOverride = await collect(runLongformPipeline({
+      topic: "t", targetDurationSeconds: 540, channelId: "ch1", presetId: "stick-figure-animated",
+      scriptOverride: {
+        angle: "the meal schedule is an invention",
+        hook: "You eat three meals a day. Nobody asked why.",
+        chapters: [{ title: "Cold open", purpose: "hook", narration: "You eat three meals a day. Nobody ever asked why. The schedule is younger than the lightbulb." }],
+      },
+    }, d2));
+
+    expect(eventsOverride.map((e) => e.type)).toEqual(eventsDefault.map((e) => e.type));
+  });
 });
