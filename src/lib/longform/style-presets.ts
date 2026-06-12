@@ -45,6 +45,9 @@ export interface StyleBible {
    *  "sparse" — doodle-essay mode: captions are RARE hand-lettered ALL-CAPS punches on emphasis
    *  beats only; evidence beats may carry a small lowercase objectLabel instead. */
   onScreenTextMode?: "exclusive" | "additive" | "sparse";
+  /** Narration pace this style is built around (words/sec), used to slice beats and estimate
+   *  durations. Unset = the global WORDS_PER_SECOND default (2.4 ≈ 144 wpm). */
+  wordsPerSecond?: number;
 }
 
 const NEG_COMMON =
@@ -121,6 +124,7 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
     aspect: "16:9",
     kenBurnsZoom: 0, // Task 12 smoke test: 0.04 stair-steps (~0.85px/frame sub-pixel rounding → shimmer on line art); reference is hard-cut statics anyway
     targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
+    wordsPerSecond: 2.9, // reference narration measured ~187 wpm (≈3.1 w/s); 2.9 keeps slices + estimates honest (global 2.4 over-cuts ~35% more beats)
     musicMood: "no music bed, or an extremely soft contemplative ambient pad far beneath the narration",
     model: "gpt_image_2", // Task 11 bake-off WINNER vs nano_banana_2 (better lettering, confident flat fills — see docs/superpowers/research/2026-06-12-doodle-bakeoff/verdict.md)
     imageParams: { quality: "low", resolution: "2k" },

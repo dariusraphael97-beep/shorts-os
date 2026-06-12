@@ -168,8 +168,9 @@ describe("longform/beat-planner", () => {
     expect(p).toMatch(/lowercase/);
     expect(p).toMatch(/"background"/);               // asks for the per-beat background
     expect(p).toMatch(/vary the background|never use white for everything/);
-    expect(p).toMatch(/red marker circle|red hand-drawn arrow/); // 2-4 red callouts on evidence beats
-    expect(p).toMatch(/rarely|a handful/);           // SFX sparse + diegetic
+    expect(p).toMatch(/red marker circle|red hand-drawn arrow/); // red callouts gated to smoking-gun evidence
+    expect(p).toMatch(/at most one beat of this chapter/);       // ...and budgeted PER CHAPTER (planner runs per chapter)
+    expect(p).toMatch(/nearly silent|zero is the norm/);         // SFX nearly absent, budgeted per chapter
     expect(p).not.toContain("most beats should have text");
   });
 
@@ -191,6 +192,57 @@ describe("longform/beat-planner", () => {
     expect(beats[0].imagePrompt).toContain("flat solid deep navy background");
     expect(beats[1]?.objectLabel).toBeUndefined();   // empty strings do not become beat fields
     expect(beats[1]?.backgroundMood).toBeUndefined();
+  });
+
+  it("sparse guards: drops >4-word captions and coerces photo beats to illustration", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({
+        scene: `doodle ${i}`,
+        onScreenText: i === 0 ? "YOUR METABOLISM KEEPS OLD HOURS" : i === 1 ? "OLD HOURS" : "",
+        sound: "",
+        visualKind: i === 0 ? "photo" : "illustration",
+        photoQuery: i === 0 ? "old factory clock" : "",
+        label: "", background: "",
+      })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Guards", narration: "Your metabolism keeps old hours and it always has done. The schedule is the new arrival here. Your body never signed the contract at all." }],
+    });
+    const beats = out.chapters[0].beats;
+    expect(beats[0].onScreenText).toBe("");          // 5 words → dropped, not truncated
+    expect(beats[0].imagePrompt).not.toContain("METABOLISM"); // and never baked into the prompt
+    expect(beats[1].onScreenText).toBe("OLD HOURS"); // ≤4 words survives
+    for (const b of beats) {
+      expect(b.visualKind).toBe("illustration");     // sparse never photographs
+      expect(b.photoQuery).toBe("");
+    }
+  });
+
+  it("sparse slicing honors the preset's wordsPerSecond (faster narrator → fewer, bigger beats)", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `doodle ${i}`, onScreenText: "", sound: "", label: "", background: "" })) } } as never;
+    });
+    const preset = getStylePreset("stick-figure-animated");
+    expect(preset.wordsPerSecond).toBe(2.9); // reference measured ~187wpm; global default 2.4 over-cuts
+    const narration = Array.from({ length: 20 }, () => "Seven plain words sit in this sentence.").join(" ");
+    const slow = await runBeatPlanner({
+      styleBible: { ...preset, wordsPerSecond: undefined }, // global 2.4 → 6-word target → one beat per sentence
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pace", narration }],
+    });
+    const fast = await runBeatPlanner({
+      styleBible: { ...preset, wordsPerSecond: 6 }, // exaggerated pace → 15-word target → sentences pack in pairs
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pace", narration }],
+    });
+    expect(slow.chapters[0].beats.length).toBe(20);
+    expect(fast.chapters[0].beats.length).toBeLessThanOrEqual(10);
   });
 
   it("non-sparse presets keep the old prompt shape (no label/background/red-callout demands)", async () => {

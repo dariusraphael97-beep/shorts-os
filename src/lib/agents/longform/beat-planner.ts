@@ -34,13 +34,13 @@ ${styleBible.presetId} documentary. Describe the subject and setting only — do
 words (those are added automatically) and do NOT put on-screen text in the scene. Keep each scene one vivid sentence.`;
   const frequency =
     styleBible.onScreenTextMode === "sparse"
-      ? `Captions are RARE and load-bearing: leave onScreenText "" on the vast majority of beats. Add one ONLY on a true emphasis beat (roughly 1 beat in 8) — the single line the viewer must remember — as an ALL-CAPS punch of at most 4 words.`
+      ? `Captions are RARE and load-bearing: leave onScreenText "" on the vast majority of beats. Add one ONLY on a true emphasis beat (roughly 1 beat in 8) — the single line the viewer must remember — as an ALL-CAPS punch of AT MOST 4 WORDS. Count the words: if it needs 5+, cut it down (e.g. "OLD HOURS", never "YOUR METABOLISM KEEPS OLD HOURS"); a caption over 4 words will be discarded.`
       : styleBible.onScreenTextMode === "additive"
         ? `Keep it clean: leave onScreenText "" on most beats — add a short hook ONLY on the few beats where a key stat or turning point really lands.`
         : `Most beats should have text; use "" only when a clean wordless image is clearly stronger.`;
   const soundDesign =
     styleBible.onScreenTextMode === "sparse"
-      ? `Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt — but use sounds RARELY (a handful across the whole video) and ONLY where a real diegetic sound exists in the scene (a fire crackling, rain, night crickets, a factory bell, a street). Use an EMPTY string "" everywhere else; this video is quiet and contemplative.`
+      ? `Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt — but this video is nearly silent: AT MOST ONE beat in THIS chapter may carry a sound, and ZERO is the norm (the finished video keeps only ~4 cues total). Use one ONLY where a real diegetic sound is the heart of the scene (a fire crackling, night crickets, a factory bell). Use an EMPTY string "" everywhere else; this video is quiet and contemplative.`
       : `Also do SOUND DESIGN: for each beat give a short "sound" — a text-to-SFX prompt for a real-world
 sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees", "wings flapping",
 "a heartbeat thudding", "soft rain"). Use a sound on the beats where one clearly belongs; use an EMPTY
@@ -50,7 +50,7 @@ string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few
       ? `\nFor each beat also give:
 - "label": a small lowercase object label for EVIDENCE beats only — a dated artifact, document, or exhibit (e.g. "diary, 1400s." or "cookbook, 1500s."). Use "" on every other beat.
 - "background": the ONE flat solid background color for this beat, keyed to its mood — "white" for diagram/fact beats, "deep navy" for night or contemplation, "warm orange and pale blue" for sunrise/warmth, "dark navy" for a night bedroom, "earthy brown and green" for outdoors/nature/the past — plus scene-appropriate variants (e.g. "warm kitchen yellow", "factory grey"). VARY THE BACKGROUND across the video; never use white for everything.
-On 2 to 4 of the evidence beats (and ONLY there), include in the "scene" a crude red marker circle scrawled around the key object, or a crude red hand-drawn arrow pointing at it.`
+A crude red marker circle (or red hand-drawn arrow) is this video's rarest, most powerful device: include one in AT MOST ONE beat of THIS chapter — and ONLY if this chapter presents a dated document or artifact as a smoking gun (write it into that beat's "scene", e.g. "a crude red marker circle scrawled around the date"). Chapters without such a smoking-gun beat get NO red callout at all.`
       : ``;
   const isSparse = styleBible.onScreenTextMode === "sparse";
   const jsonShape = isSparse
@@ -67,7 +67,9 @@ Latin names, no "Fig. N" captions, no figure numbers. Put on-screen text ONLY in
 
 ${soundDesign}
 
-For each beat also decide VISUAL SOURCE. Set "visualKind" to "photo" when the beat depicts a CONCRETE real-world subject that a real stock photograph would show accurately (a specific engine, a car part, a named car, a tool, a place) — and give a precise "photoQuery" to find that photo (e.g. "BMW B58 engine bare block on engine stand"). Set "visualKind" to "illustration" (and photoQuery "") when the beat is an abstract idea, a comparison, a metaphor, a diagram/chart, or a composite that no single real photo captures. Prefer "photo" for concrete hardware; prefer "illustration" for concepts.${sparseExtras}
+${isSparse
+    ? `Set "visualKind" to "illustration" and "photoQuery" to "" on EVERY beat — this style never uses real photos.`
+    : `For each beat also decide VISUAL SOURCE. Set "visualKind" to "photo" when the beat depicts a CONCRETE real-world subject that a real stock photograph would show accurately (a specific engine, a car part, a named car, a tool, a place) — and give a precise "photoQuery" to find that photo (e.g. "BMW B58 engine bare block on engine stand"). Set "visualKind" to "illustration" (and photoQuery "") when the beat is an abstract idea, a comparison, a metaphor, a diagram/chart, or a composite that no single real photo captures. Prefer "photo" for concrete hardware; prefer "illustration" for concepts.`}${sparseExtras}
 ${groundingBlock}
 Chapter: "${chapterTitle}"
 Return EXACTLY ${slices.length} items, in order, as JSON: ${jsonShape}.
@@ -104,7 +106,7 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
   for (const ch of ctx.chapters) {
     const slices = splitNarrationIntoBeats(ch.narration, {
       targetBeatSeconds: ctx.styleBible.targetBeatSeconds,
-      wordsPerSecond: WORDS_PER_SECOND,
+      wordsPerSecond: ctx.styleBible.wordsPerSecond ?? WORDS_PER_SECOND,
     });
     const sliceTexts = slices.map((s) => s.text);
     const items = await sceneItems(ctx.styleBible, ch.title, sliceTexts, ctx.grounding ?? "");
@@ -114,9 +116,13 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
     const beats = slices.map((slice, i) => {
       const label = sparse ? items[i].label?.trim() ?? "" : "";
       const background = sparse ? items[i].background?.trim() ?? "" : "";
+      // Sparse contract guards (deterministic — the prompt asks, code enforces):
+      // a caption over 4 words is dropped, and photos never happen in sparse styles.
+      const rawCaption = items[i].onScreenText ?? "";
+      const caption = sparse && rawCaption.trim().split(/\s+/).filter(Boolean).length > 4 ? "" : rawCaption;
       const { prompt, negativePrompt } = assembleImagePrompt({
         sceneDescription: items[i].scene,
-        onScreenText: items[i].onScreenText,
+        onScreenText: caption,
         objectLabel: label,
         backgroundMood: background,
         styleBible: ctx.styleBible,
@@ -127,9 +133,9 @@ export async function runBeatPlanner(ctx: BeatPlannerRunContext): Promise<BeatPl
         narrationSlice: slice.text,
         estDurationSeconds: slice.estDurationSeconds,
         sceneDescription: items[i].scene,
-        onScreenText: items[i].onScreenText,
-        visualKind: items[i].visualKind,
-        photoQuery: items[i].photoQuery,
+        onScreenText: caption,
+        visualKind: sparse ? ("illustration" as const) : items[i].visualKind,
+        photoQuery: sparse ? "" : items[i].photoQuery,
         imagePrompt: prompt,
         negativePrompt,
         ...(sound ? { soundEffect: sound } : {}),

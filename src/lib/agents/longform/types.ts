@@ -20,6 +20,7 @@ export const StyleBibleSchema = z.object({
   referenceDriven: z.boolean().optional(),
   soundEffectsEnabled: z.boolean().optional(),
   onScreenTextMode: z.enum(["exclusive", "additive", "sparse"]).optional(),
+  wordsPerSecond: z.number().positive().optional(),
 });
 
 export const VoiceChoiceSchema = z.object({
