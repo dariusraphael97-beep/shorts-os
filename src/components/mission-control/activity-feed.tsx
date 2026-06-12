@@ -40,19 +40,26 @@ export function ActivityFeed({ initialEvents, initialNextBefore, nameById, assis
   const [events, setEvents] = useState(initialEvents);
   const [nextBefore, setNextBefore] = useState(initialNextBefore);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const loadMore = async () => {
     if (!nextBefore || loading) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams({ before: nextBefore, limit: "30" });
       if (assistantId) params.set("assistantId", assistantId);
       const res = await fetch(`/api/mission-control/activity?${params}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        setLoadError("Couldn't load more — try again.");
+        return;
+      }
       const body = (await res.json()) as { events: ActivityEvent[]; nextBefore: string | null };
       setEvents((prev) => [...prev, ...body.events]);
       setNextBefore(body.nextBefore);
+    } catch {
+      setLoadError("Couldn't load more — try again.");
     } finally {
       setLoading(false);
     }
@@ -121,6 +128,9 @@ export function ActivityFeed({ initialEvents, initialNextBefore, nameById, assis
           );
         })}
       </ul>
+      {loadError && (
+        <p className="mt-2 text-center text-xs text-[var(--danger)]">{loadError}</p>
+      )}
       {nextBefore && (
         <Button variant="ghost" size="sm" className="mt-2 self-center" onClick={loadMore} disabled={loading}>
           {loading ? "Loading…" : "Load more"}

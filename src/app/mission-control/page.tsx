@@ -23,6 +23,7 @@ export default async function MissionControlPage() {
   } catch {
     // un-migrated env: registry fallbacks below cover display copy
   }
+  // getLiveDashboard never throws — the ledger settles every source — so it deliberately sits outside the listAssistants try/catch.
   const { statuses, feed } = await getLiveDashboard(supabase);
   const byId = new Map(assistants.map((a) => [a.id, a]));
 
@@ -67,7 +68,8 @@ export default async function MissionControlPage() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
           Recent activity
         </h2>
-        <ActivityFeed initialEvents={firstPage} initialNextBefore={nextBefore} nameById={nameById} />
+        {/* key resets client pagination state (events + cursor) when new events arrive via AutoRefresh */}
+        <ActivityFeed key={firstPage[0]?.id ?? "empty"} initialEvents={firstPage} initialNextBefore={nextBefore} nameById={nameById} />
       </section>
     </AppShell>
   );
