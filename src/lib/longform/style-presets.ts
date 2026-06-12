@@ -119,10 +119,10 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "otherwise a clean plain background; one or two subjects, centered, easy to read; " +
       "never a collage, never a grid, never multiple panels",
     aspect: "16:9",
-    kenBurnsZoom: 0.04, // subtle push-in like the reference; revert to 0 if zoompan jitters on line art
+    kenBurnsZoom: 0, // Task 12 smoke test: 0.04 stair-steps (~0.85px/frame sub-pixel rounding → shimmer on line art); reference is hard-cut statics anyway
     targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
     musicMood: "no music bed, or an extremely soft contemplative ambient pad far beneath the narration",
-    model: "gpt_image_2", // Task 11 bake-off vs nano_banana_2 decides; flip this line if nano wins
+    model: "gpt_image_2", // Task 11 bake-off WINNER vs nano_banana_2 (better lettering, confident flat fills — see docs/superpowers/research/2026-06-12-doodle-bakeoff/verdict.md)
     imageParams: { quality: "low", resolution: "2k" },
     soundEffectsEnabled: true, // sparse diegetic only (fire, rain, night) — planner is instructed to be rare
     onScreenTextMode: "sparse",
