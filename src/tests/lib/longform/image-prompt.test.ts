@@ -92,4 +92,10 @@ describe("longform/image-prompt", () => {
     expect(out.prompt).not.toContain("flat solid deep navy background");
     expect(out.prompt).not.toContain("background filling the frame");
   });
+
+  it("sparse mode: caption + label together emit both clauses (planner is the gatekeeper)", () => {
+    const out = assembleImagePrompt({ sceneDescription: "a chart of meal times", styleBible: sparseBible, onScreenText: "three meals", objectLabel: "factory rulebook, 1844." });
+    expect(out.prompt).toContain('reading exactly "THREE MEALS"');
+    expect(out.prompt).toContain('label reading exactly "factory rulebook, 1844."');
+  });
 });

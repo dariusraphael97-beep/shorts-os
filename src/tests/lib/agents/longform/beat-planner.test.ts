@@ -146,4 +146,63 @@ describe("longform/beat-planner", () => {
     const p = captured.toLowerCase();
     expect(p).toContain("most beats should have text");
   });
+
+  it("sparse mode: prompt demands RARE all-caps captions, evidence labels, varied backgrounds, red callouts, rare SFX", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })) } } as never;
+    });
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"), // v3 = sparse
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "The invention of breakfast", narration: "You eat three meals a day. Nobody asked why. The schedule is younger than the lightbulb." }],
+    });
+    const p = captured.toLowerCase();
+    expect(p).toMatch(/rare/);                       // captions are rare
+    expect(p).toMatch(/all-caps|all caps/);
+    expect(p).toMatch(/at most 4 words|≤ ?4 words|4 words/);
+    expect(p).toMatch(/"label"/);                    // asks for the evidence label field
+    expect(p).toMatch(/lowercase/);
+    expect(p).toMatch(/"background"/);               // asks for the per-beat background
+    expect(p).toMatch(/vary the background|never use white for everything/);
+    expect(p).toMatch(/red marker circle|red hand-drawn arrow/); // 2-4 red callouts on evidence beats
+    expect(p).toMatch(/rarely|a handful/);           // SFX sparse + diegetic
+    expect(p).not.toContain("most beats should have text");
+  });
+
+  it("threads label + background onto beats and into the assembled image prompt", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `doodle ${i}`, onScreenText: "", sound: "", label: i === 0 ? "cookbook, 1500s." : "", background: i === 0 ? "deep navy" : "" })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Evidence", narration: "A cookbook from the fifteen hundreds lists two meals. Dinner sat in the late morning. The word breakfast appears in texts from the fourteen hundreds. Workers ate before dawn and again at midday." }],
+    });
+    const beats = out.chapters[0].beats;
+    expect(beats[0].objectLabel).toBe("cookbook, 1500s.");
+    expect(beats[0].backgroundMood).toBe("deep navy");
+    expect(beats[0].imagePrompt).toContain('label reading exactly "cookbook, 1500s."');
+    expect(beats[0].imagePrompt).toContain("flat solid deep navy background");
+    expect(beats[1]?.objectLabel).toBeUndefined();   // empty strings do not become beat fields
+    expect(beats[1]?.backgroundMood).toBeUndefined();
+  });
+
+  it("non-sparse presets keep the old prompt shape (no label/background/red-callout demands)", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `s ${i}`, onScreenText: "", sound: "" })) } } as never;
+    });
+    await runBeatPlanner(ctx()); // cinematic-realistic
+    expect(captured.toLowerCase()).not.toMatch(/red marker circle/);
+    expect(captured.toLowerCase()).not.toMatch(/"label"/);
+  });
 });

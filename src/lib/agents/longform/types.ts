@@ -111,8 +111,8 @@ export const SceneItemsSchema = z.object({
     sound: z.string(),
     visualKind: z.enum(["photo", "illustration"]).default("illustration"),
     photoQuery: z.string().default(""),
-    label: z.string().default(""),
-    background: z.string().default(""),
+    label: z.string().default(""), // → Beat.objectLabel (small lowercase evidence label; sparse styles only)
+    background: z.string().default(""), // → Beat.backgroundMood (flat solid per-beat background; sparse styles only)
   })).min(1),
 });
 // (legacy) scenes-only shape, kept for any callers that only need descriptions.
