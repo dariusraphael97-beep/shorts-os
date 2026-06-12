@@ -113,6 +113,20 @@ export async function resetStuckJobs(supabase: SupabaseClient): Promise<RenderJo
   return (data ?? []) as RenderJobRow[];
 }
 
+/** Recent render jobs across all types, newest-first (Mission Control ledger). */
+export async function listRecentRenderJobs(
+  supabase: SupabaseClient,
+  limit: number,
+): Promise<RenderJobRow[]> {
+  const { data, error } = await supabase
+    .from('render_jobs')
+    .select()
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentRenderJobs: ${error.message}`);
+  return (data ?? []) as RenderJobRow[];
+}
+
 /** Most recent render job for a draft (any status), or null. */
 export async function getLatestRenderJobForVideo(
   supabase: SupabaseClient,

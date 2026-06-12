@@ -134,3 +134,31 @@ export async function recordReviewFeedback(
   if (error) throw new Error(`recordReviewFeedback: ${error.message}`);
   return data as { id: string; video_review_id: string; suggestion_index: number; action_taken: FeedbackAction; recorded_at: string };
 }
+
+/** Recent reviews joined with video title/status, newest-first (Mission Control ledger). */
+export async function listRecentReviews(
+  supabase: SupabaseClient,
+  limit: number,
+): Promise<RecentReview[]> {
+  const { data, error } = await supabase
+    .from('video_reviews')
+    .select('id, your_video_id, reviewed_at, overall_verdict, your_videos(title, status)')
+    .order('reviewed_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentReviews: ${error.message}`);
+  type Row = {
+    id: string;
+    your_video_id: string;
+    reviewed_at: string;
+    overall_verdict: OverallVerdict;
+    your_videos: { title: string | null; status: string | null } | null;
+  };
+  return ((data ?? []) as unknown as Row[]).map((row) => ({
+    id: row.id,
+    your_video_id: row.your_video_id,
+    reviewed_at: row.reviewed_at,
+    overall_verdict: row.overall_verdict,
+    video_title: row.your_videos?.title ?? null,
+    video_status: row.your_videos?.status ?? null,
+  }));
+}

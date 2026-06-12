@@ -122,3 +122,14 @@ export async function finishJobFailure(
     .eq("id", jobId);
   if (error) throw new Error(`finishJobFailure: ${error.message}`);
 }
+
+/** Recent pipeline jobs across all kinds, newest-first (Mission Control ledger). */
+export async function listRecentJobs(supabase: SupabaseClient, limit: number): Promise<Job[]> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listRecentJobs: ${error.message}`);
+  return (data ?? []) as Job[];
+}
