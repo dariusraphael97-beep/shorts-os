@@ -6,11 +6,16 @@ import { CHAT_MODELS, isAssistantId, type ChatModel } from '@/lib/assistants/reg
 
 export const dynamic = 'force-dynamic';
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
   const { id } = await ctx.params;
   if (!isAssistantId(id)) return Response.json({ error: 'unknown assistant' }, { status: 404 });
   try {
     const body = (await req.json()) as { isEnabled?: boolean; chatModel?: string };
+    if (typeof body.isEnabled !== 'boolean' && body.chatModel === undefined) {
+      return Response.json({ error: 'nothing to update' }, { status: 400 });
+    }
     const supabase = getServiceClient();
     if (typeof body.isEnabled === 'boolean') {
       await setAssistantEnabled(supabase, id, body.isEnabled);

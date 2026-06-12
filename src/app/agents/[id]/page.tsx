@@ -8,7 +8,7 @@ import { getServiceClient } from "@/lib/supabase/server";
 import { getAssistantById, listAssistantMemory, getAssistantSettings } from "@/lib/supabase/repositories/assistants";
 import { listChatThreads, listChatMessages, type ChatMessage, type ChatThread } from "@/lib/supabase/repositories/assistant-chat";
 import { getLiveDashboard } from "@/lib/assistants/ledger";
-import { ASSISTANT_DEFS, assistantIcon, isAssistantId } from "@/lib/assistants/registry";
+import { ASSISTANT_DEFS, assistantIcon, isAssistantId, DEFAULT_CHAT_MODEL } from "@/lib/assistants/registry";
 import { AssistantStatusDot } from "@/components/compositions/assistant-status-dot";
 import { Badge } from "@/components/ui/badge";
 import { ActivityFeed } from "@/components/mission-control/activity-feed";
@@ -129,7 +129,7 @@ async function SettingsSection({ agentId, isEnabled }: { agentId: string; isEnab
     <SettingsTab
       agentId={agentId}
       isEnabled={isEnabled}
-      chatModel={typeof settings.chat_model === "string" ? settings.chat_model : "claude-sonnet-4-6"}
+      chatModel={typeof settings.chat_model === "string" ? settings.chat_model : DEFAULT_CHAT_MODEL}
       schedules={def.schedules}
     />
   );

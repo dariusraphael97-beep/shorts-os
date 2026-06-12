@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -33,8 +33,18 @@ export function SettingsTab({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Optimistic local state — updated immediately on toggle, reverted on PATCH failure,
+  // and re-synced whenever the server props change (e.g. after router.refresh()).
+  const [optimisticEnabled, setOptimisticEnabled] = useState(isEnabled);
+  const [optimisticModel, setOptimisticModel] = useState(chatModel);
+
+  useEffect(() => { setOptimisticEnabled(isEnabled); }, [isEnabled]);
+  useEffect(() => { setOptimisticModel(chatModel); }, [chatModel]);
 
   const patch = async (body: { isEnabled?: boolean; chatModel?: string }) => {
+    // Apply optimistic update immediately.
+    if (typeof body.isEnabled === "boolean") setOptimisticEnabled(body.isEnabled);
+    if (body.chatModel !== undefined) setOptimisticModel(body.chatModel);
     setBusy(true);
     setError(null);
     try {
@@ -46,6 +56,9 @@ export function SettingsTab({
       if (!res.ok) throw new Error((await res.json()).error ?? "update failed");
       router.refresh();
     } catch (err) {
+      // Revert optimistic state on failure.
+      setOptimisticEnabled(isEnabled);
+      setOptimisticModel(chatModel);
       setError(err instanceof Error ? err.message : "update failed");
     } finally {
       setBusy(false);
@@ -58,19 +71,33 @@ export function SettingsTab({
 
       <section className="flex items-center justify-between rounded-lg border border-[var(--border-subtle)] p-4">
         <div>
-          <p className="text-sm font-medium text-[var(--text-primary)]">Enabled</p>
+          <label
+            htmlFor="agent-enabled-switch"
+            className="text-sm font-medium text-[var(--text-primary)] cursor-pointer"
+          >
+            Enabled
+          </label>
           <p className="text-xs text-[var(--text-tertiary)]">
             Disabled agents render dimmed and non-clickable on Mission Control.
           </p>
         </div>
-        <Switch checked={isEnabled} onCheckedChange={(v: boolean) => patch({ isEnabled: v })} disabled={busy} />
+        <Switch
+          id="agent-enabled-switch"
+          checked={optimisticEnabled}
+          onCheckedChange={(v: boolean) => patch({ isEnabled: v })}
+          disabled={busy}
+        />
       </section>
 
       <section className="rounded-lg border border-[var(--border-subtle)] p-4">
         <p className="text-sm font-medium text-[var(--text-primary)]">Chat model</p>
         <p className="mb-3 text-xs text-[var(--text-tertiary)]">Used by this agent's Chat tab.</p>
-        <Select value={chatModel} onValueChange={(v: string | null) => { if (v) patch({ chatModel: v }); }} disabled={busy}>
-          <SelectTrigger className="w-full">
+        <Select
+          value={optimisticModel}
+          onValueChange={(v: string | null) => { if (v) patch({ chatModel: v }); }}
+          disabled={busy}
+        >
+          <SelectTrigger className="w-full" aria-label="Chat model">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
