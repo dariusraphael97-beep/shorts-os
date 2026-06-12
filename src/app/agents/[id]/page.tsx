@@ -142,6 +142,7 @@ async function ChatSection({ agentId, threadId }: { agentId: string; threadId?: 
   const messages = activeThread ? await listChatMessages(supabase, activeThread.id).catch(() => []) : [];
   return (
     <ChatTab
+      key={activeThread?.id ?? "new"}
       agentId={agentId}
       threads={threads.map((t) => ({ id: t.id, title: t.title, last_message_at: t.last_message_at }))}
       activeThreadId={activeThread?.id ?? null}

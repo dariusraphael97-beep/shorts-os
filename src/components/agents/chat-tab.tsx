@@ -55,6 +55,8 @@ export function ChatTab({
       { id: `local-a-${prev.length}`, role: "assistant", content: "" },
     ]);
     scrollToEnd();
+    // Track the local id of the optimistic assistant bubble so we can remove it on error.
+    const inflightId = `local-a-${messages.length}`;
     try {
       const res = await fetch(`/api/agents/${agentId}/chat`, {
         method: "POST",
@@ -83,11 +85,19 @@ export function ChatTab({
       if (!activeThreadId && newThreadId) {
         router.replace(`/agents/${agentId}?tab=chat&thread=${newThreadId}`);
       }
-      router.refresh();
     } catch (err) {
+      // Remove the empty optimistic assistant bubble before showing the error.
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "assistant" && last.id === inflightId) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
       setError(err instanceof Error ? err.message : "stream failed");
     } finally {
       setStreaming(false);
+      router.refresh();
     }
   };
 
@@ -161,7 +171,7 @@ export function ChatTab({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 void send();
               }

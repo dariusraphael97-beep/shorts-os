@@ -40,9 +40,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   const message = body.message?.trim();
   if (!message) return Response.json({ error: 'message is required' }, { status: 400 });
+  if (message.length > 8000) return Response.json({ error: 'message too long (8000 char max)' }, { status: 400 });
 
   try {
     const supabase = getServiceClient();
+
+    // Thread ownership check: if caller supplied a threadId, verify it belongs to this agent.
+    if (body.threadId) {
+      const { data: threadRow } = await supabase
+        .from('assistant_chat_threads')
+        .select('assistant_id')
+        .eq('id', body.threadId)
+        .maybeSingle();
+      if (!threadRow) return Response.json({ error: 'thread not found' }, { status: 404 });
+      if (threadRow.assistant_id !== id)
+        return Response.json({ error: 'thread does not belong to this agent' }, { status: 400 });
+    }
+
     const [assistant, settings, dashboard] = await Promise.all([
       getAssistantById(supabase, id).catch(() => null),
       getAssistantSettings(supabase, id).catch(() => ({}) as Record<string, unknown>),
@@ -62,9 +76,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-    const chatModel = (CHAT_MODELS as readonly string[]).includes(String(settings.chat_model))
-      ? (settings.chat_model as ClaudeModelId)
-      : (DEFAULT_CHAT_MODEL as ClaudeModelId);
+    const storedModel = String(settings.chat_model ?? '');
+    const modelIsValid = (CHAT_MODELS as readonly string[]).includes(storedModel);
+    if (!modelIsValid && storedModel) {
+      console.warn(
+        `[agent-chat] unknown chat_model "${storedModel}" for agent "${id}" — falling back to "${DEFAULT_CHAT_MODEL}"`,
+      );
+    }
+    const chatModel = modelIsValid ? (settings.chat_model as ClaudeModelId) : (DEFAULT_CHAT_MODEL as ClaudeModelId);
 
     const status = dashboard.statuses[id];
     const system = buildAssistantSystemPrompt({
