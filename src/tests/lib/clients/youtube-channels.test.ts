@@ -27,6 +27,16 @@ describe('fetchChannels', () => {
   it('returns [] for empty input', async () => {
     expect(await fetchChannels({ apiKey: 'k', channelIds: [] })).toEqual([]);
   });
+
+  it('maps channel publishedAt (creation date) from snippet', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({
+        items: [{ id: 'UC1', snippet: { title: 'T', publishedAt: '2026-03-01T00:00:00Z' }, statistics: { subscriberCount: '100' } }],
+      }), { status: 200 }) as Response,
+    );
+    const [c] = await fetchChannels({ apiKey: 'K', channelIds: ['UC1'] });
+    expect(c.publishedAt).toBe('2026-03-01T00:00:00Z');
+  });
 });
 
 describe('fetchPlaylistItems', () => {

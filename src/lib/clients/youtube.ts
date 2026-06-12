@@ -225,11 +225,12 @@ export type YouTubeChannel = {
   videoCount: number;
   viewCount: number;
   uploadsPlaylistId: string | null;
+  publishedAt: string | null;
 };
 
 type RawChannelItem = {
   id: string;
-  snippet?: { title?: string; customUrl?: string; thumbnails?: { default?: { url?: string }; medium?: { url?: string } } };
+  snippet?: { title?: string; customUrl?: string; publishedAt?: string; thumbnails?: { default?: { url?: string }; medium?: { url?: string } } };
   statistics?: { subscriberCount?: string; videoCount?: string; viewCount?: string };
   contentDetails?: { relatedPlaylists?: { uploads?: string } };
 };
@@ -246,6 +247,7 @@ function mapChannelItem(item: RawChannelItem): YouTubeChannel {
     videoCount: parseInt(stats.videoCount ?? '0', 10),
     viewCount: parseInt(stats.viewCount ?? '0', 10),
     uploadsPlaylistId: item.contentDetails?.relatedPlaylists?.uploads ?? null,
+    publishedAt: s.publishedAt ?? null,
   };
 }
 

@@ -28,7 +28,7 @@ describe('POST /api/watch-list/competitors', () => {
     expect((await POST(reqWith({ urlOrHandle: 'nope' }))).status).toBe(400);
   });
   it('201 + adds competitor on success', async () => {
-    vi.mocked(resolveChannel).mockResolvedValue({ channelId: 'UC9', title: 'Rival', handle: '@rival', thumbnailUrl: null, subscriberCount: 80000, videoCount: 50, viewCount: 5000, uploadsPlaylistId: 'UU9' });
+    vi.mocked(resolveChannel).mockResolvedValue({ channelId: 'UC9', title: 'Rival', handle: '@rival', thumbnailUrl: null, subscriberCount: 80000, videoCount: 50, viewCount: 5000, uploadsPlaylistId: 'UU9', publishedAt: null });
     vi.mocked(addCompetitorChannel).mockResolvedValue({ channel_id: 'UC9' } as never);
     const res = await POST(reqWith({ urlOrHandle: '@rival' }));
     expect(res.status).toBe(201);

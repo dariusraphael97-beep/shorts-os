@@ -28,7 +28,7 @@ describe('POST /api/watch-list/channels', () => {
     expect((await POST(reqWith({ urlOrHandle: 'nope' }))).status).toBe(400);
   });
   it('201 + upserts as manual on success', async () => {
-    vi.mocked(resolveChannel).mockResolvedValue({ channelId: 'UC1', title: 'C1', handle: '@c1', thumbnailUrl: null, subscriberCount: 12000, videoCount: 10, viewCount: 1000, uploadsPlaylistId: 'UU1' });
+    vi.mocked(resolveChannel).mockResolvedValue({ channelId: 'UC1', title: 'C1', handle: '@c1', thumbnailUrl: null, subscriberCount: 12000, videoCount: 10, viewCount: 1000, uploadsPlaylistId: 'UU1', publishedAt: null });
     vi.mocked(upsertWatchedChannel).mockResolvedValue({ channel_id: 'UC1' } as never);
     const res = await POST(reqWith({ urlOrHandle: 'https://youtube.com/channel/UC1' }));
     expect(res.status).toBe(201);

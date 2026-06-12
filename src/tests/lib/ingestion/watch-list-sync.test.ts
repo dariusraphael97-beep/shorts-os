@@ -41,7 +41,7 @@ describe('runWatchListSync', () => {
   it('auto-adds a qualifying newly-observed channel', async () => {
     const deps = baseDeps();
     deps.client.fetchChannels = vi.fn(async (p: { channelIds: string[] }) => p.channelIds.map((id) => ({
-      channelId: id, title: id, handle: null, thumbnailUrl: null, subscriberCount: 50000, videoCount: 30, viewCount: 500000, uploadsPlaylistId: `UU_${id}`,
+      channelId: id, title: id, handle: null, thumbnailUrl: null, subscriberCount: 50000, videoCount: 30, viewCount: 500000, uploadsPlaylistId: `UU_${id}`, publishedAt: null,
     })));
     deps.client.fetchPlaylistItems = vi.fn(async () => Array.from({ length: 8 }, (_, i) => ({ videoId: `nv${i}`, publishedAt: '2026-05-25T00:00:00Z' })));
     deps.client.fetchVideosByIds = vi.fn(async (p: { videoIds: string[] }) => p.videoIds.map((id, i) => ({
