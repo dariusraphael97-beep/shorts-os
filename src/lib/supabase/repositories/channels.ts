@@ -35,19 +35,6 @@ export type Channel = {
   updated_at: string;
 };
 
-export async function getChannelById(
-  supabase: SupabaseClient,
-  channelId: string,
-): Promise<Channel | null> {
-  const { data, error } = await supabase
-    .from("channels")
-    .select("*")
-    .eq("id", channelId)
-    .maybeSingle();
-  if (error) throw new Error(`getChannelById: ${error.message}`);
-  return (data as Channel | null) ?? null;
-}
-
 export async function getDefaultChannel(supabase: SupabaseClient): Promise<Channel> {
   // Single-channel mode: return the only active channel.
   // Phase 1's reseed migration renamed the 'default'-slug seed to per-channel slugs (e.g. 'dyfrx_9754').

@@ -51,8 +51,8 @@ export function DonePanel({ status }: { status: StudioStatus }) {
           {url && (
             <Button nativeButton={false} render={<a href={url} download />}>Download</Button>
           )}
-          <Button variant="outline" onClick={() => router.push("/lab")}>
-            Open in Lab
+          <Button variant="outline" onClick={() => router.push("/mission-control")}>
+            Open Mission Control
           </Button>
           <Button variant="ghost" onClick={() => router.push("/niches")}>
             Generate another

@@ -34,22 +34,6 @@ export interface ClipLibraryInsert {
   added_by: AddedBy;
 }
 
-export async function listInboxClips(
-  supabase: SupabaseClient,
-  args: { limit: number; nicheId?: string },
-): Promise<ClipLibraryRow[]> {
-  let q = supabase
-    .from("clip_library")
-    .select("*")
-    .neq("added_by", "deleted")
-    .order("added_at", { ascending: false })
-    .limit(args.limit);
-  if (args.nicheId) q = q.eq("niche_id", args.nicheId);
-  const { data, error } = await q;
-  if (error) throw new Error(`listInboxClips: ${error.message}`);
-  return (data ?? []) as ClipLibraryRow[];
-}
-
 export async function isSourceUrlIngested(
   supabase: SupabaseClient,
   sourceUrl: string,
@@ -74,17 +58,6 @@ export async function insertClipLibraryRow(
     .single();
   if (error) throw new Error(`insertClipLibraryRow: ${error.message}`);
   return data.id as string;
-}
-
-export async function softDeleteClip(
-  supabase: SupabaseClient,
-  clipId: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from("clip_library")
-    .update({ added_by: "deleted" })
-    .eq("id", clipId);
-  if (error) throw new Error(`softDeleteClip: ${error.message}`);
 }
 
 export async function countTodayClipIngestJobs(

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { resolveActiveHref } from "@/components/layout/sidebar-active";
 
 const HREFS = [
-  "/mission-control", "/niches", "/lab", "/clips",
+  "/mission-control", "/niches", "/lab/longform",
   "/niches/watch-list", "/competitors", "/settings",
 ];
 
@@ -11,7 +11,7 @@ describe("resolveActiveHref", () => {
     expect(resolveActiveHref("/niches", HREFS)).toBe("/niches");
   });
   it("matches a sub-route to its section root (longest prefix)", () => {
-    expect(resolveActiveHref("/lab/drafts", HREFS)).toBe("/lab");
+    expect(resolveActiveHref("/lab/longform/abc", HREFS)).toBe("/lab/longform");
     expect(resolveActiveHref("/settings/channel", HREFS)).toBe("/settings");
     expect(resolveActiveHref("/niches/abc-123", HREFS)).toBe("/niches");
   });

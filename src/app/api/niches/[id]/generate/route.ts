@@ -23,9 +23,9 @@ export const dynamic = "force-dynamic";
 //   4. log a `generated_from` niche action.
 //
 // NOTE (Sub-phase E): full auto-dispatch to the orchestrator is intentionally NOT wired from
-// here — `/api/lab/dispatch` is an SSE streaming endpoint meant for the Lab UI, not server-to-
-// server fire-and-forget. Dispatch stays operator-driven in the Lab. Voice/duration use the
-// default channel's settings as placeholders. Revisit when shell-unification lands.
+// here — the orchestrator's SSE streaming endpoints (e.g. the niches studio plan route) are
+// meant for interactive UIs, not server-to-server fire-and-forget. Dispatch stays
+// operator-driven. Voice/duration use the default channel's settings as placeholders.
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await ctx.params;
   const supabase = getServiceClient();

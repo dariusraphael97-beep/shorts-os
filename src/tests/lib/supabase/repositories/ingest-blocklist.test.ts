@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import {
   loadBlocklistForPlatform,
   isBlocked,
-  addBlocklistEntry,
 } from "@/lib/supabase/repositories/ingest-blocklist";
 
 describe("ingest-blocklist repo", () => {
@@ -32,23 +31,4 @@ describe("ingest-blocklist repo", () => {
     expect(isBlocked(b, { subreddit: "ok", author: "anyone" })).toBe(false);
   });
 
-  it("addBlocklistEntry inserts with the operator added_by default", async () => {
-    const insert = vi.fn().mockResolvedValue({ error: null });
-    const supabase = {
-      from: vi.fn().mockReturnValue({ insert }),
-    };
-    await addBlocklistEntry(supabase as never, {
-      sourcePlatform: "reddit",
-      identifierType: "subreddit",
-      identifier: "noisysub",
-      reason: "low signal",
-    });
-    expect(insert).toHaveBeenCalledWith({
-      source_platform: "reddit",
-      identifier_type: "subreddit",
-      identifier: "noisysub",
-      reason: "low signal",
-      added_by: "operator",
-    });
-  });
 });

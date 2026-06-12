@@ -1,9 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import {
-  createVideoDraft,
-  listRecentDrafts,
-  discardDraft,
-} from "@/lib/supabase/repositories/your-videos";
+import { createVideoDraft } from "@/lib/supabase/repositories/your-videos";
 
 function mockSupabaseChain(returnValue: unknown) {
   const obj: any = {
@@ -65,29 +61,6 @@ describe("your-videos repository", () => {
       status: "draft",
     });
     expect(result).toEqual(row);
-  });
-
-  it("listRecentDrafts queries draft status + orders by created_at desc", async () => {
-    const supa = mockSupabaseChain({ data: [{ id: "x" }], error: null });
-    const rows = await listRecentDrafts(supa as any, 5);
-    expect(supa.from).toHaveBeenCalledWith("your_videos");
-    expect(supa.eq).toHaveBeenCalledWith("status", "draft");
-    expect(supa.order).toHaveBeenCalledWith("created_at", { ascending: false });
-    expect(supa.limit).toHaveBeenCalledWith(5);
-    expect(rows).toEqual([{ id: "x" }]);
-  });
-
-  it("listRecentDrafts returns empty array if data is null", async () => {
-    const supa = mockSupabaseChain({ data: null, error: null });
-    const rows = await listRecentDrafts(supa as any, 5);
-    expect(rows).toEqual([]);
-  });
-
-  it("discardDraft sets status='failed'", async () => {
-    const supa = mockSupabaseChain({ data: null, error: null });
-    await discardDraft(supa as any, "v1");
-    expect(supa.update).toHaveBeenCalledWith({ status: "failed" });
-    expect(supa.eq).toHaveBeenCalledWith("id", "v1");
   });
 
   it("createVideoDraft throws on error", async () => {

@@ -40,22 +40,3 @@ export function isBlocked(
   return b.subreddits.has(post.subreddit.toLowerCase())
     || b.authors.has(post.author.toLowerCase());
 }
-
-export async function addBlocklistEntry(
-  supabase: SupabaseClient,
-  args: {
-    sourcePlatform: BlocklistPlatform;
-    identifierType: BlocklistIdentifierType;
-    identifier: string;
-    reason?: string;
-  },
-): Promise<void> {
-  const { error } = await supabase.from("ingest_blocklist").insert({
-    source_platform: args.sourcePlatform,
-    identifier_type: args.identifierType,
-    identifier: args.identifier,
-    reason: args.reason ?? null,
-    added_by: "operator",
-  });
-  if (error) throw new Error(`addBlocklistEntry: ${error.message}`);
-}

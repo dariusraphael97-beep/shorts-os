@@ -71,59 +71,6 @@ export async function createVideoDraft(
   return data as YourVideo;
 }
 
-export async function listRecentDrafts(
-  supabase: SupabaseClient,
-  limit = 10,
-): Promise<YourVideo[]> {
-  const { data, error } = await supabase
-    .from("your_videos")
-    .select("*")
-    .eq("status", "draft")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(`listRecentDrafts: ${error.message}`);
-  return (data ?? []) as YourVideo[];
-}
-
-export async function discardDraft(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.from("your_videos").update({ status: "failed" }).eq("id", id);
-  if (error) throw new Error(`discardDraft: ${error.message}`);
-}
-
-export async function createPromotedVideo(
-  supabase: SupabaseClient,
-  args: {
-    channelId: string;
-    title: string;
-    renderArtifactUrl: string;
-    durationSeconds: number;
-    sourceCompilationDraftId: string;
-    targetStatus?: 'rendered' | 'scheduled' | 'uploading';
-    scheduledFor?: Date | null;
-  },
-): Promise<string> {
-  const status: VideoStatus = (args.targetStatus ?? 'rendered') as VideoStatus;
-  const { data, error } = await supabase
-    .from('your_videos')
-    .insert({
-      channel_id: args.channelId,
-      title: args.title,
-      script: null,
-      voice_provider: null,
-      voice_id: null,
-      visual_treatment: 'top5_compilation',
-      duration_seconds: args.durationSeconds,
-      render_artifact_url: args.renderArtifactUrl,
-      status,
-      scheduled_for: args.scheduledFor ? args.scheduledFor.toISOString() : null,
-      source_compilation_draft_id: args.sourceCompilationDraftId,
-    })
-    .select('id')
-    .single();
-  if (error) throw new Error(`createPromotedVideo: ${error.message}`);
-  return data.id as string;
-}
-
 export async function listVideosByStatus(
   supabase: SupabaseClient,
   status: VideoStatus | VideoStatus[],
@@ -168,42 +115,6 @@ export async function markPosted(
   if (error) throw new Error(`markPosted: ${error.message}`);
 }
 
-export async function scheduleVideo(
-  supabase: SupabaseClient,
-  args: { videoId: string; scheduledFor: Date },
-): Promise<boolean> {
-  const { error, count } = await supabase
-    .from("your_videos")
-    .update(
-      {
-        status: "scheduled",
-        scheduled_for: args.scheduledFor.toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { count: "exact" },
-    )
-    .eq("id", args.videoId)
-    .eq("status", "rendered");
-  if (error) throw new Error(`scheduleVideo: ${error.message}`);
-  return (count ?? 0) > 0;
-}
-
-export async function cancelSchedule(
-  supabase: SupabaseClient,
-  videoId: string,
-): Promise<boolean> {
-  const { error, count } = await supabase
-    .from("your_videos")
-    .update(
-      { status: "rendered", scheduled_for: null, updated_at: new Date().toISOString() },
-      { count: "exact" },
-    )
-    .eq("id", videoId)
-    .eq("status", "scheduled");
-  if (error) throw new Error(`cancelSchedule: ${error.message}`);
-  return (count ?? 0) > 0;
-}
-
 export async function rescheduleVideo(
   supabase: SupabaseClient,
   args: { videoId: string; scheduledFor: Date },
@@ -218,26 +129,6 @@ export async function rescheduleVideo(
     .eq("status", "scheduled");
   if (error) throw new Error(`rescheduleVideo: ${error.message}`);
   return (count ?? 0) > 0;
-}
-
-const SLOT_TOLERANCE_MS = 5 * 60 * 1000;
-
-export async function slotIsOccupied(
-  supabase: SupabaseClient,
-  channelId: string,
-  slotUtc: Date,
-): Promise<boolean> {
-  const from = new Date(slotUtc.getTime() - SLOT_TOLERANCE_MS).toISOString();
-  const to = new Date(slotUtc.getTime() + SLOT_TOLERANCE_MS).toISOString();
-  const { data, error } = await supabase
-    .from("your_videos")
-    .select("id")
-    .eq("channel_id", channelId)
-    .in("status", ["scheduled", "uploading", "posted"])
-    .gte("scheduled_for", from)
-    .lte("scheduled_for", to);
-  if (error) throw new Error(`slotIsOccupied: ${error.message}`);
-  return (data ?? []).length > 0;
 }
 
 export async function listScheduledForChannelInRange(

@@ -3,8 +3,8 @@
 // The pipeline driver. Calls Strategist → Writer → Voice Coach → Director
 // in sequence as an async generator that yields StreamEvents. Owns all
 // database writeback (jobs, agent_messages, decisions, your_videos, agents).
-// The /api/lab/dispatch route wraps these yielded events into Server-Sent
-// Events for the Lab UI.
+// The /api/niches routes (studio plan, generate) wrap these yielded events
+// into Server-Sent Events for the studio UI.
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
