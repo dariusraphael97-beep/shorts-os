@@ -14,6 +14,7 @@ export const EXPECTED_MAX_AGE_MS: Record<IngestionJob, number> = {
   classify_observations: 12 * H,
   cluster_niches: 9 * 24 * H,
   performance_sync: 30 * H,
+  youtube_dominatable_sweep: 30 * H, // daily cron (07:30 UTC), same cadence band as performance_sync
 };
 
 export function freshnessFor(run: RunSummary, now: Date): { level: FreshnessLevel; reason: string } {

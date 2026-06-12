@@ -64,6 +64,7 @@ const JOB_LABELS: Record<IngestionJob, string> = {
   classify_observations: 'Classify observations',
   cluster_niches: 'Cluster niches',
   performance_sync: 'Performance sync',
+  youtube_dominatable_sweep: 'Dominatable sweep',
 };
 
 const JOB_OWNER: Record<IngestionJob, AssistantId> = (() => {

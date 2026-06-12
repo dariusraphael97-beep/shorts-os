@@ -10,6 +10,7 @@ const CRON_PATHS: Record<IngestionJob, string> = {
   classify_observations: "/api/cron/classify-observations",
   cluster_niches: "/api/cron/cluster-niches",
   performance_sync: "/api/cron/performance-sync",
+  youtube_dominatable_sweep: "/api/cron/youtube-dominatable-sweep",
 };
 
 export const TRIGGERABLE_JOBS = Object.keys(CRON_PATHS) as IngestionJob[];

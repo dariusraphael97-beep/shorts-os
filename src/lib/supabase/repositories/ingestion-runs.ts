@@ -10,7 +10,8 @@ export type IngestionJob =
   | 'tiktok_creative_center'
   | 'classify_observations'
   | 'cluster_niches'
-  | 'performance_sync';
+  | 'performance_sync'
+  | 'youtube_dominatable_sweep';
 
 export type IngestionStatus = 'success' | 'partial' | 'failed' | 'skipped';
 

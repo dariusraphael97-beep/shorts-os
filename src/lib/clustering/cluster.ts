@@ -29,7 +29,7 @@ export interface BuiltCluster {
   audienceSignal: string | null;
 }
 
-const BROAD_PUBLIC: ReadonlySet<ShortsObservationSource> = new Set(["youtube_most_popular", "google_trends"]);
+const BROAD_PUBLIC: ReadonlySet<ShortsObservationSource> = new Set(["youtube_most_popular", "google_trends", "youtube_dominatable"]);
 const MIN_CLUSTER_SIZE = 3;
 
 function modal(values: (string | null)[]): string | null {

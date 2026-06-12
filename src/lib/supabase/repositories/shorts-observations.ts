@@ -7,7 +7,8 @@ export type ShortsObservationSource =
   | 'youtube_watch_list'
   | 'reddit_topic'
   | 'tiktok_creative_center'
-  | 'google_trends';
+  | 'google_trends'
+  | 'youtube_dominatable';
 
 export interface ShortsObservation {
   video_id: string;
