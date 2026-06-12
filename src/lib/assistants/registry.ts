@@ -82,6 +82,7 @@ export const ASSISTANT_DEFS: Record<AssistantId, AssistantDef> = {
       { label: 'Shorts search', cron: '0 8 * * *' },
       { label: 'Reddit discovery', cron: '0 9 * * *' },
       { label: 'Google Trends', cron: '30 9 * * *' },
+      { label: 'TikTok Creative Center', cron: '0 22 * * 0' },
       { label: 'Classify observations', cron: '15 */6 * * *' },
       { label: 'Cluster niches', cron: '0 23 * * 0' },
       { label: 'Weekly digest', cron: '0 12 * * 1' },
@@ -162,7 +163,7 @@ export function isAssistantId(value: string): value is AssistantId {
 const ASSISTANT_ICONS: Record<string, LucideIcon> = {
   compass: Compass,
   eye: Eye,
-  sparkles: Sparkles,
+  sparkles: Sparkles, // generator's icon in the pre-pivot DB seed (until 20260611000002 applies)
   clapperboard: Clapperboard,
   'shield-check': ShieldCheck,
   'line-chart': ChartLine,

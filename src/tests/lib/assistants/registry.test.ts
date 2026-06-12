@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Bot } from 'lucide-react';
 import {
   ASSISTANT_ORDER,
   ASSISTANT_DEFS,
@@ -33,7 +34,7 @@ describe('assistant registry', () => {
 
   it('assistantIcon falls back to Bot for unknown names', () => {
     expect(assistantIcon('compass')).toBeDefined();
-    expect(assistantIcon('definitely-not-an-icon')).toBe(assistantIcon('definitely-not-an-icon-2'));
+    expect(assistantIcon('definitely-not-an-icon')).toBe(Bot);
   });
 
   it('overdue thresholds exist only for cron-driven assistants', () => {
