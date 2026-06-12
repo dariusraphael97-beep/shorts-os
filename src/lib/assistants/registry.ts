@@ -173,3 +173,8 @@ const ASSISTANT_ICONS: Record<string, LucideIcon> = {
 export function assistantIcon(name: string): LucideIcon {
   return ASSISTANT_ICONS[name] ?? Bot;
 }
+
+/** Models selectable per-agent for chat (stored in assistant_settings.settings.chat_model). */
+export const CHAT_MODELS = ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-7'] as const;
+export type ChatModel = (typeof CHAT_MODELS)[number];
+export const DEFAULT_CHAT_MODEL: ChatModel = 'claude-sonnet-4-6';
