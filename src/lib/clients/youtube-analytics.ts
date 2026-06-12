@@ -34,6 +34,12 @@ export interface CoreReport {
   ctrPct: number | null;
 }
 
+// Always-supported core metrics. `impressions` + `ctrPct` are Reach metrics that the
+// YouTube Analytics API exposes only for some accounts/videos (they are frequently
+// Studio-only) — requesting them can 400 the whole query, which silently zeroed the sync.
+const CORE_METRICS = ['estimatedMinutesWatched', 'averageViewDuration', 'subscribersGained'];
+const REACH_METRICS = [...CORE_METRICS, 'impressions', 'ctrPct'];
+
 export async function fetchCoreReport(args: {
   accessToken: string;
   externalChannelId: string;
@@ -41,28 +47,30 @@ export async function fetchCoreReport(args: {
   startDate: string;
   endDate: string;
 }): Promise<CoreReport> {
-  const u = new URL('https://youtubeanalytics.googleapis.com/v2/reports');
-  u.searchParams.set('ids', `channel==${args.externalChannelId}`);
-  u.searchParams.set('startDate', args.startDate);
-  u.searchParams.set('endDate', args.endDate);
-  u.searchParams.set('metrics', [
-    'estimatedMinutesWatched',
-    'averageViewDuration',
-    'subscribersGained',
-    'impressions',
-    'ctrPct',
-  ].join(','));
-  u.searchParams.set('filters', `video==${args.externalVideoId}`);
-  const res = await fetch(u, { headers: { Authorization: `Bearer ${args.accessToken}` } });
+  const query = (metrics: string[]) => {
+    const u = new URL('https://youtubeanalytics.googleapis.com/v2/reports');
+    u.searchParams.set('ids', `channel==${args.externalChannelId}`);
+    u.searchParams.set('startDate', args.startDate);
+    u.searchParams.set('endDate', args.endDate);
+    u.searchParams.set('metrics', metrics.join(','));
+    u.searchParams.set('filters', `video==${args.externalVideoId}`);
+    return fetch(u, { headers: { Authorization: `Bearer ${args.accessToken}` } });
+  };
+  // Try impressions+CTR; if the API rejects that metric set, fall back to the core metrics
+  // so views / watch-time / AVD / subs still land (impressions+CTR then stay null and are
+  // sourced elsewhere). This keeps the per-video sync from silently writing nothing.
+  let withReach = true;
+  let res = await query(REACH_METRICS);
+  if (!res.ok) { withReach = false; res = await query(CORE_METRICS); }
   if (!res.ok) throw new Error(`fetchCoreReport: ${res.status} ${await res.text()}`);
   const json = (await res.json()) as { rows?: Array<Array<number>> };
-  const row = json.rows?.[0] ?? [0, 0, 0, null, null];
+  const row = json.rows?.[0] ?? [];
   return {
     estimatedMinutesWatched: row[0] ?? 0,
     averageViewDurationSeconds: row[1] ?? 0,
     subscribersGained: row[2] ?? 0,
-    impressions: row[3] ?? null,
-    ctrPct: row[4] ?? null,
+    impressions: withReach ? (row[3] ?? null) : null,
+    ctrPct: withReach ? (row[4] ?? null) : null,
   };
 }
 

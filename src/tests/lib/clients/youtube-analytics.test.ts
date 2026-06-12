@@ -48,6 +48,31 @@ describe('youtube-analytics client', () => {
     expect(r.ctrPct).toBe(4.2);
   });
 
+  it('fetchCoreReport falls back to core metrics when the API rejects impressions/ctrPct', async () => {
+    const requested: string[] = [];
+    globalThis.fetch = vi.fn(async (url: URL | string) => {
+      const metrics = new URL(String(url)).searchParams.get('metrics')!;
+      requested.push(metrics);
+      if (metrics.includes('impressions')) {
+        return new Response(JSON.stringify({ error: { code: 400, message: 'unknown metric: impressions' } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ rows: [[400, 25.5, 7]] }), { status: 200 });
+    }) as never;
+    const r = await fetchCoreReport({
+      accessToken: 'AT',
+      externalChannelId: 'UC_X', externalVideoId: 'EXT_ID',
+      startDate: '2026-05-13', endDate: '2026-05-27',
+    });
+    expect(requested.length).toBe(2);                 // tried full set, then fell back
+    expect(requested[0]).toContain('impressions');
+    expect(requested[1]).not.toContain('impressions');
+    expect(r.estimatedMinutesWatched).toBe(400);
+    expect(r.averageViewDurationSeconds).toBe(25.5);
+    expect(r.subscribersGained).toBe(7);
+    expect(r.impressions).toBeNull();
+    expect(r.ctrPct).toBeNull();
+  });
+
   it('fetchRetentionReport requests both watch-ratio + relativeRetentionPerformance and returns the curve', async () => {
     let requestedMetrics: string | null = null;
     globalThis.fetch = vi.fn(async (url: URL | string) => {
