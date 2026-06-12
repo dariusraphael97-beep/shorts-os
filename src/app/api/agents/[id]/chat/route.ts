@@ -101,6 +101,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       stopWhen: stepCountIs(5),
       onFinish: async ({ text }) => {
         try {
+          // Tool-only turns (no prose) persist nothing by design — tool calls
+          // aren't stored in v1, and the API tolerates the resulting
+          // consecutive same-role messages on the next turn.
           if (text.trim()) await appendChatMessage(supabase, { threadId, role: 'assistant', content: text });
         } catch (err) {
           console.warn('[agent-chat] failed to persist assistant message:', err);

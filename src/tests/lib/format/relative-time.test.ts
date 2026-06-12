@@ -19,4 +19,10 @@ describe('relativeTime', () => {
   it('falls back to a short date beyond a week', () => {
     expect(relativeTime('2026-05-20T12:00:00Z', NOW)).toMatch(/May/);
   });
+  it('includes the year when it differs from the current one', () => {
+    expect(relativeTime('2025-05-20T12:00:00Z', NOW)).toMatch(/May.*2025/);
+  });
+  it('omits the year for current-year dates', () => {
+    expect(relativeTime('2026-05-20T12:00:00Z', NOW)).not.toMatch(/2026/);
+  });
 });

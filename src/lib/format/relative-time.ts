@@ -10,5 +10,12 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const then = new Date(iso);
+  // Include the year when it isn't the current one, so "Jun 3" a year ago
+  // isn't indistinguishable from a recent date.
+  return then.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(then.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
 }
