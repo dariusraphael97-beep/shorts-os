@@ -87,4 +87,39 @@ describe("scoring components", () => {
     expect(components.provenScore).toBeCloseTo(1 / 3, 5);
     expect(explain.nicheAgeDays).toBeCloseTo(10, 5);
   });
+
+  it("firstMoverScore applies a recency multiplier: a brand-new channel scores higher than an old one with the same views/subs", () => {
+    const NOW = new Date("2026-06-12T00:00:00Z");
+    const NEW = "2026-05-13T00:00:00Z"; // ~30 days old
+    const OLD = "2025-08-16T00:00:00Z"; // ~300 days old
+    const mk = (pub: string) => cluster({
+      avgViews: 1_000_000,
+      rows: [
+        row({ video_id: "a", channel_id: "c1", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+        row({ video_id: "b", channel_id: "c2", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+        row({ video_id: "c", channel_id: "c3", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+      ],
+    });
+    const fmNew = computeComponents(mk(NEW), NOW).components.firstMoverScore!;
+    const fmOld = computeComponents(mk(OLD), NOW).components.firstMoverScore!;
+    expect(fmNew).toBeGreaterThan(fmOld);
+  });
+
+  it("null channel age applies no recency penalty (multiplier 1) and is not penalized below a dated channel", () => {
+    const NOW = new Date("2026-06-12T00:00:00Z");
+    const mkAge = (pub: string | null) => cluster({
+      avgViews: 1_000_000,
+      rows: [
+        row({ video_id: "a", channel_id: "c1", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+        row({ video_id: "b", channel_id: "c2", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+        row({ video_id: "c", channel_id: "c3", channel_subscriber_count: 10_000, view_count: 1_000_000, channel_published_at: pub }),
+      ],
+    });
+    const nullAge = computeComponents(mkAge(null), NOW);
+    const newAge = computeComponents(mkAge("2026-05-13T00:00:00Z"), NOW).components.firstMoverScore!;
+    expect(nullAge.components.firstMoverScore).not.toBeNull();
+    expect(nullAge.explain.channelAgeDays).toBeNull();
+    // multiplier 1 (no penalty) ⇒ null-age >= any dated channel (whose multiplier is < 1)
+    expect(nullAge.components.firstMoverScore!).toBeGreaterThanOrEqual(newAge);
+  });
 });

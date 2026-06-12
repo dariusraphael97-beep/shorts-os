@@ -61,12 +61,31 @@ function squashViews(v: number): number {
   return Math.min(1, Math.max(0, Math.log10(Math.max(1, v)) / 7));
 }
 
+/** Median channel age in days across rows that have a channel_published_at; null if none. */
+export function medianChannelAgeDays(cluster: BuiltCluster, now: Date): number | null {
+  const ages: number[] = [];
+  for (const r of cluster.rows) {
+    if (r.channel_published_at) ages.push((now.getTime() - new Date(r.channel_published_at).getTime()) / 86_400_000);
+  }
+  if (ages.length === 0) return null;
+  ages.sort((a, b) => a - b);
+  const mid = Math.floor(ages.length / 2);
+  return ages.length % 2 ? ages[mid] : (ages[mid - 1] + ages[mid]) / 2;
+}
+
+// recency: 1.0 for a brand-new channel decaying to a 0.2 floor by ~1yr; 1.0 (no penalty) when age unknown.
+function recencyMultiplier(ageDays: number | null): number {
+  if (ageDays === null) return 1;
+  return Math.max(0.2, 1 - ageDays / 365);
+}
+
 const DISCOVERY_WEIGHT = { pre_public: 1.0, public: 0.5 } as const;
 
 export interface ScoreExplain {
   nicheAgeDays: number | null;
   monetizationSignal: number | null;
   viewsToSubsRatio: number | null;
+  channelAgeDays: number | null;
   channelCount: number;
 }
 
@@ -81,10 +100,12 @@ export function computeComponents(cluster: BuiltCluster, now: Date): { component
 
   // First-mover ("dominatable") score from single-snapshot data: a niche where videos pull far
   // more views than the channels have subscribers (algorithm-driven, new-channel) AND the videos
-  // get big view counts (proven demand). Null when no subscriber data is available to judge.
+  // get big view counts (proven demand). A recency multiplier boosts brand-new channels over old
+  // ones with the same views/subs profile. Null when no subscriber data is available to judge.
+  const ageDays = medianChannelAgeDays(cluster, now);
   const vts = viewsToSubsRatio(cluster);
   const firstMover: number | null =
-    vts === null ? null : Math.sqrt(squashRatio(vts) * squashViews(cluster.avgViews));
+    vts === null ? null : Math.sqrt(squashRatio(vts) * squashViews(cluster.avgViews)) * recencyMultiplier(ageDays);
 
   const proven = provenScore([channelGrowth, subToView, commentDepth, repeatWinner, monetization]);
 
@@ -102,6 +123,7 @@ export function computeComponents(cluster: BuiltCluster, now: Date): { component
       nicheAgeDays: nicheAgeDays(cluster.firstSeenAt, now),
       monetizationSignal: monetization,
       viewsToSubsRatio: vts,
+      channelAgeDays: ageDays,
       channelCount: cluster.channelCount,
     },
   };
