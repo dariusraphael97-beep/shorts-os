@@ -25,7 +25,8 @@ export interface RunClusteringArgs {
 function toClusterRow(o: ClassifiedObservation): ClusterInputRow {
   return {
     video_id: o.video_id, source: o.source, channel_id: o.channel_id,
-    channel_subscriber_count: o.channel_subscriber_count, description: o.description,
+    channel_subscriber_count: o.channel_subscriber_count, channel_published_at: o.channel_published_at,
+    description: o.description,
     topic_label: o.topic_label, format_label: o.format_label as FormatLabel,
     audience_signal: o.audience_signal, view_count: o.view_count,
     published_at: o.published_at, observed_at: o.observed_at,

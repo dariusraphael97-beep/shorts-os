@@ -137,6 +137,7 @@ export interface ClassifiedObservation {
   source: ShortsObservationSource;
   channel_id: string | null;
   channel_subscriber_count: number | null;
+  channel_published_at: string | null;
   description: string | null;
   view_count: number;
   like_count: number;
@@ -158,7 +159,7 @@ export async function listClassifiedObservationsSince(
     .from('shorts_classifications')
     .select(
       'video_id, topic_label, format_label, audience_signal, confidence, ' +
-      'shorts_observations!inner(source, channel_id, channel_subscriber_count, description, view_count, like_count, comment_count, published_at, observed_at)',
+      'shorts_observations!inner(source, channel_id, channel_subscriber_count, channel_published_at, description, view_count, like_count, comment_count, published_at, observed_at)',
     )
     .gte('confidence', params.minConfidence)
     .gte('shorts_observations.observed_at', params.since.toISOString());
@@ -167,6 +168,7 @@ export async function listClassifiedObservationsSince(
     video_id: string; topic_label: string; format_label: string; audience_signal: string | null; confidence: number;
     shorts_observations: {
       source: ShortsObservationSource; channel_id: string | null; channel_subscriber_count: number | null;
+      channel_published_at: string | null;
       description: string | null; view_count: number; like_count: number; comment_count: number;
       published_at: string | null; observed_at: string;
     };
@@ -176,6 +178,7 @@ export async function listClassifiedObservationsSince(
     audience_signal: r.audience_signal, confidence: r.confidence,
     source: r.shorts_observations.source, channel_id: r.shorts_observations.channel_id,
     channel_subscriber_count: r.shorts_observations.channel_subscriber_count,
+    channel_published_at: r.shorts_observations.channel_published_at,
     description: r.shorts_observations.description, view_count: r.shorts_observations.view_count,
     like_count: r.shorts_observations.like_count, comment_count: r.shorts_observations.comment_count,
     published_at: r.shorts_observations.published_at, observed_at: r.shorts_observations.observed_at,

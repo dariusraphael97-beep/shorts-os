@@ -7,6 +7,7 @@ export interface ClusterInputRow {
   source: ShortsObservationSource;
   channel_id: string | null;
   channel_subscriber_count: number | null;
+  channel_published_at: string | null;
   description: string | null;
   topic_label: string;
   format_label: FormatLabel;

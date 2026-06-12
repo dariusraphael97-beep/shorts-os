@@ -4,6 +4,7 @@ import type { ClassifiedObservation } from "@/lib/supabase/repositories/shorts-o
 
 const obs = (id: string, ch: string, topic: string): ClassifiedObservation => ({
   video_id: id, source: "youtube_search", channel_id: ch, channel_subscriber_count: 1000,
+  channel_published_at: null,
   description: id === "a" ? "use code SAVE" : null, view_count: 100, like_count: 1, comment_count: 0,
   published_at: "2026-05-10T00:00:00Z", observed_at: "2026-05-20T00:00:00Z",
   topic_label: topic, format_label: "ai_voiceover_facts", audience_signal: "general", confidence: 0.9,

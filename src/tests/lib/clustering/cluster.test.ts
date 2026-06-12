@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { buildClusters, type ClusterInputRow } from "@/lib/clustering/cluster";
 
 const row = (over: Partial<ClusterInputRow>): ClusterInputRow => ({
-  video_id: "v", source: "youtube_search", channel_id: "c1", channel_subscriber_count: 1000, description: null,
+  video_id: "v", source: "youtube_search", channel_id: "c1", channel_subscriber_count: 1000,
+  channel_published_at: null, description: null,
   topic_label: "ai tools", format_label: "ai_voiceover_facts", audience_signal: "general",
   view_count: 100, published_at: "2026-05-01T00:00:00Z", observed_at: "2026-05-20T00:00:00Z", ...over,
 });

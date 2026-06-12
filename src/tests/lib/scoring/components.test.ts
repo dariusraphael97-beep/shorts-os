@@ -4,7 +4,7 @@ import type { BuiltCluster, ClusterInputRow } from "@/lib/clustering/cluster";
 
 const row = (over: Partial<ClusterInputRow> = {}): ClusterInputRow => ({
   video_id: "a", source: "youtube_search", channel_id: "c1", channel_subscriber_count: 1,
-  description: null, topic_label: "ai tools", format_label: "ai_voiceover_facts",
+  channel_published_at: null, description: null, topic_label: "ai tools", format_label: "ai_voiceover_facts",
   audience_signal: "general", view_count: 1, published_at: null, observed_at: "2026-05-01T00:00:00Z", ...over,
 });
 
