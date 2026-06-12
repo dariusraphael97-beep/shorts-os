@@ -9,7 +9,8 @@ export type IngestionJob =
   | 'google_trends'
   | 'tiktok_creative_center'
   | 'classify_observations'
-  | 'cluster_niches';
+  | 'cluster_niches'
+  | 'performance_sync';
 
 export type IngestionStatus = 'success' | 'partial' | 'failed' | 'skipped';
 

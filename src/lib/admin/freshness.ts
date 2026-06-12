@@ -13,6 +13,7 @@ export const EXPECTED_MAX_AGE_MS: Record<IngestionJob, number> = {
   tiktok_creative_center: 9 * 24 * H,
   classify_observations: 12 * H,
   cluster_niches: 9 * 24 * H,
+  performance_sync: 30 * H,
 };
 
 export function freshnessFor(run: RunSummary, now: Date): { level: FreshnessLevel; reason: string } {

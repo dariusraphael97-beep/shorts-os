@@ -9,6 +9,7 @@ const CRON_PATHS: Record<IngestionJob, string> = {
   tiktok_creative_center: "/api/cron/tiktok-creative-center",
   classify_observations: "/api/cron/classify-observations",
   cluster_niches: "/api/cron/cluster-niches",
+  performance_sync: "/api/cron/performance-sync",
 };
 
 export const TRIGGERABLE_JOBS = Object.keys(CRON_PATHS) as IngestionJob[];
