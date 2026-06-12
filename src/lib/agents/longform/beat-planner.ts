@@ -47,8 +47,7 @@ sound that fits THAT moment (e.g. "a hawk screech", "wind rustling through trees
 string "" for abstract, quiet, or diagram/text-only beats. Keep each sound a few words, concrete, single.`;
   const sparseExtras =
     styleBible.onScreenTextMode === "sparse"
-      ? `
-For each beat also give:
+      ? `\nFor each beat also give:
 - "label": a small lowercase object label for EVIDENCE beats only — a dated artifact, document, or exhibit (e.g. "diary, 1400s." or "cookbook, 1500s."). Use "" on every other beat.
 - "background": the ONE flat solid background color for this beat, keyed to its mood — "white" for diagram/fact beats, "deep navy" for night or contemplation, "warm orange and pale blue" for sunrise/warmth, "dark navy" for a night bedroom, "earthy brown and green" for outdoors/nature/the past — plus scene-appropriate variants (e.g. "warm kitchen yellow", "factory grey"). VARY THE BACKGROUND across the video; never use white for everything.
 On 2 to 4 of the evidence beats (and ONLY there), include in the "scene" a crude red marker circle scrawled around the key object, or a crude red hand-drawn arrow pointing at it.`
@@ -68,8 +67,7 @@ Latin names, no "Fig. N" captions, no figure numbers. Put on-screen text ONLY in
 
 ${soundDesign}
 
-For each beat also decide VISUAL SOURCE. Set "visualKind" to "photo" when the beat depicts a CONCRETE real-world subject that a real stock photograph would show accurately (a specific engine, a car part, a named car, a tool, a place) — and give a precise "photoQuery" to find that photo (e.g. "BMW B58 engine bare block on engine stand"). Set "visualKind" to "illustration" (and photoQuery "") when the beat is an abstract idea, a comparison, a metaphor, a diagram/chart, or a composite that no single real photo captures. Prefer "photo" for concrete hardware; prefer "illustration" for concepts.
-${sparseExtras}
+For each beat also decide VISUAL SOURCE. Set "visualKind" to "photo" when the beat depicts a CONCRETE real-world subject that a real stock photograph would show accurately (a specific engine, a car part, a named car, a tool, a place) — and give a precise "photoQuery" to find that photo (e.g. "BMW B58 engine bare block on engine stand"). Set "visualKind" to "illustration" (and photoQuery "") when the beat is an abstract idea, a comparison, a metaphor, a diagram/chart, or a composite that no single real photo captures. Prefer "photo" for concrete hardware; prefer "illustration" for concepts.${sparseExtras}
 ${groundingBlock}
 Chapter: "${chapterTitle}"
 Return EXACTLY ${slices.length} items, in order, as JSON: ${jsonShape}.

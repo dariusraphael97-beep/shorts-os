@@ -204,5 +204,24 @@ describe("longform/beat-planner", () => {
     await runBeatPlanner(ctx()); // cinematic-realistic
     expect(captured.toLowerCase()).not.toMatch(/red marker circle/);
     expect(captured.toLowerCase()).not.toMatch(/"label"/);
+    // regression: empty sparseExtras must not inject an extra blank line
+    expect(captured).not.toMatch(/\n{3,}/);
+  });
+
+  it("sparse presets have no triple newlines in the prompt", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })) } } as never;
+    });
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Sparse chapter", narration: "The sun rises. The clock ticks. Nobody moves." }],
+    });
+    // sparse block should be cleanly separated — no triple newlines
+    expect(captured).not.toMatch(/\n{3,}/);
   });
 });
