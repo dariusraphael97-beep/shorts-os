@@ -81,7 +81,7 @@ function CardInner({ icon: Icon, name, role, status, activitySummary, recentActi
               <span className="min-w-0 truncate text-xs text-[var(--text-tertiary)]">
                 {entry.summary}
               </span>
-              <span className="shrink-0 font-mono text-xs text-[var(--text-tertiary)]">
+              <span className="shrink-0 font-mono text-xs text-[var(--text-tertiary)]" suppressHydrationWarning>
                 {entry.at}
               </span>
             </div>

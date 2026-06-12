@@ -88,9 +88,14 @@ export function ActivityFeed({ initialEvents, initialNextBefore, nameById, assis
           ))}
         </div>
       )}
+      {events.length > 0 && visible.length === 0 && (
+        <p className="py-4 text-center text-xs text-[var(--text-tertiary)]">
+          No {typeFilter?.replace(/_/g, " ")} events yet.
+        </p>
+      )}
       <ul className="flex flex-col">
         {visible.map((event) => {
-          const { icon: Icon, className } = STATUS_ICONS[event.status];
+          const { icon: Icon, className } = STATUS_ICONS[event.status] ?? STATUS_ICONS.info;
           return (
             <li
               key={event.id}
@@ -108,6 +113,7 @@ export function ActivityFeed({ initialEvents, initialNextBefore, nameById, assis
               <span
                 className="shrink-0 font-mono text-xs text-[var(--text-tertiary)]"
                 title={new Date(event.at).toLocaleString()}
+                suppressHydrationWarning
               >
                 {relativeTime(event.at)}
               </span>
@@ -129,6 +135,7 @@ function FilterChip({ active, onClick, label }: { active: boolean; onClick: () =
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "rounded-full border px-2.5 py-0.5 text-xs capitalize transition-colors",
         active
