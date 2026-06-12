@@ -93,18 +93,25 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
   // simple COLORED setting (a room, sky-over-ground, an object), not bare white. Renders with GPT Image
   // 2 (gpt_image_2, low/2k), NOT Soul V2. Style suppressors are baked into positivePrefix because
   // neither model accepts a negative-prompt param.
+  // v3 (2026-06-12): dense re-watch of the reference (yt st_Ah6Ykbh4) — the look IS crude felt-tip:
+  // slightly wobbly single-weight marker outlines + flat MS-Paint fills. v2's "clean/smooth" reading
+  // under-shot it. Crude drawing, crisp file. Captions are sparse hand-lettered punches (see
+  // onScreenTextMode "sparse"); backgrounds are color-keyed per beat via the backgroundMood field.
   "stick-figure-animated": {
     presetId: "stick-figure-animated",
     positivePrefix:
-      "a clean simple hand-drawn doodle in the style of a minimalist 2D explainer cartoon, " +
-      "smooth confident black ink outlines of even weight, friendly round-headed stick figures with " +
-      "simple but expressive faces (dot or oval eyes, eyebrows, a mouth that clearly shows the emotion), " +
-      "flat solid colors, bold and uncluttered, easy to read at a glance, " +
-      "no photorealism, no 3D, no realistic shading or gradients, no anime, no fine rendered detail",
+      "a crude hand-drawn felt-tip marker doodle, slightly wobbly single-weight black marker outlines " +
+      "like a quick human sketch, flat solid MS Paint style color fills with no shading and no gradients, " +
+      "simple stick figures with round white heads, small dot eyes and big expressive eyebrows that do " +
+      "all the emotional acting, simple crude props drawn in the same childlike way, one flat solid " +
+      "background color, deliberately crude and childlike but clean, legible and crisp, " +
+      "no photorealism, no 3D, no realistic shading, no anime, no fine rendered detail, " +
+      "do not beautify or polish the drawing",
     negativePrompt: `${NEG_COMMON}, realistic shading, 3d render, cinematic lighting, photorealistic, ` +
-      `anime, gradient shading, busy cluttered detail, painterly, sketchy crosshatching`,
+      `anime, gradient shading, busy cluttered detail, painterly, sketchy crosshatching, ` +
+      `polished vector art, smooth professional illustration`,
     lighting: "flat, no realistic shading, no gradients",
-    palette: "a small set of flat, solid, bright colors, clean fills",
+    palette: "flat saturated solid color fills over one solid background color keyed to the scene's mood",
     framing:
       "one single clear and simple scene that literally shows what is being said at this moment, " +
       "drawn in a simple setting / environment that fits the moment (e.g. a room, outdoors with a ground " +
@@ -112,11 +119,13 @@ export const STYLE_PRESETS: Record<PresetId, StyleBible> = {
       "otherwise a clean plain background; one or two subjects, centered, easy to read; " +
       "never a collage, never a grid, never multiple panels",
     aspect: "16:9",
-    kenBurnsZoom: 0, // static hold — Zenn doesn't pan; avoids the zoompan jitter on clean line art
+    kenBurnsZoom: 0.04, // subtle push-in like the reference; revert to 0 if zoompan jitters on line art
     targetBeatSeconds: 2.5, // Zenn's cadence: a new image every 2-3 seconds (the real "secret")
-    musicMood: "light, quirky, playful, low-energy background bed",
-    model: "gpt_image_2",
+    musicMood: "no music bed, or an extremely soft contemplative ambient pad far beneath the narration",
+    model: "gpt_image_2", // Task 11 bake-off vs nano_banana_2 decides; flip this line if nano wins
     imageParams: { quality: "low", resolution: "2k" },
+    soundEffectsEnabled: true, // sparse diegetic only (fire, rain, night) — planner is instructed to be rare
+    onScreenTextMode: "sparse",
   },
   // Detailed naturalist storybook illustration — DETECTED from the winning backyard-bird channels
   // (yt _xftmgUhS7Q etc.): fine inked linework + crosshatching, soft muted watercolor fills, the
