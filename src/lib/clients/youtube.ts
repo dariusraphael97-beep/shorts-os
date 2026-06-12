@@ -192,6 +192,29 @@ export async function fetchVideosByIds(params: {
   return results;
 }
 
+export async function searchVideoIds(params: {
+  query: string; apiKey: string;
+  videoDuration?: 'short' | 'medium' | 'long' | 'any';
+  order?: 'viewCount' | 'relevance' | 'date';
+  publishedAfter?: string; regionCode?: string; relevanceLanguage?: string; maxResults?: number;
+}): Promise<string[]> {
+  const u = new URL('https://www.googleapis.com/youtube/v3/search');
+  u.searchParams.set('part', 'id');
+  u.searchParams.set('type', 'video');
+  u.searchParams.set('q', params.query);
+  u.searchParams.set('videoDuration', params.videoDuration ?? 'medium');
+  u.searchParams.set('order', params.order ?? 'viewCount');
+  if (params.publishedAfter) u.searchParams.set('publishedAfter', params.publishedAfter);
+  u.searchParams.set('regionCode', params.regionCode ?? 'US');
+  u.searchParams.set('relevanceLanguage', params.relevanceLanguage ?? 'en');
+  u.searchParams.set('maxResults', String(params.maxResults ?? 50));
+  u.searchParams.set('key', params.apiKey);
+  const res = await fetch(u.toString());
+  if (!res.ok) throw new Error(`searchVideoIds: ${res.status} ${await res.text()}`);
+  const json = (await res.json()) as { items?: Array<{ id?: { videoId?: string } }> };
+  return (json.items ?? []).map((i) => i.id?.videoId).filter((v): v is string => !!v);
+}
+
 export async function fetchMostPopularByCategory(params: {
   apiKey: string;
   categoryId: string;
