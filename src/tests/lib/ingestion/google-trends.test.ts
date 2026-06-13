@@ -24,11 +24,14 @@ describe('runGoogleTrends', () => {
     expect(result.ingested).toBe(1);
   });
 
-  it('marks failed (caught) status when the client throws', async () => {
+  it('marks an unreachable source as skipped (not failed) when the client throws', async () => {
+    // Google Trends is a best-effort, no-official-API source; an unreachable scrape must not
+    // red-flag the Niche Scout agent — it records as 'skipped' with a traceable reason.
     const client = { dailyTrends: vi.fn(async () => { throw new Error('scraper broke'); }) };
     const repo = { upsertObservation: vi.fn(async () => {}) };
     const result = await runGoogleTrends({ client, repo, geo: 'US' });
-    expect(result.status).toBe('failed');
+    expect(result.status).toBe('skipped');
+    expect(result.context).toMatchObject({ reason: 'source_unavailable' });
     expect(result.ingested).toBe(0);
   });
 });

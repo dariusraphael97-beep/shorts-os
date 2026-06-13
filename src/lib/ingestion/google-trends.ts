@@ -30,8 +30,13 @@ export async function runGoogleTrends(args: {
   let searches;
   try {
     searches = await client.dailyTrends({ geo });
-  } catch {
-    return { ingested: 0, skipped: 0, quotaUnits: 0, status: 'failed', context: { reason: 'dailyTrends_failed' } };
+  } catch (err) {
+    // Google Trends has no official API; the unofficial daily-trends endpoint is best-effort and
+    // frequently blocks scraping outright. Record an unreachable source as 'skipped' (like the
+    // TikTok stub) rather than 'failed' — a dead supplementary source must not red-flag the whole
+    // Niche Scout agent in Mission Control. The reason is preserved for traceability.
+    console.warn('[google-trends] dailyTrends unavailable:', err instanceof Error ? err.message : err);
+    return { ingested: 0, skipped: 0, quotaUnits: 0, status: 'skipped', context: { reason: 'source_unavailable' } };
   }
   let ingested = 0;
   for (const s of searches) {
