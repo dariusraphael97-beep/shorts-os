@@ -10,6 +10,27 @@ export function countWords(text: string): number {
 
 export interface WordTime { word: string; start: number; end: number }
 
+export interface ChunkWordTimes { words: WordTime[]; realDurationSeconds: number }
+
+/**
+ * Stitch per-chunk word timestamps into one absolute timeline. Each chunk's words are shifted by
+ * the sum of PRIOR chunks' REAL decoded-audio durations — NOT by the TTS alignment's last-word-end
+ * time. The alignment omits each chunk's trailing silence (~0.3s) plus any mp3→wav transcode
+ * padding, so using it as the offset makes every later chunk's words land progressively early; the
+ * images then drift ahead of the voice through the chapter and only resync at the next chapter
+ * boundary. Only long chapters (split into multiple chunks) are affected. Always pass the probed
+ * WAV duration as realDurationSeconds.
+ */
+export function stitchChunkWordTimes(chunks: ChunkWordTimes[]): WordTime[] {
+  const out: WordTime[] = [];
+  let offset = 0;
+  for (const c of chunks) {
+    for (const w of c.words) out.push({ word: w.word, start: w.start + offset, end: w.end + offset });
+    offset += c.realDurationSeconds;
+  }
+  return out;
+}
+
 /**
  * Convert ElevenLabs character-level alignment into word-level timestamps. A word ends at each
  * run of whitespace; its start = the first char's start time, end = the last char's end time.

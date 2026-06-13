@@ -9,6 +9,7 @@ import { synthesizeToWav as elevenSynth } from './elevenlabs.ts';
 import { runFfmpeg } from './ffmpeg-commands.ts';
 import { probeDurationSeconds } from './probe.ts';
 import { planTtsChunks } from './tts-chunks.ts';
+import { stitchChunkWordTimes, type ChunkWordTimes } from './beat-timing.ts';
 
 const MAX_CHUNK_CHARS = 1200; // bounds retries + memory; both providers handle far longer.
 
@@ -31,8 +32,11 @@ export async function synthesizeChapterToWav(args: {
 
   const chunks = planTtsChunks(args.narration, MAX_CHUNK_CHARS);
   const chunkPaths: string[] = [];
-  const words: WordTime[] = [];
-  let offset = 0; // cumulative duration of prior chunks, to make word times absolute
+  // Collect each chunk's words alongside its REAL decoded-WAV duration. Word times are stitched into
+  // an absolute timeline AFTER the loop using those real durations — never the alignment's last-word
+  // end time, which omits trailing silence + transcode padding and would drift images ahead of the
+  // voice across a multi-chunk chapter (see stitchChunkWordTimes).
+  const perChunk: ChunkWordTimes[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const out = join(args.workDir, `ch${args.chapterIndex}_chunk${i}.wav`);
     // Per-chunk retry: one bounded retry so a transient failure fails only its chunk.
@@ -42,14 +46,14 @@ export async function synthesizeChapterToWav(args: {
     } catch {
       r = await synthChunk(chunks[i], out);
     }
-    for (const w of r.words) words.push({ word: w.word, start: w.start + offset, end: w.end + offset });
-    offset += r.durationSeconds;
+    const realDurationSeconds = await probeDurationSeconds(out);
+    perChunk.push({ words: r.words, realDurationSeconds });
     chunkPaths.push(out);
   }
+  const words = stitchChunkWordTimes(perChunk);
   const wavPath = join(args.workDir, `ch${args.chapterIndex}_vo.wav`);
   if (chunkPaths.length === 1) {
-    const dur = await probeDurationSeconds(chunkPaths[0]);
-    return { wavPath: chunkPaths[0], durationSeconds: dur, words };
+    return { wavPath: chunkPaths[0], durationSeconds: perChunk[0].realDurationSeconds, words };
   }
   const listPath = join(args.workDir, `ch${args.chapterIndex}_vo_list.txt`);
   await writeFile(listPath, chunkPaths.map((p) => `file '${p}'`).join('\n') + '\n', 'utf8');
