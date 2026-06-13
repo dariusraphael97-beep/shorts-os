@@ -76,6 +76,12 @@ export interface RenderLongformOptions {
   maxBeatsPerChapter?: number;
   /** Skip the Blob upload and return a local file:// path — for local proof renders with no Blob token. */
   skipUpload?: boolean;
+  /**
+   * Reuse a beat's image if its PNG already exists in the workDir (beat-level resumability) instead
+   * of regenerating it. Lets a re-render that only needs corrected TIMING reuse already-approved
+   * doodles at zero image-gen cost. Off by default so normal renders always draw fresh.
+   */
+  reuseExistingImages?: boolean;
 }
 
 export async function runRenderLongform(
@@ -154,6 +160,9 @@ export async function runRenderLongform(
       //     Each task degrades to a style gradient on failure so one bad beat never fails the render.
       const imgResults = await mapWithConcurrency(beats, IMAGE_CONCURRENCY, async (beat) => {
         const imgPath = join(workDir, `ch${chapter.index}_beat${beat.index}.png`);
+        // Beat-level resumability: reuse an already-rendered approved doodle (a timing-only re-render
+        // skips all image gen this way). Off by default.
+        if (opts.reuseExistingImages && existsSync(imgPath)) return { imgPath, ok: true };
         // Reference-driven styles: fetch a REAL photo of the beat's subject and draw an ILLUSTRATION
         // FROM it — accuracy AND a consistent illustrated look (never the raw photo). Use the targeted
         // photoQuery when the beat has one (concrete subject), else the scene description. Best-effort.
