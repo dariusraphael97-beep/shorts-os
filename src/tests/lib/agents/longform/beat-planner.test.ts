@@ -146,4 +146,219 @@ describe("longform/beat-planner", () => {
     const p = captured.toLowerCase();
     expect(p).toContain("most beats should have text");
   });
+
+  it("sparse mode: prompt demands RARE all-caps captions, evidence labels, varied backgrounds, red callouts, rare SFX", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })) } } as never;
+    });
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"), // v3 = sparse
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "The invention of breakfast", narration: "You eat three meals a day. Nobody asked why. The schedule is younger than the lightbulb." }],
+    });
+    const p = captured.toLowerCase();
+    expect(p).toMatch(/rare/);                       // captions are rare
+    expect(p).toMatch(/all-caps|all caps/);
+    expect(p).toMatch(/at most 4 words|≤ ?4 words|4 words/);
+    expect(p).toMatch(/"label"/);                    // asks for the evidence label field
+    expect(p).toMatch(/lowercase/);
+    expect(p).toMatch(/"background"/);               // asks for the per-beat background
+    expect(p).toMatch(/vary the background|never use white for everything/);
+    expect(p).toMatch(/red marker circle|red hand-drawn arrow/); // red callouts gated to smoking-gun evidence
+    expect(p).toMatch(/at most one beat of this chapter/);       // ...and budgeted PER CHAPTER (planner runs per chapter)
+    expect(p).toMatch(/nearly silent|zero is the norm/);         // SFX nearly absent, budgeted per chapter
+    expect(p).not.toContain("most beats should have text");
+  });
+
+  it("threads label + background onto beats and into the assembled image prompt", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `doodle ${i}`, onScreenText: "", sound: "", label: i === 0 ? "cookbook, 1500s." : "", background: i === 0 ? "deep navy" : "" })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Evidence", narration: "A cookbook from the fifteen hundreds lists two meals. Dinner sat in the late morning. The word breakfast appears in texts from the fourteen hundreds. Workers ate before dawn and again at midday." }],
+    });
+    const beats = out.chapters[0].beats;
+    expect(beats[0].objectLabel).toBe("cookbook, 1500s.");
+    expect(beats[0].backgroundMood).toBe("deep navy");
+    expect(beats[0].imagePrompt).toContain('label reading exactly "cookbook, 1500s."');
+    expect(beats[0].imagePrompt).toContain("flat solid deep navy background");
+    expect(beats[1]?.objectLabel).toBeUndefined();   // empty strings do not become beat fields
+    expect(beats[1]?.backgroundMood).toBeUndefined();
+  });
+
+  it("sparse guards: drops >4-word captions and coerces photo beats to illustration", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({
+        scene: `doodle ${i}`,
+        onScreenText: i === 0 ? "YOUR METABOLISM KEEPS OLD HOURS" : i === 1 ? "OLD HOURS" : "",
+        sound: "",
+        visualKind: i === 0 ? "photo" : "illustration",
+        photoQuery: i === 0 ? "old factory clock" : "",
+        label: "", background: "",
+      })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Guards", narration: "Your metabolism keeps old hours and it always has done. The schedule is the new arrival here. Your body never signed the contract at all." }],
+    });
+    const beats = out.chapters[0].beats;
+    expect(beats[0].onScreenText).toBe("");          // 5 words → dropped, not truncated
+    expect(beats[0].imagePrompt).not.toContain("METABOLISM"); // and never baked into the prompt
+    expect(beats[1].onScreenText).toBe("OLD HOURS"); // ≤4 words survives
+    for (const b of beats) {
+      expect(b.visualKind).toBe("illustration");     // sparse never photographs
+      expect(b.photoQuery).toBe("");
+    }
+  });
+
+  it("caps red callouts at 4 video-wide and strips the clause from overflow scenes", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({
+        scene: "a parchment with a date, a crude red marker circle scrawled around the date",
+        onScreenText: "", sound: "", visualKind: "illustration", photoQuery: "", label: "", background: "",
+      })) } } as never;
+    });
+    const out = await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      // 6 chapters → 6 red-callout scenes from the LLM; only the first 4 may survive
+      chapters: Array.from({ length: 6 }, (_, c) => ({ index: c, title: `C${c}`, narration: "A short single sentence for this chapter." })),
+    });
+    const beats = out.chapters.flatMap((c) => c.beats);
+    const RED = /red (circle|arrow|marker)/i; // same regex the plan QC uses
+    expect(beats.filter((b) => RED.test(b.sceneDescription)).length).toBe(4);
+    expect(beats.filter((b) => RED.test(b.imagePrompt)).length).toBe(4);
+    const stripped = beats.filter((b) => !RED.test(b.sceneDescription));
+    expect(stripped).toHaveLength(2);
+    for (const b of stripped) {
+      expect(b.sceneDescription).toContain("parchment with a date"); // the scene survives, only the callout goes
+      expect(b.imagePrompt).toContain("parchment with a date");
+    }
+  });
+
+  it("sparse slicing honors the preset's wordsPerSecond (faster narrator → fewer, bigger beats)", async () => {
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `doodle ${i}`, onScreenText: "", sound: "", label: "", background: "" })) } } as never;
+    });
+    const preset = getStylePreset("stick-figure-animated");
+    expect(preset.wordsPerSecond).toBe(2.9); // reference measured ~187wpm; global default 2.4 over-cuts
+    const narration = Array.from({ length: 20 }, () => "Seven plain words sit in this sentence.").join(" ");
+    const slow = await runBeatPlanner({
+      styleBible: { ...preset, wordsPerSecond: undefined }, // global 2.4 → 7-word target → one beat per 7-word sentence
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pace", narration }],
+    });
+    const fast = await runBeatPlanner({
+      styleBible: { ...preset, wordsPerSecond: 6 }, // exaggerated pace → 17-word target → sentences pack in pairs
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pace", narration }],
+    });
+    expect(slow.chapters[0].beats.length).toBe(20);
+    expect(fast.chapters[0].beats.length).toBeLessThanOrEqual(10);
+  });
+
+  it("non-sparse presets keep the old prompt shape (no label/background/red-callout demands)", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, (_, i) => ({ scene: `s ${i}`, onScreenText: "", sound: "" })) } } as never;
+    });
+    await runBeatPlanner(ctx()); // cinematic-realistic
+    expect(captured.toLowerCase()).not.toMatch(/red marker circle/);
+    expect(captured.toLowerCase()).not.toMatch(/"label"/);
+    // regression: empty sparseExtras must not inject an extra blank line
+    expect(captured).not.toMatch(/\n{3,}/);
+  });
+
+  it("sparse presets have no triple newlines in the prompt", async () => {
+    let captured = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      captured = opts?.prompt ?? "";
+      const n = Number(captured.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return { object: { items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })) } } as never;
+    });
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Sparse chapter", narration: "The sun rises. The clock ticks. Nobody moves." }],
+    });
+    // sparse block should be cleanly separated — no triple newlines
+    expect(captured).not.toMatch(/\n{3,}/);
+  });
+
+  it("non-sparse: hallucinated label/background from the LLM do NOT leak into beats or image prompts", async () => {
+    // The schema accepts label/background in all modes, so a hallucinated value from a non-sparse
+    // call must be discarded before assembleImagePrompt sees it — otherwise it would bake a
+    // "flat solid neon purple background filling the frame" into a cinematic render.
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const n = Number(opts?.prompt?.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      return {
+        object: {
+          items: Array.from({ length: n }, (_, i) => ({
+            scene: `cinematic scene ${i}`,
+            onScreenText: "",
+            sound: "",
+            label: "sneaky label",
+            background: "neon purple",
+          })),
+        },
+      } as never;
+    });
+    const out = await runBeatPlanner(ctx()); // cinematic-realistic = NOT sparse
+    const beats = out.chapters[0].beats;
+    // hallucinated fields must not appear as beat metadata
+    expect(beats[0].objectLabel).toBeUndefined();
+    expect(beats[0].backgroundMood).toBeUndefined();
+    // and must not have infected the assembled image prompt
+    expect(beats[0].imagePrompt).not.toContain("neon purple");
+  });
+
+  it("sparse mode: prompt JSON shape pins label+background in the items schema (not in non-sparse shape)", async () => {
+    let capturedSparse = "";
+    let capturedNonSparse = "";
+    vi.mocked(generateObject).mockImplementation(async (...allArgs: unknown[]) => {
+      const opts = allArgs[0] as { prompt?: string };
+      const prompt = opts?.prompt ?? "";
+      const n = Number(prompt.match(/EXACTLY (\d+) items/)?.[1] ?? 1);
+      if (prompt.includes('"label": string')) capturedSparse = prompt;
+      else capturedNonSparse = prompt;
+      return {
+        object: {
+          items: Array.from({ length: n }, () => ({ scene: "a doodle", onScreenText: "", sound: "", label: "", background: "white" })),
+        },
+      } as never;
+    });
+    // run sparse first
+    await runBeatPlanner({
+      styleBible: getStylePreset("stick-figure-animated"),
+      playbook: EMPTY_LONGFORM_PLAYBOOK,
+      chapters: [{ index: 0, title: "Pin chapter", narration: "The sun rises. The clock ticks. Nobody moves." }],
+    });
+    // run non-sparse to capture the other shape
+    await runBeatPlanner(ctx());
+    // sparse shape must contain the label+background fields verbatim in the JSON schema line
+    expect(capturedSparse).toContain('"label": string, "background": string');
+    // non-sparse shape must NOT include those fields
+    expect(capturedNonSparse).not.toContain('"label": string');
+    expect(capturedNonSparse).not.toContain('"background": string');
+  });
 });

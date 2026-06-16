@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LongformPlanSchema, WriterOutputSchema, StylePickerOutputSchema } from "@/lib/agents/longform/types";
+import { LongformPlanSchema, WriterOutputSchema, StylePickerOutputSchema, BeatSchema, SceneItemsSchema, StyleBibleSchema } from "@/lib/agents/longform/types";
 import { EMPTY_LONGFORM_PLAYBOOK } from "@/lib/agents/longform/playbook";
 
 describe("longform/types", () => {
@@ -56,5 +56,42 @@ describe("longform/types", () => {
     expect(EMPTY_LONGFORM_PLAYBOOK.retention.sampleSize).toBe(0);
     expect(EMPTY_LONGFORM_PLAYBOOK.retention.medianFirst30sRetention).toBeNull();
     expect(EMPTY_LONGFORM_PLAYBOOK.retention.bestFirst30sRetention).toBeNull();
+  });
+});
+
+describe("doodle-essay schema additions", () => {
+  it("BeatSchema accepts optional objectLabel and backgroundMood", () => {
+    const beat = {
+      index: 0, narrationSlice: "n", estDurationSeconds: 2.5, sceneDescription: "s",
+      imagePrompt: "ip", negativePrompt: "np",
+      objectLabel: "diary, 1400s.", backgroundMood: "deep navy",
+    };
+    const parsed = BeatSchema.parse(beat);
+    expect(parsed.objectLabel).toBe("diary, 1400s.");
+    expect(parsed.backgroundMood).toBe("deep navy");
+    // and both stay optional
+    expect(() => BeatSchema.parse({ ...beat, objectLabel: undefined, backgroundMood: undefined })).not.toThrow();
+  });
+
+  it("SceneItemsSchema accepts label + background per item, defaulting to empty strings", () => {
+    const parsed = SceneItemsSchema.parse({ items: [{ scene: "s", onScreenText: "", sound: "" }] });
+    expect(parsed.items[0].label).toBe("");
+    expect(parsed.items[0].background).toBe("");
+    const full = SceneItemsSchema.parse({ items: [{ scene: "s", onScreenText: "HOOK", sound: "", label: "cookbook, 1500s.", background: "white" }] });
+    expect(full.items[0].label).toBe("cookbook, 1500s.");
+    expect(full.items[0].background).toBe("white");
+  });
+
+  it("StyleBibleSchema accepts onScreenTextMode including the new 'sparse' value", () => {
+    const base = {
+      presetId: "stick-figure-animated", positivePrefix: "p", negativePrompt: "n",
+      lighting: "l", palette: "p", framing: "f", aspect: "16:9" as const,
+      kenBurnsZoom: 0.04, targetBeatSeconds: 2.5, musicMood: "m", model: "gpt_image_2", imageParams: {},
+    };
+    expect(() => StyleBibleSchema.parse({ ...base, onScreenTextMode: "sparse" })).not.toThrow();
+    expect(() => StyleBibleSchema.parse({ ...base, onScreenTextMode: "exclusive" })).not.toThrow();
+    expect(() => StyleBibleSchema.parse(base)).not.toThrow(); // still optional
+    // round-trip: "sparse" must not be stripped
+    expect(StyleBibleSchema.parse({ ...base, onScreenTextMode: "sparse" }).onScreenTextMode).toBe("sparse");
   });
 });

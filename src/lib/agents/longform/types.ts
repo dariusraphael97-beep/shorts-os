@@ -19,6 +19,8 @@ export const StyleBibleSchema = z.object({
   imageParams: z.record(z.string(), z.string()),
   referenceDriven: z.boolean().optional(),
   soundEffectsEnabled: z.boolean().optional(),
+  onScreenTextMode: z.enum(["exclusive", "additive", "sparse"]).optional(),
+  wordsPerSecond: z.number().positive().optional(),
 });
 
 export const VoiceChoiceSchema = z.object({
@@ -66,6 +68,18 @@ export const WriterOutputSchema = z.object({
 });
 export type WriterOutput = z.infer<typeof WriterOutputSchema>;
 
+// --- Operator-provided script (skips the Writer agent; doodle-essay etc.) ---
+export const ScriptOverrideSchema = z.object({
+  angle: z.string().min(1),
+  hook: z.string().min(1),
+  chapters: z.array(z.object({
+    title: z.string().min(1).max(120),
+    purpose: z.string().min(1).max(300),
+    narration: z.string().min(40),
+  })).min(1).max(12),
+});
+export type ScriptOverride = z.infer<typeof ScriptOverrideSchema>;
+
 // --- Style picker ---
 export const StylePickerOutputSchema = z.object({
   presetId: PresetIdSchema,
@@ -90,6 +104,10 @@ export const BeatSchema = z.object({
   photoQuery: z.string().default(""),
   /** Optional short text-to-SFX prompt for this moment (e.g. "a hawk screech"); empty = no sound. */
   soundEffect: z.string().optional(),
+  /** Small lowercase evidence label drawn next to the subject (e.g. "diary, 1400s."); absent = none. */
+  objectLabel: z.string().optional(),
+  /** Flat solid background color/mood for this beat (e.g. "deep navy"); absent = preset default. */
+  backgroundMood: z.string().optional(),
 });
 export const ChapterBeatsSchema = z.object({
   chapterIndex: z.number().int().nonnegative(),
@@ -106,6 +124,8 @@ export const SceneItemsSchema = z.object({
     sound: z.string(),
     visualKind: z.enum(["photo", "illustration"]).default("illustration"),
     photoQuery: z.string().default(""),
+    label: z.string().default(""), // → Beat.objectLabel (small lowercase evidence label; sparse styles only)
+    background: z.string().default(""), // → Beat.backgroundMood (flat solid per-beat background; sparse styles only)
   })).min(1),
 });
 // (legacy) scenes-only shape, kept for any callers that only need descriptions.

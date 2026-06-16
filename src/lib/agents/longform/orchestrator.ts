@@ -1,6 +1,6 @@
 import "server-only";
 import type { StreamEvent } from "@/lib/agents/types";
-import { LongformPlanSchema, type LongformPlan } from "@/lib/agents/longform/types";
+import { LongformPlanSchema, WriterOutputSchema, type LongformPlan, type ScriptOverride, type WriterOutput } from "@/lib/agents/longform/types";
 import { clampTargetDuration } from "@/lib/longform/duration";
 import { buildLongformLedgerRows, type LedgerRow } from "@/lib/longform/ledger";
 import { EMPTY_LONGFORM_PLAYBOOK, type LongformPlaybook } from "@/lib/agents/longform/playbook";
@@ -26,6 +26,10 @@ export interface LongformPipelineArgs {
   sourceNicheClusterId?: string;
   /** Operator/expert ground-truth facts threaded to the writer → researcher; they override web sources. */
   trustedFacts?: string[];
+  /** Hand-written, fact-verified script — skips the Writer agent entirely (beat planner still runs). */
+  scriptOverride?: ScriptOverride;
+  /** ElevenLabs voice override for this run (e.g. a calm American narrator); default = George. */
+  voiceId?: string;
 }
 
 /** The single planOnly decision — extracted so it is testable in isolation. */
@@ -58,6 +62,14 @@ export interface LongformPipelineDeps {
   loadPlaybook?: (args: { channelId: string }) => Promise<LongformPlaybook>;
 }
 
+// An operator script becomes a Writer-shaped output: word count from the narration itself, and the
+// operator's trustedFacts as the fact sheet (they are the verified ground truth for this run).
+function scriptOverrideToWriterOutput(script: ScriptOverride, trustedFacts: string[] | undefined): WriterOutput {
+  const estimatedWords = script.chapters.reduce((n, c) => n + c.narration.split(/\s+/).filter(Boolean).length, 0);
+  const facts = (trustedFacts ?? []).map((f) => f.trim()).filter(Boolean).map((f) => ({ claim: f, detail: f }));
+  return WriterOutputSchema.parse({ angle: script.angle, hook: script.hook, estimatedWords, chapters: script.chapters, factSheet: { facts, uncertain: [] } });
+}
+
 export async function* runLongformPipeline(args: LongformPipelineArgs, deps: LongformPipelineDeps): AsyncGenerator<StreamEvent> {
   const target = clampTargetDuration(args.targetDurationSeconds);
   const job = await deps.createJob({ channelId: args.channelId });
@@ -66,9 +78,11 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
   const playbook = deps.loadPlaybook ? await deps.loadPlaybook({ channelId: args.channelId }) : EMPTY_LONGFORM_PLAYBOOK;
 
   try {
-    // 1. Writer
+    // 1. Writer (skipped when the operator provided the script)
     yield { type: "agent_state", data: { agent: "writer", state: "working" } };
-    const writer = await deps.runWriter({ topic: args.topic, targetDurationSeconds: target, playbook, trustedFacts: args.trustedFacts });
+    const writer = args.scriptOverride
+      ? scriptOverrideToWriterOutput(args.scriptOverride, args.trustedFacts)
+      : await deps.runWriter({ topic: args.topic, targetDurationSeconds: target, playbook, trustedFacts: args.trustedFacts });
     yield { type: "agent_output", data: { agent: "writer", output: writer } };
     yield { type: "agent_done", data: { agent: "writer", durationMs: 0 } };
 
@@ -95,8 +109,9 @@ export async function* runLongformPipeline(args: LongformPipelineArgs, deps: Lon
     yield { type: "agent_state", data: { agent: "voice_coach", state: "working" } };
     // Longform narrator = ElevenLabs "George" (warm British storyteller) — far more natural than
     // Cartesia TTS. Keep the voice-coach pick for pacing/rationale, but force the provider+voice.
+    // Per-run voiceId override (e.g. a calm American narrator) replaces the George default.
     const picked = await deps.pickVoice({ topic: args.topic, narrationSample: writer.hook, playbook, presetId: style.presetId });
-    const voice = { ...picked, provider: "elevenlabs", voiceId: ELEVENLABS_NARRATOR_VOICE_ID };
+    const voice = { ...picked, provider: "elevenlabs", voiceId: args.voiceId?.trim() || ELEVENLABS_NARRATOR_VOICE_ID };
     yield { type: "agent_output", data: { agent: "voice_coach", output: voice } };
     yield { type: "agent_done", data: { agent: "voice_coach", durationMs: 0 } };
 

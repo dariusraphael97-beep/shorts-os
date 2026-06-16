@@ -40,23 +40,33 @@ describe("longform/style-presets", () => {
     expect(p.palette.toLowerCase()).toMatch(/teal|amber/);
   });
 
-  it("stick-figure preset encodes a CLEAN simple hand-drawn doodle (smooth lines, expressive faces, colored scenes)", () => {
+  it("stick-figure preset v3 = CRUDE felt-tip doodle (wobbly marker, MS-Paint fills, sparse captions, quiet audio)", () => {
     const p = getStylePreset("stick-figure-animated");
     const pre = p.positivePrefix.toLowerCase();
     expect(pre).toMatch(/stick ?figure|stickman/);
     expect(pre).toMatch(/doodle|hand-drawn/);
-    expect(pre).toMatch(/clean|smooth/); // Zenn is simple but CLEAN — corrected from the over-crude v1
-    expect(pre).not.toMatch(/ms ?paint/);
-    expect(pre).not.toMatch(/do not make it look good|wobbly|uneven/);
+    // v3: the reference (yt st_Ah6Ykbh4, dense re-watch 2026-06-12) is CRUDE felt-tip, not clean vector
+    expect(pre).toMatch(/crude/);
+    expect(pre).toMatch(/wobbly/);
+    expect(pre).toMatch(/ms ?paint/);
+    expect(pre).toMatch(/eyebrow/);            // eyebrows do the emotional acting
+    expect(pre).toMatch(/no shading|no gradient/);
+    expect(pre).toMatch(/crisp|legible/);      // crude drawing, crisp file
     // gpt_image_2 has no negative-prompt param, so style suppressors live in the POSITIVE prompt.
     expect(pre).toMatch(/no 3d|no realistic|no anime|no photoreal/);
-    // scenes get a simple colored setting/background when the moment calls for one (not forced white).
+    expect(pre).toMatch(/do not beautify|do not polish/); // stop the model up-rendering the doodle
+    expect(pre).not.toMatch(/do not make it look good/);  // v1's over-cooked suppressor stays gone
+    // scenes get a simple colored setting/background keyed per beat (not forced white).
     expect(`${p.framing} ${p.palette}`.toLowerCase()).toMatch(/background|environment|setting|scene/);
     expect(p.framing.toLowerCase()).toContain("collage"); // still forbid collages
-    // static hold (no jittery Ken-Burns) for this preset; fast Zenn cadence: a new image every 2-3s.
+    // subtle Ken-Burns push-in like the reference (reverted to 0 if zoompan jitters — Task 12)
     expect(p.kenBurnsZoom).toBeLessThanOrEqual(0.04);
     expect(p.targetBeatSeconds).toBeGreaterThanOrEqual(2);
     expect(p.targetBeatSeconds).toBeLessThanOrEqual(3);
+    // doodle-essay text + audio behavior
+    expect(p.onScreenTextMode).toBe("sparse");
+    expect(p.soundEffectsEnabled).toBe(true);
+    expect(p.musicMood.toLowerCase()).toMatch(/no music|ambient/);
   });
 
   it("naturalist preset = detailed illustration on a high-quality model (for animal/nature niches)", () => {

@@ -5,12 +5,13 @@ import { runLongformPipeline } from "@/lib/agents/longform/orchestrator";
 import { buildLongformDeps } from "@/lib/agents/longform/deps";
 import { getDefaultChannel } from "@/lib/supabase/repositories/channels";
 import { PRESET_IDS, type PresetId } from "@/lib/longform/style-presets";
+import { ScriptOverrideSchema, type ScriptOverride } from "@/lib/agents/longform/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
-  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown; planOnly?: unknown; trustedFacts?: unknown };
+  const body = (await req.json()) as { topic?: unknown; targetDurationSeconds?: unknown; channelId?: unknown; presetId?: unknown; planOnly?: unknown; trustedFacts?: unknown; scriptOverride?: unknown; voiceId?: unknown };
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   const targetDurationSeconds =
     typeof body.targetDurationSeconds === "number" ? body.targetDurationSeconds : 540;
@@ -25,6 +26,21 @@ export async function POST(req: Request): Promise<Response> {
   const trustedFacts = Array.isArray(body.trustedFacts) && body.trustedFacts.every((f) => typeof f === "string")
     ? (body.trustedFacts as string[])
     : undefined;
+
+  // Hand-written script (skips the Writer). Strictly validated; a malformed override is a 400, not a silent fallback to the Writer.
+  let scriptOverride: ScriptOverride | undefined;
+  if (body.scriptOverride !== undefined) {
+    const parsed = ScriptOverrideSchema.safeParse(body.scriptOverride);
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: `invalid scriptOverride: ${parsed.error.message}` }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    scriptOverride = parsed.data;
+  }
+  // Per-run narrator override (ElevenLabs voice id).
+  const voiceId = typeof body.voiceId === "string" && body.voiceId.trim() ? body.voiceId.trim() : undefined;
 
   if (!topic) {
     return new Response(
@@ -45,7 +61,7 @@ export async function POST(req: Request): Promise<Response> {
     async start(controller) {
       try {
         for await (const event of runLongformPipeline(
-          { topic, targetDurationSeconds, channelId, presetId, planOnly, trustedFacts },
+          { topic, targetDurationSeconds, channelId, presetId, planOnly, trustedFacts, scriptOverride, voiceId },
           deps,
         )) {
           controller.enqueue(encodeSseEvent(event));
