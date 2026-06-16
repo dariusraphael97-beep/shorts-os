@@ -16,16 +16,39 @@ describe("buildClusters", () => {
     expect(buildClusters(rows, canon)).toHaveLength(0);
   });
 
-  it("groups by (canonical_topic, format_label) and counts distinct channels", () => {
+  it("drops a single-channel group even with 3+ videos (not a repeatable niche)", () => {
+    const rows = ["a", "b", "c", "d"].map((id) =>
+      row({ video_id: id, channel_id: "solo", topic_label: "aitools" }),
+    );
+    expect(buildClusters(rows, canon)).toHaveLength(0);
+  });
+
+  it("requires at least 3 distinct channels to form a niche", () => {
+    const twoChannels = [
+      row({ video_id: "a", channel_id: "c1", topic_label: "aitools" }),
+      row({ video_id: "b", channel_id: "c1", topic_label: "aitools" }),
+      row({ video_id: "c", channel_id: "c2", topic_label: "aitools" }),
+    ];
+    expect(buildClusters(twoChannels, canon)).toHaveLength(0);
+  });
+
+  it("drops non-faceless (non-native production_fit) clusters", () => {
+    const rows = ["c1", "c2", "c3"].map((ch) =>
+      row({ video_id: "v" + ch, channel_id: ch, topic_label: "aitools", format_label: "live_capture" }),
+    );
+    expect(buildClusters(rows, canon)).toHaveLength(0);
+  });
+
+  it("groups by (canonical_topic, format_label), merging aliased topics, and counts distinct channels", () => {
     const rows = [
       row({ video_id: "a", channel_id: "c1", topic_label: "aitools" }),
       row({ video_id: "b", channel_id: "c2", topic_label: "aiapps" }),
-      row({ video_id: "c", channel_id: "c2", topic_label: "aitools" }),
+      row({ video_id: "c", channel_id: "c3", topic_label: "aitools" }),
     ];
     const clusters = buildClusters(rows, canon);
     expect(clusters).toHaveLength(1);
     expect(clusters[0].canonicalTopic).toBe("aitools");
-    expect(clusters[0].channelCount).toBe(2);
+    expect(clusters[0].channelCount).toBe(3);
     expect(clusters[0].productionFit).toBe("native");
   });
 

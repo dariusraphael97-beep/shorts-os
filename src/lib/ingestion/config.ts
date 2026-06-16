@@ -34,11 +34,32 @@ export const SHORTS_SEARCH_SEEDS: string[] = [
   'psychology facts',
 ];
 
-/** Seed queries for the dominatable longform sweep (from the proven seed-niches scan). */
+/**
+ * Seed queries for the dominatable longform sweep. These are SPECIFIC entry points into
+ * proven FACELESS (AI-producible) longform niches — not generic keywords. Generic seeds
+ * ("how it works", "weird animals") return a topically-random viral grab-bag; specific
+ * niche phrases land on real faceless explainer/doc channels, and the sweep then expands
+ * outward via their channels. Mix = the model niches from the YT-automation playbook
+ * (senior finance, geopolitics map explainers, 2nd-person history, space/ancient docs,
+ * true crime, animated religion) plus our own lanes (everyday-assumption essays, cars).
+ */
 export const DOMINATABLE_SEEDS: readonly string[] = [
-  'ranked tier list', 'backyard birds', 'weird animals', 'deep sea creatures',
-  'space facts', 'how it works', 'psychology facts', 'money mistakes',
-  'the history of', 'what happens to your', 'unsolved mysteries', 'how the body works',
+  'medicare explained for retirees',
+  'social security benefits explained',
+  'geopolitics explained map',
+  'world war 2 explained animated',
+  'ancient civilization documentary',
+  'space exploration documentary',
+  'what if you were born in ancient',
+  'unsolved true crime explained',
+  'how the economy actually works',
+  'the dark history of',
+  'why do we say',
+  'animated bible stories',
+  'cold case solved documentary',
+  'famous battles explained',
+  'psychology of human behavior explained',
+  'deep sea creatures documentary',
 ];
 
 /** A video qualifies as a dominatable candidate when ALL hold (mirrors seed-niches). */

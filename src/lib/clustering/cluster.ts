@@ -31,7 +31,9 @@ export interface BuiltCluster {
 }
 
 const BROAD_PUBLIC: ReadonlySet<ShortsObservationSource> = new Set(["youtube_most_popular", "google_trends", "youtube_dominatable"]);
-const MIN_CLUSTER_SIZE = 3;
+// A niche only counts as "dominatable" if MANY new channels are winning in it — not one
+// creator's uploads. Require this many DISTINCT channels (repeatability = the dominatable proof).
+const MIN_DISTINCT_CHANNELS = 3;
 
 function modal(values: (string | null)[]): string | null {
   const counts = new Map<string, number>();
@@ -52,8 +54,13 @@ export function buildClusters(rows: ClusterInputRow[], canonical: Map<string, st
   }
   const clusters: BuiltCluster[] = [];
   for (const g of groups.values()) {
-    if (g.rows.length < MIN_CLUSTER_SIZE) continue;
     const channelIds = new Set(g.rows.map((r) => r.channel_id).filter((c): c is string => !!c));
+    const productionFit = formatToProductionFit(g.format);
+    // Two hard gates so discovery surfaces only real, makeable niches:
+    //  1. repeatability — >=3 distinct channels (a single channel's videos are not a niche)
+    //  2. faceless-only — native production fit (drop live_capture / talking-head / manual formats)
+    if (channelIds.size < MIN_DISTINCT_CHANNELS) continue;
+    if (productionFit !== "native") continue;
     const sorted = [...g.rows].sort((a, b) => b.view_count - a.view_count);
     const times = g.rows.map((r) => r.published_at ?? r.observed_at).filter(Boolean).sort();
     clusters.push({
@@ -64,7 +71,7 @@ export function buildClusters(rows: ClusterInputRow[], canonical: Map<string, st
       channelCount: channelIds.size,
       avgViews: Math.round(g.rows.reduce((s, r) => s + r.view_count, 0) / g.rows.length),
       firstSeenAt: times[0] ?? null,
-      productionFit: formatToProductionFit(g.format),
+      productionFit,
       discoveryState: g.rows.some((r) => BROAD_PUBLIC.has(r.source)) ? "public" : "pre_public",
       audienceSignal: modal(g.rows.map((r) => (r.audience_signal as string | null) ?? null)),
     });
